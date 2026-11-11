@@ -1,0 +1,842 @@
+import 'pixi.js/unsafe-eval';
+import { Application, Container, Graphics } from 'pixi.js';
+import type { Ticker } from 'pixi.js';
+import { calendar } from '../core/time';
+import type { Season } from '../core/time';
+import type { BuildingId, BuildingInstance, GameState, Province, Tile } from '../core/types';
+import { FOREST_TILE_MAX } from '../data/balance';
+import { BUILDINGS, defOf, specOf } from '../data/buildings';
+import { validatePlacement } from '../systems/commands';
+import { homeProvince, isBuilt, isOperating, totalPopulation } from '../systems/economy';
+import { buildingById, footprintTiles, tileAt, tilesInRange } from '../systems/grid';
+import { checkRoadSite } from '../systems/placement';
+import { requiredTicks } from '../systems/tick';
+import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
+import { COLORS, SEASON_PALETTE, VILLAGER_COLORS } from './palette';
+import type { SeasonPalette } from './palette';
+import {
+  BUILDING_HEIGHT,
+  drawBuilding,
+  drawCart,
+  drawConstruction,
+  drawFlag,
+  drawGroundTile,
+  drawRocks,
+  drawStump,
+  drawTree,
+  drawVillager,
+  flagAnchor,
+  smokeAnchor,
+} from './sprites';
+
+export type Tool =
+  { kind: 'select' } | { kind: 'build'; buildingId: BuildingId } | { kind: 'road' } | { kind: 'demolish' };
+
+export interface RendererView {
+  game: GameState;
+  tool: Tool;
+  selectedBuildingId: string | null;
+  reducedMotion: boolean;
+}
+
+export interface RendererHost {
+  getView(): RendererView | null;
+  onTileClick(x: number, y: number, buildingId: string | null): void;
+  onRoadPaint(x: number, y: number): void;
+  onHover(tile: { x: number; y: number } | null): void;
+  onCancel(): void;
+}
+
+export interface RendererStats {
+  fps: number;
+  buildings: number;
+  props: number;
+  walkers: number;
+  particles: number;
+}
+
+interface BuildingView {
+  c: Container;
+  g: Graphics;
+  extra: Graphics;
+  flag: Graphics | null;
+  sig: string;
+  smokeTimer: number;
+}
+interface PropView {
+  c: Container;
+  sway: Container | null;
+  sig: string;
+  phase: number;
+}
+interface Walker {
+  c: Container;
+  from: [number, number];
+  to: [number, number];
+  prev: [number, number];
+  t: number;
+  speed: number;
+  phase: number;
+  side: number;
+  cart: boolean;
+}
+interface Particle {
+  g: Graphics;
+  life: number;
+}
+
+const MIN_ZOOM = 0.45;
+const MAX_ZOOM = 2.6;
+const SPEED_FACTOR: Record<number, number> = { 0: 0, 1: 1, 2: 1.6, 4: 2.4 };
+
+/**
+ * Read-only PixiJS view of the home province. It never mutates game state: all input is
+ * reported through RendererHost callbacks and turned into commands by the app layer.
+ * Layers (bottom to top): ground, water fx, ground overlays, depth-sorted objects, ghost.
+ */
+export class ValleyRenderer {
+  private app = new Application();
+  private world = new Container();
+  private ground = new Graphics();
+  private waterFx = new Graphics();
+  private under = new Graphics();
+  private objects = new Container();
+  private ghost = new Graphics();
+  private buildingViews = new Map<string, BuildingView>();
+  private propViews = new Map<number, PropView>();
+  private walkers: Walker[] = [];
+  private particles: Particle[] = [];
+  private lastTiles: Tile[] | null = null;
+  private lastSeason: Season | null = null;
+  private waterTiles: [number, number][] = [];
+  private roadTiles: [number, number][] = [];
+  private hover: { x: number; y: number } | null = null;
+  private time = 0;
+  private waterTimer = 0;
+  private flagTimer = 0;
+  private ghostSig = '';
+  private pointers = new Map<number, { x: number; y: number }>();
+  private drag: { lastX: number; lastY: number; total: number; button: number; paint: boolean } | null = null;
+  private pinch: { dist: number } | null = null;
+  private lastPaint = '';
+  private destroyed = false;
+  private ready = false;
+  private cleanup: (() => void)[] = [];
+
+  private constructor(private cb: RendererHost) {}
+
+  static async create(host: HTMLElement, cb: RendererHost): Promise<ValleyRenderer> {
+    const r = new ValleyRenderer(cb);
+    await r.app.init({
+      resizeTo: host,
+      antialias: true,
+      backgroundAlpha: 0,
+      resolution: Math.min(window.devicePixelRatio || 1, 2),
+      autoDensity: true,
+      preference: 'webgl',
+    });
+    if (r.destroyed) {
+      r.app.destroy(true, { children: true });
+      return r;
+    }
+    r.ready = true;
+    const canvas = r.app.canvas;
+    canvas.style.touchAction = 'none';
+    canvas.style.display = 'block';
+    canvas.setAttribute('aria-label', 'Vadi haritası');
+    host.appendChild(canvas);
+    r.objects.sortableChildren = true;
+    r.world.addChild(r.ground, r.waterFx, r.under, r.objects, r.ghost);
+    r.app.stage.addChild(r.world);
+    r.bindInput(canvas);
+    r.resetCamera();
+    r.app.ticker.add(r.frame);
+    return r;
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+    for (const fn of this.cleanup) fn();
+    if (this.ready) {
+      this.app.ticker.remove(this.frame);
+      this.app.destroy(true, { children: true, texture: true });
+    }
+  }
+
+  getStats(): RendererStats {
+    return {
+      fps: Math.round(this.app.ticker.FPS),
+      buildings: this.buildingViews.size,
+      props: this.propViews.size,
+      walkers: this.walkers.length,
+      particles: this.particles.length,
+    };
+  }
+
+  // ------------------------------------------------------------------ camera
+
+  resetCamera(): void {
+    const { width, height } = this.app.screen;
+    const scale = Math.max(0.5, Math.min(1.25, Math.min(width / 1500, height / 840)));
+    this.world.scale.set(scale);
+    this.centerOnTile(12, 12.5);
+  }
+
+  centerOnTile(x: number, y: number): void {
+    const { width, height } = this.app.screen;
+    const s = this.world.scale.x;
+    this.world.position.set(width / 2 - isoX(x, y) * s, height / 2 - isoY(x, y) * s);
+    this.clampCamera();
+  }
+
+  /** Client (viewport) coordinates of a tile centre — used by automated browser tests. */
+  tileToClient(x: number, y: number): { x: number; y: number } {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const s = this.world.scale.x;
+    return {
+      x: rect.left + this.world.x + isoX(x + 0.5, y + 0.5) * s,
+      y: rect.top + this.world.y + isoY(x + 0.5, y + 0.5) * s,
+    };
+  }
+
+  zoomBy(factor: number, sx = this.app.screen.width / 2, sy = this.app.screen.height / 2): void {
+    const old = this.world.scale.x;
+    const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, old * factor));
+    const wx = (sx - this.world.x) / old;
+    const wy = (sy - this.world.y) / old;
+    this.world.scale.set(next);
+    this.world.position.set(sx - wx * next, sy - wy * next);
+    this.clampCamera();
+  }
+
+  panBy(dx: number, dy: number): void {
+    this.world.x += dx;
+    this.world.y += dy;
+    this.clampCamera();
+  }
+
+  /** Keeps the valley on screen: the view centre may not leave the map's bounding box. */
+  private clampCamera(): void {
+    const { width, height } = this.app.screen;
+    const s = this.world.scale.x;
+    const cx = (width / 2 - this.world.x) / s;
+    const cy = (height / 2 - this.world.y) / s;
+    const half = (24 * TW) / 2;
+    const ccx = Math.max(-half, Math.min(half, cx));
+    const ccy = Math.max(0, Math.min(24 * TH, cy));
+    this.world.position.set(width / 2 - ccx * s, height / 2 - ccy * s);
+  }
+
+  // ------------------------------------------------------------------ input
+
+  private tileFromEvent(e: { clientX: number; clientY: number }): { fx: number; fy: number } {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const s = this.world.scale.x;
+    const t = worldToTile(
+      (e.clientX - rect.left - this.world.x) / s,
+      (e.clientY - rect.top - this.world.y) / s,
+    );
+    return { fx: t.x, fy: t.y };
+  }
+
+  private setHover(tile: { x: number; y: number } | null): void {
+    if (tile?.x === this.hover?.x && tile?.y === this.hover?.y) return;
+    this.hover = tile;
+    this.cb.onHover(tile);
+  }
+
+  private pickBuilding(p: Province, fx: number, fy: number): string | null {
+    for (const k of [2, 1.5, 1, 0.5]) {
+      const id = tileAt(p, Math.floor(fx + k), Math.floor(fy + k))?.buildingId;
+      if (!id) continue;
+      const b = buildingById(p, id);
+      if (b && BUILDING_HEIGHT[b.definitionId] >= 32 * k - 6) return id;
+    }
+    return tileAt(p, Math.floor(fx), Math.floor(fy))?.buildingId ?? null;
+  }
+
+  private bindInput(canvas: HTMLCanvasElement): void {
+    const on = <K extends keyof HTMLElementEventMap>(
+      type: K,
+      fn: (e: HTMLElementEventMap[K]) => void,
+      opts?: AddEventListenerOptions,
+    ): void => {
+      canvas.addEventListener(type, fn, opts);
+      this.cleanup.push(() => canvas.removeEventListener(type, fn, opts));
+    };
+    const paint = (e: PointerEvent): void => {
+      const { fx, fy } = this.tileFromEvent(e);
+      const x = Math.floor(fx);
+      const y = Math.floor(fy);
+      const key = `${x},${y}`;
+      if (key === this.lastPaint) return;
+      this.lastPaint = key;
+      this.cb.onRoadPaint(x, y);
+    };
+    on('pointerdown', (e) => {
+      canvas.setPointerCapture(e.pointerId);
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pointers.size === 2) {
+        const [a, b] = [...this.pointers.values()];
+        this.pinch = { dist: Math.hypot(a!.x - b!.x, a!.y - b!.y) };
+        this.drag = null;
+        return;
+      }
+      const view = this.cb.getView();
+      const isPaint = view?.tool.kind === 'road' && e.button === 0;
+      this.drag = { lastX: e.clientX, lastY: e.clientY, total: 0, button: e.button, paint: isPaint };
+      this.lastPaint = '';
+      if (isPaint) paint(e);
+    });
+    on('pointermove', (e) => {
+      const { fx, fy } = this.tileFromEvent(e);
+      const tx = Math.floor(fx);
+      const ty = Math.floor(fy);
+      const inside = tx >= 0 && ty >= 0 && tx < 24 && ty < 24;
+      if (e.pointerType === 'mouse' || this.drag?.paint) this.setHover(inside ? { x: tx, y: ty } : null);
+      if (!this.pointers.has(e.pointerId)) return;
+      const prev = this.pointers.get(e.pointerId)!;
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pinch && this.pointers.size === 2) {
+        const [a, b] = [...this.pointers.values()];
+        const dist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+        const rect = canvas.getBoundingClientRect();
+        this.zoomBy(
+          dist / Math.max(1, this.pinch.dist),
+          (a!.x + b!.x) / 2 - rect.left,
+          (a!.y + b!.y) / 2 - rect.top,
+        );
+        this.pinch.dist = dist;
+        this.panBy((e.clientX - prev.x) / 2, (e.clientY - prev.y) / 2);
+        return;
+      }
+      if (!this.drag) return;
+      const dx = e.clientX - this.drag.lastX;
+      const dy = e.clientY - this.drag.lastY;
+      this.drag.lastX = e.clientX;
+      this.drag.lastY = e.clientY;
+      this.drag.total += Math.abs(dx) + Math.abs(dy);
+      if (this.drag.paint) paint(e);
+      else if (this.drag.total > 5) this.panBy(dx, dy);
+    });
+    const up = (e: PointerEvent): void => {
+      const drag = this.drag;
+      const wasSingle = this.pointers.size === 1 && this.pointers.has(e.pointerId);
+      this.pointers.delete(e.pointerId);
+      if (this.pointers.size < 2) this.pinch = null;
+      this.drag = null;
+      if (!drag || !wasSingle || e.type === 'pointercancel') return;
+      if (drag.paint || drag.total > 5) return;
+      if (drag.button === 2) {
+        this.cb.onCancel();
+        return;
+      }
+      if (drag.button !== 0) return;
+      const view = this.cb.getView();
+      if (!view) return;
+      const { fx, fy } = this.tileFromEvent(e);
+      const p = homeProvince(view.game);
+      const pickTall = view.tool.kind === 'select' || view.tool.kind === 'demolish';
+      const x = Math.floor(fx);
+      const y = Math.floor(fy);
+      const buildingId = pickTall ? this.pickBuilding(p, fx, fy) : (tileAt(p, x, y)?.buildingId ?? null);
+      if (e.pointerType !== 'mouse') this.setHover(tileAt(p, x, y) ? { x, y } : null);
+      this.cb.onTileClick(x, y, buildingId);
+    };
+    on('pointerup', up);
+    on('pointercancel', up);
+    on('pointerleave', () => {
+      if (!this.drag) this.setHover(null);
+    });
+    on('contextmenu', (e) => e.preventDefault());
+    on(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        this.zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left, e.clientY - rect.top);
+      },
+      { passive: false },
+    );
+  }
+
+  // ------------------------------------------------------------------ frame
+
+  private frame = (ticker: Ticker): void => {
+    const view = this.cb.getView();
+    if (!view || this.destroyed) return;
+    const dt = Math.min(ticker.deltaMS, 100);
+    this.time += dt;
+    const p = homeProvince(view.game);
+    const cal = calendar(view.game.tick);
+    const pal = SEASON_PALETTE[cal.season];
+    const motion = !view.reducedMotion;
+
+    if (p.tiles !== this.lastTiles || cal.season !== this.lastSeason) {
+      this.syncGround(p, pal);
+      this.syncProps(p, pal, cal.season);
+      this.lastTiles = p.tiles;
+      this.lastSeason = cal.season;
+    }
+    this.syncBuildings(view, p, pal, cal.season, dt, motion);
+    this.updateWalkers(view, p, dt, motion);
+    this.updateParticles(dt);
+    this.drawOverlays(view, p, pal);
+
+    if (motion) {
+      this.waterTimer += dt;
+      if (this.waterTimer > 140) {
+        this.waterTimer = 0;
+        this.drawWater(pal);
+      }
+      for (const prop of this.propViews.values()) {
+        if (prop.sway) prop.sway.skew.x = Math.sin(this.time / 900 + prop.phase) * 0.035;
+      }
+    }
+  };
+
+  private syncGround(p: Province, pal: SeasonPalette): void {
+    const g = this.ground;
+    g.clear();
+    this.waterTiles = [];
+    this.roadTiles = [];
+    // diorama skirt along the two front edges
+    for (let i = 0; i < p.width; i++) {
+      const tl = tileAt(p, i, p.height - 1)!;
+      const a = P(i, p.height);
+      const b = P(i + 1, p.height);
+      g.poly([a[0], a[1], b[0], b[1], b[0], b[1] + 20, a[0], a[1] + 20]).fill(
+        tl.terrain === 'water' ? 0x3f8fc0 : COLORS.earth,
+      );
+      const tr = tileAt(p, p.width - 1, i)!;
+      const c = P(p.width, i);
+      const d = P(p.width, i + 1);
+      g.poly([c[0], c[1], d[0], d[1], d[0], d[1] + 20, c[0], c[1] + 20]).fill(
+        tr.terrain === 'water' ? 0x347aa6 : COLORS.earthDark,
+      );
+    }
+    for (let y = 0; y < p.height; y++)
+      for (let x = 0; x < p.width; x++) {
+        const t = p.tiles[y * p.width + x]!;
+        drawGroundTile(g, x, y, t.terrain, t.variant, t.road, pal);
+        if (t.terrain === 'water') this.waterTiles.push([x, y]);
+        if (t.road) this.roadTiles.push([x, y]);
+      }
+    this.drawWater(pal);
+  }
+
+  private drawWater(pal: SeasonPalette): void {
+    const g = this.waterFx;
+    g.clear();
+    const t = this.time / 700;
+    for (const [x, y] of this.waterTiles) {
+      const ox = isoX(x, y);
+      const oy = isoY(x, y);
+      const shift = Math.sin(t + x * 0.9 + y * 1.7) * 5;
+      g.moveTo(ox - 12 + shift, oy + 13)
+        .lineTo(ox + 2 + shift, oy + 20)
+        .stroke({ color: pal.waterLight, width: 1.6, alpha: 0.75 });
+      g.moveTo(ox + 4 - shift, oy + 9)
+        .lineTo(ox + 13 - shift, oy + 13.5)
+        .stroke({ color: pal.waterLight, width: 1.2, alpha: 0.5 });
+    }
+  }
+
+  private syncProps(p: Province, pal: SeasonPalette, season: Season): void {
+    const alive = new Set<number>();
+    for (let i = 0; i < p.tiles.length; i++) {
+      const t = p.tiles[i]!;
+      if (t.terrain !== 'forest' && t.terrain !== 'stone') continue;
+      alive.add(i);
+      const x = i % p.width;
+      const y = Math.floor(i / p.width);
+      const bucket =
+        t.terrain === 'forest'
+          ? t.deposit >= FOREST_TILE_MAX * 0.6
+            ? 3
+            : t.deposit >= FOREST_TILE_MAX * 0.2
+              ? 2
+              : t.deposit > 0
+                ? 1
+                : 0
+          : t.deposit > 0
+            ? 1
+            : 0;
+      const sig = `${t.terrain}|${bucket}|${season}`;
+      let view = this.propViews.get(i);
+      if (view?.sig === sig) continue;
+      if (view) view.c.destroy({ children: true });
+      const c = new Container();
+      c.position.set(isoX(x + 0.5, y + 0.5), isoY(x + 0.5, y + 0.5));
+      c.zIndex = x + y + 1;
+      let sway: Container | null = null;
+      if (t.terrain === 'stone') {
+        const g = new Graphics();
+        drawRocks(g, t.variant, bucket > 0);
+        c.addChild(g);
+      } else {
+        const stumps = new Graphics();
+        sway = new Container();
+        const spots: [number, number, number][] = [
+          [-9 + t.variant, -3, 1],
+          [9 - t.variant, 4, 0.82],
+        ];
+        spots.forEach(([sx, sy, scale], n) => {
+          const standing = bucket === 3 || (bucket === 2 && n === 0) || (bucket === 1 && n === 1);
+          if (standing) {
+            const g = new Graphics();
+            drawTree(g, pal, t.variant + n + x, bucket === 1 ? 0.7 : scale);
+            g.position.set(sx, sy);
+            sway!.addChild(g);
+          } else {
+            const g = new Graphics();
+            drawStump(g);
+            g.position.set(sx, sy);
+            stumps.addChild(g);
+          }
+        });
+        c.addChild(stumps, sway);
+      }
+      this.objects.addChild(c);
+      view = { c, sway, sig, phase: (x * 7 + y * 13) % 6 };
+      this.propViews.set(i, view);
+    }
+    for (const [i, view] of this.propViews) {
+      if (!alive.has(i)) {
+        view.c.destroy({ children: true });
+        this.propViews.delete(i);
+      }
+    }
+  }
+
+  private syncBuildings(
+    view: RendererView,
+    p: Province,
+    pal: SeasonPalette,
+    season: Season,
+    dt: number,
+    motion: boolean,
+  ): void {
+    const seen = new Set<string>();
+    this.flagTimer += dt;
+    const flagNow = this.flagTimer > 90;
+    if (flagNow) this.flagTimer = 0;
+    for (const b of p.buildings) {
+      seen.add(b.id);
+      const def = defOf(b);
+      const [w, h] = def.footprint;
+      let bv = this.buildingViews.get(b.id);
+      if (!bv) {
+        const c = new Container();
+        const g = new Graphics();
+        const extra = new Graphics();
+        c.addChild(g, extra);
+        c.position.set(isoX(b.x, b.y), isoY(b.x, b.y));
+        c.zIndex = b.x + w + b.y + h - 1;
+        this.objects.addChild(c);
+        bv = { c, g, extra, flag: null, sig: '', smokeTimer: Math.random() * 400 };
+        this.buildingViews.set(b.id, bv);
+      }
+      const staffed = specOf(b).workerSlots === 0 || b.workers > 0;
+      const progress = b.state === 'active' ? 0 : b.progressTicks;
+      const sig = `${b.level}|${b.state}|${b.connected}|${b.unpaid}|${staffed}|${progress}|${def.seasonal ? season : ''}`;
+      if (sig !== bv.sig) {
+        bv.sig = sig;
+        this.redrawBuilding(bv, b, pal);
+      }
+      if (bv.flag && flagNow && motion) drawFlag(bv.flag, this.time / 160 + b.x, COLORS.flag);
+
+      // chimney smoke while the building is in use
+      const anchor = isBuilt(b) && b.connected ? smokeAnchor(b.definitionId, b.level) : null;
+      const inUse = b.definitionId === 'lumber_camp' ? isOperating(b) : true;
+      if (anchor && inUse && motion && view.game.speed > 0 && this.particles.length < 90) {
+        bv.smokeTimer -= dt;
+        if (bv.smokeTimer <= 0) {
+          bv.smokeTimer = 420 + Math.random() * 260;
+          const g = new Graphics().circle(0, 0, 2.6).fill({ color: COLORS.smoke, alpha: 0.8 });
+          g.position.set(bv.c.x + anchor[0], bv.c.y + anchor[1]);
+          g.zIndex = bv.c.zIndex + 0.5;
+          this.objects.addChild(g);
+          this.particles.push({ g, life: 1 });
+        }
+      }
+    }
+    for (const [id, bv] of this.buildingViews) {
+      if (!seen.has(id)) {
+        bv.c.destroy({ children: true });
+        this.buildingViews.delete(id);
+      }
+    }
+  }
+
+  private redrawBuilding(bv: BuildingView, b: BuildingInstance, pal: SeasonPalette): void {
+    const def = defOf(b);
+    const [w, h] = def.footprint;
+    const { g, extra } = bv;
+    g.clear();
+    extra.clear();
+    const height = BUILDING_HEIGHT[b.definitionId];
+    const top = P(w / 2, h / 2, height + 16);
+    if (b.state === 'construction') {
+      drawConstruction(g, w, h, b.progressTicks / Math.max(1, requiredTicks(b)));
+    } else {
+      drawBuilding(g, b.definitionId, b.level, pal);
+    }
+    g.alpha = b.connected ? 1 : 0.7;
+
+    if (b.state !== 'active') {
+      const ratio = Math.min(1, b.progressTicks / Math.max(1, requiredTicks(b)));
+      if (b.state === 'upgrading') {
+        // scaffolding around the existing building
+        for (const [u, v] of [
+          [0.02, h - 0.02],
+          [w - 0.02, h - 0.02],
+          [w - 0.02, 0.02],
+        ] as const) {
+          const a = P(u, v, 0);
+          const c = P(u, v, height * 0.8);
+          extra.moveTo(a[0], a[1]).lineTo(c[0], c[1]).stroke({ color: COLORS.woodDark, width: 2 });
+        }
+        const l = P(0.02, h - 0.02, height * 0.5);
+        const m = P(w - 0.02, h - 0.02, height * 0.5);
+        const r = P(w - 0.02, 0.02, height * 0.5);
+        extra
+          .moveTo(l[0], l[1])
+          .lineTo(m[0], m[1])
+          .lineTo(r[0], r[1])
+          .stroke({ color: COLORS.woodDark, width: 1.5 });
+      }
+      extra.roundRect(top[0] - 18, top[1], 36, 7, 3).fill({ color: 0x2a2118, alpha: 0.85 });
+      extra.roundRect(top[0] - 16, top[1] + 2, Math.max(1, 32 * ratio), 3, 1.5).fill(0x8fe06a);
+    }
+
+    // status badges: distinct shape + colour so they do not rely on colour alone
+    const bx = top[0];
+    const by = top[1] - 10;
+    if (!b.connected) {
+      extra
+        .poly([bx, by - 9, bx + 9, by, bx, by + 9, bx - 9, by])
+        .fill(COLORS.bad)
+        .stroke({ color: 0xffffff, width: 1.5 });
+      extra
+        .moveTo(bx - 3, by - 3)
+        .lineTo(bx + 3, by + 3)
+        .moveTo(bx + 3, by - 3)
+        .lineTo(bx - 3, by + 3)
+        .stroke({ color: 0xffffff, width: 2 });
+    } else if (isBuilt(b) && b.unpaid) {
+      extra
+        .roundRect(bx - 8, by - 8, 16, 16, 3)
+        .fill(0xe08a2e)
+        .stroke({ color: 0xffffff, width: 1.5 });
+      extra.circle(bx, by, 4).stroke({ color: 0xffffff, width: 2 });
+    } else if (isBuilt(b) && specOf(b).workerSlots > 0 && b.workers === 0) {
+      extra.circle(bx, by, 8).fill(0xf2c230).stroke({ color: 0xffffff, width: 1.5 });
+      extra.roundRect(bx - 1.3, by - 5, 2.6, 6, 1).fill(0x3a2a1c);
+      extra.circle(bx, by + 4, 1.4).fill(0x3a2a1c);
+    }
+
+    const fa = isBuilt(b) ? flagAnchor(b.definitionId, b.level) : null;
+    if (fa && !bv.flag) {
+      bv.flag = new Graphics();
+      bv.c.addChild(bv.flag);
+    }
+    if (bv.flag) {
+      bv.flag.visible = !!fa;
+      if (fa) {
+        bv.flag.position.set(fa[0], fa[1] + 16);
+        drawFlag(bv.flag, 0, COLORS.flag);
+      }
+    }
+  }
+
+  private updateParticles(dt: number): void {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const part = this.particles[i]!;
+      part.life -= dt / 2600;
+      part.g.y -= dt * 0.012;
+      part.g.x += dt * 0.004;
+      part.g.alpha = Math.max(0, part.life) * 0.7;
+      part.g.scale.set(1 + (1 - part.life) * 1.6);
+      if (part.life <= 0) {
+        part.g.destroy();
+        this.particles.splice(i, 1);
+      }
+    }
+  }
+
+  private spawnWalker(cart: boolean): Walker | null {
+    if (this.roadTiles.length === 0) return null;
+    const start = this.roadTiles[Math.floor(Math.random() * this.roadTiles.length)]!;
+    const c = new Container();
+    const g = new Graphics();
+    if (cart) drawCart(g, [0xb98a5a, 0xe2bb45, 0x9aa0a6][Math.floor(Math.random() * 3)]!);
+    else drawVillager(g, VILLAGER_COLORS[Math.floor(Math.random() * VILLAGER_COLORS.length)]!);
+    c.addChild(g);
+    this.objects.addChild(c);
+    return {
+      c,
+      from: [start[0], start[1]],
+      to: [start[0], start[1]],
+      prev: [start[0], start[1]],
+      t: 1,
+      speed: cart ? 0.55 : 0.7 + Math.random() * 0.4,
+      phase: Math.random() * 6,
+      side: (Math.random() - 0.5) * 9,
+      cart,
+    };
+  }
+
+  /** Visual-only villagers and carts wandering the road network. The economy never reads them. */
+  private updateWalkers(view: RendererView, p: Province, dt: number, motion: boolean): void {
+    const wantVillagers = Math.min(10, Math.floor(totalPopulation(p) / 2));
+    const wantCarts = Math.min(3, p.buildings.filter((b) => specOf(b).produces && isOperating(b)).length);
+    const count = (cart: boolean): number => this.walkers.filter((w) => w.cart === cart).length;
+    for (const cart of [false, true]) {
+      const want = cart ? wantCarts : wantVillagers;
+      while (count(cart) < want) {
+        const w = this.spawnWalker(cart);
+        if (!w) break;
+        this.walkers.push(w);
+      }
+      while (count(cart) > want) {
+        const i = this.walkers.findIndex((w) => w.cart === cart);
+        this.walkers[i]!.c.destroy({ children: true });
+        this.walkers.splice(i, 1);
+      }
+    }
+    const isRoad = (x: number, y: number): boolean => !!tileAt(p, x, y)?.road;
+    const step = motion ? (dt / 1000) * (SPEED_FACTOR[view.game.speed] ?? 0) : 0;
+    for (const w of this.walkers) {
+      if (!isRoad(w.to[0], w.to[1]) && this.roadTiles.length) {
+        const r = this.roadTiles[Math.floor(Math.random() * this.roadTiles.length)]!;
+        w.from = [r[0], r[1]];
+        w.to = [r[0], r[1]];
+        w.t = 1;
+      }
+      w.t += step * w.speed;
+      if (w.t >= 1) {
+        const options = (
+          [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ] as const
+        )
+          .map(([dx, dy]) => [w.to[0] + dx, w.to[1] + dy] as [number, number])
+          .filter(([x, y]) => isRoad(x, y));
+        const forward = options.filter(([x, y]) => x !== w.from[0] || y !== w.from[1]);
+        const pool = forward.length ? forward : options;
+        w.prev = w.from;
+        w.from = w.to;
+        if (pool.length) w.to = pool[Math.floor(Math.random() * pool.length)]!;
+        w.t = 0;
+      }
+      const fx = w.from[0] + (w.to[0] - w.from[0]) * w.t + 0.5;
+      const fy = w.from[1] + (w.to[1] - w.from[1]) * w.t + 0.5;
+      const bob = step > 0 && !w.cart ? Math.sin(this.time / 90 + w.phase) * 0.9 : 0;
+      w.c.position.set(isoX(fx, fy) + w.side, isoY(fx, fy) + bob + w.side * 0.25);
+      w.c.zIndex = fx + fy + 0.01;
+      if (w.cart) w.c.scale.x = w.to[0] - w.from[0] - (w.to[1] - w.from[1]) < 0 ? -1 : 1;
+    }
+  }
+
+  private outline(
+    g: Graphics,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    color: number,
+    width: number,
+    alpha: number,
+  ): void {
+    const a = P(x, y);
+    const b = P(x + w, y);
+    const c = P(x + w, y + h);
+    const d = P(x, y + h);
+    g.poly([a[0], a[1], b[0], b[1], c[0], c[1], d[0], d[1]]).stroke({ color, width, alpha });
+  }
+
+  private tileFill(g: Graphics, x: number, y: number, color: number, alpha: number): void {
+    const a = P(x, y);
+    g.poly([a[0], a[1], a[0] + 32, a[1] + 16, a[0], a[1] + 32, a[0] - 32, a[1] + 16]).fill({ color, alpha });
+  }
+
+  private drawRange(g: Graphics, p: Province, id: BuildingId, x: number, y: number): void {
+    const def = BUILDINGS[id];
+    if (!def.harvests) return;
+    const r = def.harvests.radius;
+    this.outline(g, x - r, y - r, def.footprint[0] + 2 * r, def.footprint[1] + 2 * r, COLORS.range, 2, 0.7);
+    for (const i of tilesInRange(p, def, x, y)) {
+      if (p.tiles[i]!.deposit > 0) this.tileFill(g, i % p.width, Math.floor(i / p.width), COLORS.range, 0.32);
+    }
+  }
+
+  private drawOverlays(view: RendererView, p: Province, pal: SeasonPalette): void {
+    const g = this.under;
+    g.clear();
+    const { tool } = view;
+    const hover = this.hover;
+    let ghostSig = '';
+
+    const selected = view.selectedBuildingId ? buildingById(p, view.selectedBuildingId) : undefined;
+    if (selected) {
+      const [w, h] = defOf(selected).footprint;
+      this.drawRange(g, p, selected.definitionId, selected.x, selected.y);
+      const pulse = view.reducedMotion ? 0.9 : 0.65 + Math.sin(this.time / 260) * 0.3;
+      this.outline(g, selected.x, selected.y, w, h, COLORS.select, 3, pulse);
+    }
+
+    if (hover) {
+      if (tool.kind === 'build') {
+        const def = BUILDINGS[tool.buildingId];
+        const ok = validatePlacement(view.game, tool.buildingId, hover.x, hover.y) === null;
+        this.drawRange(g, p, tool.buildingId, hover.x, hover.y);
+        for (const [x, y] of footprintTiles(def, hover.x, hover.y)) {
+          if (tileAt(p, x, y)) this.tileFill(g, x, y, ok ? COLORS.ok : COLORS.bad, 0.5);
+        }
+        this.outline(
+          g,
+          hover.x,
+          hover.y,
+          def.footprint[0],
+          def.footprint[1],
+          ok ? COLORS.ok : COLORS.bad,
+          2,
+          0.95,
+        );
+        ghostSig = `${tool.buildingId}|${hover.x}|${hover.y}|${ok}`;
+        if (ghostSig !== this.ghostSig) {
+          this.ghost.clear();
+          drawBuilding(this.ghost, tool.buildingId, 1, pal);
+          this.ghost.position.set(isoX(hover.x, hover.y), isoY(hover.x, hover.y));
+          this.ghost.alpha = ok ? 0.7 : 0.35;
+        }
+      } else if (tool.kind === 'road') {
+        const ok = checkRoadSite(p, hover.x, hover.y) === null;
+        this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.5);
+        this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2, 0.95);
+      } else {
+        const t = tileAt(p, hover.x, hover.y);
+        const b = t?.buildingId ? buildingById(p, t.buildingId) : undefined;
+        const color = tool.kind === 'demolish' ? COLORS.bad : 0xffffff;
+        if (b) this.outline(g, b.x, b.y, defOf(b).footprint[0], defOf(b).footprint[1], color, 2, 0.85);
+        else
+          this.outline(
+            g,
+            hover.x,
+            hover.y,
+            1,
+            1,
+            color,
+            1.5,
+            tool.kind === 'demolish' && !t?.road ? 0.35 : 0.7,
+          );
+      }
+    }
+    if (!ghostSig && this.ghostSig) this.ghost.clear();
+    this.ghostSig = ghostSig;
+  }
+}
