@@ -15,6 +15,7 @@ const PANELS: { id: PanelId; key: TKey; hint?: string; campaignOnly?: boolean }[
   { id: 'atlas', key: 'panel.atlas' },
   { id: 'journal', key: 'panel.journal', campaignOnly: true },
   { id: 'world', key: 'panel.world', hint: 'M' },
+  { id: 'army', key: 'panel.army' },
   { id: 'log', key: 'panel.log' },
   { id: 'help', key: 'panel.help' },
 ];
