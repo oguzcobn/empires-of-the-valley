@@ -19,7 +19,7 @@ import type {
   TechId,
 } from '../core/types';
 import { CONDITION_MAX, DESIGNABLE, isPlayableStyle } from '../data/architecture';
-import { DEMOLISH_REFUND_PERMILLE, ROAD_COSTS, TERRACE_COST, TRADE_OFFERS } from '../data/balance';
+import { DEMOLISH_REFUND_PERMILLE, ROAD_COSTS, PAVING_COST, TERRACE_COST, TRADE_OFFERS } from '../data/balance';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { homeProvince, idleWorkers, isBuilt, storageCaps, totalPopulation } from './economy';
@@ -52,6 +52,7 @@ export type Command =
   | { type: 'cancelVessel'; orderId: number }
   | { type: 'sellYacht' }
   | { type: 'placeRoad'; x: number; y: number }
+  | { type: 'paveRoad'; x: number; y: number }
   | { type: 'buildTerrace'; x: number; y: number }
   | { type: 'removeRoad'; x: number; y: number }
   | { type: 'cancelConstruction'; instanceId: string }
@@ -198,6 +199,12 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
     case 'placeRoad': {
       const quote = roadQuote(s, cmd.x, cmd.y);
       return 'error' in quote ? quote.error : missingFor(p, quote.cost);
+    }
+    case 'paveRoad': {
+      if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y)) return { key: 'err.invalid' };
+      const road = tileAt(p, cmd.x, cmd.y);
+      if (!road?.road || road.roadType !== 'dirt' || road.paved) return { key: 'err.invalid' };
+      return missingFor(p, PAVING_COST);
     }
     case 'buildTerrace': {
       const t = tileAt(p, cmd.x, cmd.y);
@@ -348,9 +355,15 @@ function applyCommand(s: GameState, cmd: Command): void {
       refreshConnectivity(p);
       break;
     }
+    case 'paveRoad': {
+      pay(p, PAVING_COST);
+      p.tiles[idx(p, cmd.x, cmd.y)]!.paved = true;
+      break;
+    }
     case 'removeRoad': {
       const t = p.tiles[idx(p, cmd.x, cmd.y)]!;
       t.road = false;
+      t.paved = false;
       refund(s, p, ROAD_COSTS[t.roadType], DEMOLISH_REFUND_PERMILLE);
       t.roadType = 'dirt';
       refreshConnectivity(p);
