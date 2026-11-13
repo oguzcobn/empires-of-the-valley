@@ -396,6 +396,8 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
 
 function ArmyPanel({ game }: { game: GameState }): ReactElement {
   const dispatch = useApp((s) => s.dispatch);
+  const setTool = useApp((s) => s.setTool);
+  const openPanel = useApp((s) => s.openPanel);
   const p = homeProvince(game);
   const ready = validateCommand(game, { type: 'recruitMilitia', amount: 5 }) === null;
   const towers = p.buildings.filter((b) => b.definitionId === 'watchtower' && b.state === 'active').length;
@@ -421,7 +423,11 @@ function ArmyPanel({ game }: { game: GameState }): ReactElement {
           <button className={`btn ${order === 'patrol' ? 'primary' : ''}`}
             onClick={() => dispatch({ type: 'setArmyOrder', order: 'patrol' })}>Sınır Devriyesi</button>
         </div>
-        <p className="hint">Milislerin günlük bakım maliyeti vardır. Sınır devriyesi saldırılarda savunma puanı kazandırır. Bu aşamada muharebeler stratejik olarak çözülür; gerçek zamanlı birlik hareketi henüz yoktur.</p>
+        <button className="btn" disabled={force === 0} onClick={() => {
+          setTool({ kind: 'army' });
+          openPanel(null);
+        }}>⚔ Haritada Birlikleri Taşı (G)</button>
+        <p className="hint">Birlik Taşı aracını seçip yol karelerine tıkla. Muhafızlar kesişen yollar üzerinden hedefe yürür; savaşların sonucu şimdilik stratejik savunma puanlarıyla hesaplanır.</p>
       </section>
     </div>
   );
