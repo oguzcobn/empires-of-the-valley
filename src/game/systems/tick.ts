@@ -86,7 +86,11 @@ function constructionStep(s: GameState, p: Province): void {
       if (landmarkStep(s, p, b)) structural = true;
       continue;
     }
-    b.progressTicks += 1;
+    // Non-monument construction and upgrades progress three work units
+    // per simulation hour. 4x clock speed remains unchanged: this does
+    // not accelerate day/night, food consumption, taxation or seasons.
+    // Monuments keep their separate, staged builder-hours system.
+    b.progressTicks = Math.min(requiredTicks(b), b.progressTicks + 3);
     if (b.progressTicks < requiredTicks(b)) continue;
     if (b.state === 'upgrading') {
       b.level += 1;
