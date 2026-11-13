@@ -31,6 +31,7 @@ import { lookSchema } from '../save/lookSchema';
 import { MAX_ORDERS, VESSELS } from '../data/shipyard';
 import { fleetCount } from './tourism';
 import { evaluateQuests } from './quests';
+import { WORLD_BY_ID } from '../data/worldMap';
 
 export type Command =
   | {
@@ -61,7 +62,10 @@ export type Command =
   | { type: 'dequeueResearch'; techId: TechId }
   | { type: 'trade'; offerId: string }
   | { type: 'setGameSpeed'; speed: GameSpeed }
-  | { type: 'setAutoPause'; enabled: boolean };
+  | { type: 'setAutoPause'; enabled: boolean }
+  | { type: 'claimDistrict'; provinceId: string }
+  | { type: 'recruitMilitia'; amount: number }
+  | { type: 'setArmyOrder'; order: 'defend' | 'patrol' };
 
 const COST_KEYS = (cost: Cost): ResourceId[] => Object.keys(cost) as ResourceId[];
 
@@ -269,6 +273,22 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
       }
       return null;
     }
+    case 'claimDistrict': {
+      const region = WORLD_BY_ID[cmd.provinceId];
+      if (!region || region.id === s.homeProvinceId || s.claimedDistricts?.includes(region.id))
+        return { key: 'err.invalid' };
+      const owned = [s.homeProvinceId, ...(s.claimedDistricts ?? [])];
+      if (!region.neighbors.some((id) => owned.includes(id))) return { key: 'err.invalid' };
+      if (s.mode === 'campaign' && !s.completedChapters.includes(1)) return { key: 'err.invalid' };
+      if (totalPopulation(p) < 20) return { key: 'err.needPopulation', params: { n: 20 } };
+      return missingFor(p, { gold: 20000 + (s.claimedDistricts?.length ?? 0) * 10000 });
+    }
+    case 'recruitMilitia':
+      if (cmd.amount !== 5 || (s.militia ?? 0) + cmd.amount > 100) return { key: 'err.invalid' };
+      if (!p.buildings.some((b) => b.definitionId === 'watchtower' && isBuilt(b))) return { key: 'err.invalid' };
+      return missingFor(p, { gold: 10000, food: 5000 });
+    case 'setArmyOrder':
+      return cmd.order === 'defend' || cmd.order === 'patrol' ? null : { key: 'err.invalid' };
     case 'setGameSpeed':
       return [0, 1, 2, 4].includes(cmd.speed) ? null : { key: 'err.invalid' };
     case 'setAutoPause':
@@ -420,6 +440,22 @@ function applyCommand(s: GameState, cmd: Command): void {
       for (const id of COST_KEYS(offer.get)) p.stocks[id] += offer.get[id] ?? 0;
       break;
     }
+    case 'claimDistrict': {
+      const cost = 20000 + (s.claimedDistricts?.length ?? 0) * 10000;
+      pay(p, { gold: cost });
+      (s.claimedDistricts ??= []).push(cmd.provinceId);
+      if (!s.revealedProvinceIds.includes(cmd.provinceId)) s.revealedProvinceIds.push(cmd.provinceId);
+      logEvent(s, 'success', 'event.districtClaimed', { n: s.claimedDistricts.length });
+      break;
+    }
+    case 'recruitMilitia':
+      pay(p, { gold: 10000, food: 5000 });
+      s.militia = (s.militia ?? 0) + cmd.amount;
+      logEvent(s, 'success', 'event.militiaRecruited', { n: s.militia });
+      break;
+    case 'setArmyOrder':
+      s.armyOrder = cmd.order;
+      break;
     case 'setGameSpeed':
       s.speed = cmd.speed;
       break;
