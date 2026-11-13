@@ -1,4 +1,5 @@
 import { produce } from 'immer';
+import { securityDayEnd } from './security';
 import { mulPermille, portion } from '../core/fixed';
 import { TICKS_PER_DAY, calendar, daysUntilWinter } from '../core/time';
 import type { BuildingInstance, GameState, Province, ResourceId } from '../core/types';
@@ -203,6 +204,7 @@ function dayEnd(s: GameState, p: Province): void {
   questOnDayEnd(s, p);
   populationDayEnd(s, p, cal.day);
   tourismDayEnd(s, p);
+  securityDayEnd(s, p);
 
   // buildings weather: stone lasts, timber and thatch need care (see data/architecture.ts)
   for (const b of p.buildings) {
