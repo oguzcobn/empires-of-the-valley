@@ -324,7 +324,7 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
         windows: 'arched',
         door: 'arched',
         tower: 'clock',
-        balcony: 'gallery',
+        balcony: 'cumba',
         courtyard: 'avlu',
         decor: 'banners',
         facade: 'honey',
@@ -336,7 +336,7 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
     ],
     granary: [
       // the serender: a Black Sea granary raised on posts
-      look({ floors: 1, wall: 'wood', roofMaterial: 'shingle', roof: 'hip', door: 'plank', facade: 'umber' }),
+      look({ floors: 1, wall: 'wood', roofMaterial: 'shingle', roof: 'hip', door: 'plank', facade: 'honey' }),
       look({ floors: 2, wall: 'stone_timber', roofMaterial: 'clay', roof: 'hip', door: 'double', facade: 'umber' }),
     ],
     school: [

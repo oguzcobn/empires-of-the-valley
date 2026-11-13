@@ -6,6 +6,7 @@ import { ValleyRenderer } from '../game/rendering/ValleyRenderer';
 import { homeProvince } from '../game/systems/economy';
 import { buildingById, tileAt } from '../game/systems/grid';
 import { t } from '../i18n';
+import { artDetail, effectiveQuality, lowerQuality, setAutoCap } from '../app/settings';
 
 /** The live renderer, for camera buttons and keyboard shortcuts. Null while not mounted. */
 let current: ValleyRenderer | null = null;
@@ -48,9 +49,17 @@ export function ValleyCanvas(): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const focus = useApp((s) => s.focus);
+  const graphics = useApp((s) => s.settings.graphics);
+  const [capNonce, setCapNonce] = useState(0);
+  const quality = effectiveQuality({ graphics });
 
   useEffect(() => {
     const host = hostRef.current!;
+    const opts = {
+      resolution: quality === 'low' ? 1 : quality === 'medium' ? 1.5 : quality === 'high' ? 2 : 2.5,
+      antialias: quality !== 'low',
+      cacheBodies: quality === 'low' || quality === 'medium',
+    };
     let disposed = false;
     let renderer: ValleyRenderer | null = null;
     ValleyRenderer.create(host, {
@@ -62,10 +71,21 @@ export function ValleyCanvas(): ReactElement {
               tool: s.tool,
               selectedBuildingId: s.selectedBuildingId,
               reducedMotion: s.settings.reducedMotion,
+              detail: artDetail(s.settings),
+              dayNight: s.settings.dayNight,
+              weather: s.settings.weather,
+              autoQuality: s.settings.graphics === 'auto',
             }
           : null;
       },
       onHover: (tile) => useApp.getState().setHover(tile),
+      onLowFps(fps) {
+        const next = lowerQuality(effectiveQuality(useApp.getState().settings));
+        if (!next) return;
+        setAutoCap(next);
+        useApp.getState().toast('info', t('graphics.autoLowered', { fps, q: `@graphics.${next}` }));
+        setCapNonce((n) => n + 1);
+      },
       onCancel() {
         const s = useApp.getState();
         if (s.tool.kind !== 'select') s.setTool({ kind: 'select' });
@@ -81,7 +101,17 @@ export function ValleyCanvas(): ReactElement {
         if (!s.game) return;
         const tool = s.tool;
         if (tool.kind === 'build') {
-          if (!s.dispatch({ type: 'placeBuilding', buildingId: tool.buildingId, x, y })) return;
+          if (
+            !s.dispatch({
+              type: 'placeBuilding',
+              buildingId: tool.buildingId,
+              x,
+              y,
+              style: tool.style,
+              look: tool.look ?? null,
+            })
+          )
+            return;
           const placed = homeProvince(useApp.getState().game!).buildings.at(-1)!;
           if (tool.buildingId !== 'hut') {
             s.setTool({ kind: 'select' });
@@ -95,7 +125,7 @@ export function ValleyCanvas(): ReactElement {
           s.select(buildingId);
         }
       },
-    })
+    }, opts)
       .then((r) => {
         if (disposed) r.destroy();
         else {
@@ -109,7 +139,7 @@ export function ValleyCanvas(): ReactElement {
       renderer?.destroy();
       if (current === renderer) current = null;
     };
-  }, []);
+  }, [quality, capNonce]);
 
   useEffect(() => {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);

@@ -23,6 +23,7 @@ import {
 import { growthBlocker, happinessFactors, happinessTarget } from '../game/systems/population';
 import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
 import { Bar, Modal, Row } from './common';
+import { GRAPHICS_SETTINGS, effectiveQuality } from '../app/settings';
 import { Icon } from './icons';
 import { ObjectiveList, rewardLabel } from './QuestTracker';
 
@@ -581,6 +582,41 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
           onChange={(e) => updateSettings({ reducedMotion: e.target.checked })}
         />
         <span>{t('settings.reducedMotion')}</span>
+      </label>
+      <fieldset className="field plain" data-testid="graphics-settings">
+        <legend>{t('graphics.quality')}</legend>
+        <div className="segmented" role="group" aria-label={t('graphics.quality')}>
+          {GRAPHICS_SETTINGS.map((q) => (
+            <button
+              key={q}
+              className={`btn ${settings.graphics === q ? 'active' : ''}`}
+              aria-pressed={settings.graphics === q}
+              onClick={() => updateSettings({ graphics: q })}
+              data-testid={`graphics-${q}`}
+            >
+              {t(`graphics.${q}`)}
+            </button>
+          ))}
+        </div>
+        <p className="hint">
+          {t('graphics.hint')} {t('graphics.active', { q: `@graphics.${effectiveQuality(settings)}` })}
+        </p>
+      </fieldset>
+      <label className="check-field">
+        <input
+          type="checkbox"
+          checked={settings.dayNight}
+          onChange={(e) => updateSettings({ dayNight: e.target.checked })}
+        />
+        <span>{t('graphics.dayNight')}</span>
+      </label>
+      <label className="check-field">
+        <input
+          type="checkbox"
+          checked={settings.weather}
+          onChange={(e) => updateSettings({ weather: e.target.checked })}
+        />
+        <span>{t('graphics.weather')}</span>
       </label>
       {game && (
         <label className="check-field">

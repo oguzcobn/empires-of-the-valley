@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
-import { calendar } from '../game/core/time';
+import { calendar, clockHour } from '../game/core/time';
 import type { GameSpeed, GameState, ResourceId } from '../game/core/types';
 import {
   UNCAPPED,
@@ -79,7 +79,7 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
         <div className={`hud-date season-${cal.season}`} title={t('hud.dateTip')}>
           <b>{t(`season.${cal.season}`)}</b>
           <span data-testid="date">
-            {t('hud.date', { year: cal.year, day: cal.dayOfSeason })} · {String(cal.hour).padStart(2, '0')}:00
+            {t('hud.date', { year: cal.year, day: cal.dayOfSeason })} · {String(clockHour(game.tick)).padStart(2, '0')}:00
           </span>
         </div>
         <div className="speed" role="group" aria-label={t('hud.speed')}>

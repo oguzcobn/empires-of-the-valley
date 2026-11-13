@@ -34,3 +34,10 @@ export function daysUntilWinter(tick: number): number {
   const winterStart = DAYS_PER_SEASON * 3;
   return day >= winterStart ? 0 : winterStart - day;
 }
+
+/**
+ * Clock shown to the player and used for daylight. The simulation day starts at dawn (06:00),
+ * so a new game opens in the morning; day boundaries, crops and consumption are unchanged.
+ */
+export const DAWN_HOUR = 6;
+export const clockHour = (tick: number): number => ((tick % TICKS_PER_DAY) + DAWN_HOUR) % TICKS_PER_DAY;

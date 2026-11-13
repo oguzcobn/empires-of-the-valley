@@ -1,9 +1,14 @@
 import 'pixi.js/unsafe-eval';
-import { Application, Container, Graphics } from 'pixi.js';
-import type { Ticker } from 'pixi.js';
-import { calendar } from '../core/time';
+import { Application, Container, CullerPlugin, Graphics, Sprite, extensions } from 'pixi.js';
+import type { Texture, Ticker } from 'pixi.js';
+import { mix } from './arch/kit';
+import { nightFactor, weatherFor } from './weather';
+import type { Weather } from './weather';
+
+extensions.add(CullerPlugin);
+import { calendar, clockHour } from '../core/time';
 import type { Season } from '../core/time';
-import type { BuildingId, BuildingInstance, GameState, Province, Tile } from '../core/types';
+import type { ArchitectureStyle, BuildingId, BuildingInstance, BuildingLook, GameState, Province, Tile } from '../core/types';
 import { FOREST_TILE_MAX } from '../data/balance';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { validatePlacement } from '../systems/commands';
@@ -14,29 +19,45 @@ import { requiredTicks } from '../systems/tick';
 import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
 import { COLORS, SEASON_PALETTE, VILLAGER_COLORS } from './palette';
 import type { SeasonPalette } from './palette';
-import {
-  BUILDING_HEIGHT,
-  drawBuilding,
-  drawCart,
-  drawConstruction,
-  drawFlag,
-  drawGroundTile,
-  drawRocks,
-  drawStump,
-  drawTree,
-  drawVillager,
-  flagAnchor,
-  smokeAnchor,
-} from './sprites';
+import { drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
+import { drawStyledBuilding, drawStyledConstruction } from './arch/buildings';
+import type { SpriteInfo } from './arch/buildings';
+import { CULTURES } from '../data/architecture';
+import { conditionBand } from '../systems/architecture';
 
 export type Tool =
-  { kind: 'select' } | { kind: 'build'; buildingId: BuildingId } | { kind: 'road' } | { kind: 'demolish' };
+  | { kind: 'select' }
+  | { kind: 'build'; buildingId: BuildingId; style?: ArchitectureStyle; look?: BuildingLook | null }
+  | { kind: 'road' }
+  | { kind: 'demolish' };
+
+/** Detail level of procedural art: 0 flat, 1 materials, 2 fine texture. */
+export type ArtDetail = 0 | 1 | 2;
+
+const hashId = (id: string): number => {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return h >>> 0;
+};
 
 export interface RendererView {
   game: GameState;
   tool: Tool;
   selectedBuildingId: string | null;
   reducedMotion: boolean;
+  detail: ArtDetail;
+  dayNight: boolean;
+  weather: boolean;
+  /** True when the quality setting is Auto (the FPS watchdog may lower it). */
+  autoQuality: boolean;
+}
+
+export interface RendererOptions {
+  /** Canvas resolution multiplier cap and antialiasing (fixed for the renderer's lifetime). */
+  resolution: number;
+  antialias: boolean;
+  /** Cache building bodies as textures (cheaper frames, used on low/medium quality). */
+  cacheBodies: boolean;
 }
 
 export interface RendererHost {
@@ -45,10 +66,15 @@ export interface RendererHost {
   onRoadPaint(x: number, y: number): void;
   onHover(tile: { x: number; y: number } | null): void;
   onCancel(): void;
+  /** Sustained low frame rate on Auto quality. */
+  onLowFps?(fps: number): void;
 }
 
 export interface RendererStats {
   fps: number;
+  night: number;
+  weather: Weather;
+  textures: number;
   buildings: number;
   props: number;
   walkers: number;
@@ -57,9 +83,12 @@ export interface RendererStats {
 
 interface BuildingView {
   c: Container;
+  body: Container;
+  glow: Graphics;
   g: Graphics;
   extra: Graphics;
-  flag: Graphics | null;
+  flags: Graphics[];
+  info: SpriteInfo;
   sig: string;
   smokeTimer: number;
 }
@@ -102,6 +131,15 @@ export class ValleyRenderer {
   private under = new Graphics();
   private objects = new Container();
   private ghost = new Graphics();
+  private fx = new Container();
+  private drops: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
+  private dropKind: Weather = 'clear';
+  private atlas = new Map<string, { tex: Texture; x: number; y: number }>();
+  private night = 0;
+  private tintKey = -1;
+  private fpsSamples: number[] = [];
+  private lowFpsAt = -1e9;
+  private opts: RendererOptions = { resolution: 2, antialias: true, cacheBodies: false };
   private buildingViews = new Map<string, BuildingView>();
   private propViews = new Map<number, PropView>();
   private walkers: Walker[] = [];
@@ -125,13 +163,14 @@ export class ValleyRenderer {
 
   private constructor(private cb: RendererHost) {}
 
-  static async create(host: HTMLElement, cb: RendererHost): Promise<ValleyRenderer> {
+  static async create(host: HTMLElement, cb: RendererHost, opts?: Partial<RendererOptions>): Promise<ValleyRenderer> {
     const r = new ValleyRenderer(cb);
+    r.opts = { ...r.opts, ...opts };
     await r.app.init({
       resizeTo: host,
-      antialias: true,
+      antialias: r.opts.antialias,
       backgroundAlpha: 0,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
+      resolution: Math.min(window.devicePixelRatio || 1, r.opts.resolution),
       autoDensity: true,
       preference: 'webgl',
     });
@@ -147,7 +186,7 @@ export class ValleyRenderer {
     host.appendChild(canvas);
     r.objects.sortableChildren = true;
     r.world.addChild(r.ground, r.waterFx, r.under, r.objects, r.ghost);
-    r.app.stage.addChild(r.world);
+    r.app.stage.addChild(r.world, r.fx);
     r.bindInput(canvas);
     r.resetCamera();
     r.app.ticker.add(r.frame);
@@ -159,6 +198,8 @@ export class ValleyRenderer {
     for (const fn of this.cleanup) fn();
     if (this.ready) {
       this.app.ticker.remove(this.frame);
+      for (const a of this.atlas.values()) a.tex.destroy(true);
+      this.atlas.clear();
       this.app.destroy(true, { children: true, texture: true });
     }
   }
@@ -166,6 +207,9 @@ export class ValleyRenderer {
   getStats(): RendererStats {
     return {
       fps: Math.round(this.app.ticker.FPS),
+      night: Math.round(this.night * 100) / 100,
+      weather: this.dropKind,
+      textures: this.atlas.size,
       buildings: this.buildingViews.size,
       props: this.propViews.size,
       walkers: this.walkers.length,
@@ -250,7 +294,11 @@ export class ValleyRenderer {
       const id = tileAt(p, Math.floor(fx + k), Math.floor(fy + k))?.buildingId;
       if (!id) continue;
       const b = buildingById(p, id);
-      if (b && BUILDING_HEIGHT[b.definitionId] >= 32 * k - 6) return id;
+      if (!b) continue;
+      const [w, h] = defOf(b).footprint;
+      // apparent height above the footprint centre (sprite heights are measured from its top vertex)
+      const height = (this.buildingViews.get(id)?.info.height ?? 14) + (w + h) * 8;
+      if (height >= 32 * k - 6) return id;
     }
     return tileAt(p, Math.floor(fx), Math.floor(fy))?.buildingId ?? null;
   }
@@ -373,11 +421,16 @@ export class ValleyRenderer {
     const motion = !view.reducedMotion;
 
     if (p.tiles !== this.lastTiles || cal.season !== this.lastSeason) {
+      const seasonChanged = this.lastSeason !== null && cal.season !== this.lastSeason;
       this.syncGround(p, pal);
       this.syncProps(p, pal, cal.season);
+      if (seasonChanged) this.pruneAtlas(cal.season);
       this.lastTiles = p.tiles;
       this.lastSeason = cal.season;
     }
+    this.updateLight(view, clockHour(view.game.tick), dt);
+    this.updateWeather(view, cal.day, cal.season, dt, motion);
+    this.watchFps(view);
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
     this.updateWalkers(view, p, dt, motion);
     this.updateParticles(dt);
@@ -470,12 +523,11 @@ export class ValleyRenderer {
       c.position.set(isoX(x + 0.5, y + 0.5), isoY(x + 0.5, y + 0.5));
       c.zIndex = x + y + 1;
       let sway: Container | null = null;
+      c.cullable = true;
       if (t.terrain === 'stone') {
-        const g = new Graphics();
-        drawRocks(g, t.variant, bucket > 0);
-        c.addChild(g);
+        c.addChild(this.sprite(`rock|${t.variant}|${bucket > 0}`, (g) => drawRocks(g, t.variant, bucket > 0)));
       } else {
-        const stumps = new Graphics();
+        const stumps = new Container();
         sway = new Container();
         const spots: [number, number, number][] = [
           [-9 + t.variant, -3, 1],
@@ -484,15 +536,17 @@ export class ValleyRenderer {
         spots.forEach(([sx, sy, scale], n) => {
           const standing = bucket === 3 || (bucket === 2 && n === 0) || (bucket === 1 && n === 1);
           if (standing) {
-            const g = new Graphics();
-            drawTree(g, pal, t.variant + n + x, bucket === 1 ? 0.7 : scale);
-            g.position.set(sx, sy);
-            sway!.addChild(g);
+            const kind = (t.variant + n + x) % pal.leaf.length;
+            const s = bucket === 1 ? 0.7 : scale;
+            const holder = new Container();
+            holder.addChild(this.sprite(`tree|${season}|${kind}|${s}`, (g) => drawTree(g, pal, kind, s)));
+            holder.position.set(sx, sy);
+            sway!.addChild(holder);
           } else {
-            const g = new Graphics();
-            drawStump(g);
-            g.position.set(sx, sy);
-            stumps.addChild(g);
+            const holder = new Container();
+            holder.addChild(this.sprite('stump', (g) => drawStump(g)));
+            holder.position.set(sx, sy);
+            stumps.addChild(holder);
           }
         });
         c.addChild(stumps, sway);
@@ -528,26 +582,43 @@ export class ValleyRenderer {
       let bv = this.buildingViews.get(b.id);
       if (!bv) {
         const c = new Container();
+        const body = new Container();
         const g = new Graphics();
+        const glow = new Graphics();
+        glow.blendMode = 'add';
         const extra = new Graphics();
-        c.addChild(g, extra);
+        body.addChild(g);
+        c.addChild(body, glow, extra);
+        c.cullable = true;
         c.position.set(isoX(b.x, b.y), isoY(b.x, b.y));
         c.zIndex = b.x + w + b.y + h - 1;
         this.objects.addChild(c);
-        bv = { c, g, extra, flag: null, sig: '', smokeTimer: Math.random() * 400 };
+        bv = {
+          c,
+          body,
+          glow,
+          g,
+          extra,
+          flags: [],
+          info: { lights: [], smoke: [], flags: [], height: 30 },
+          sig: '',
+          smokeTimer: Math.random() * 400,
+        };
         this.buildingViews.set(b.id, bv);
       }
       const staffed = specOf(b).workerSlots === 0 || b.workers > 0;
       const progress = b.state === 'active' ? 0 : b.progressTicks;
-      const sig = `${b.level}|${b.state}|${b.connected}|${b.unpaid}|${staffed}|${progress}|${def.seasonal ? season : ''}`;
+      const look = b.look ? JSON.stringify(b.look) : '';
+      const sig = `${b.level}|${b.state}|${b.connected}|${b.unpaid}|${staffed}|${progress}|${season}|${b.style}|${look}|${conditionBand(b.condition)}|${view.detail}`;
       if (sig !== bv.sig) {
         bv.sig = sig;
-        this.redrawBuilding(bv, b, pal);
+        this.redrawBuilding(bv, b, pal, view.detail);
       }
-      if (bv.flag && flagNow && motion) drawFlag(bv.flag, this.time / 160 + b.x, COLORS.flag);
+      if (flagNow && motion)
+        bv.flags.forEach((fg, i) => drawFlag(fg, this.time / 160 + b.x + i, bv!.info.flags[i]?.color ?? COLORS.flag));
 
       // chimney smoke while the building is in use
-      const anchor = isBuilt(b) && b.connected ? smokeAnchor(b.definitionId, b.level) : null;
+      const anchor = isBuilt(b) && b.connected ? (bv.info.smoke[0] ?? null) : null;
       const inUse = b.definitionId === 'lumber_camp' ? isOperating(b) : true;
       if (anchor && inUse && motion && view.game.speed > 0 && this.particles.length < 90) {
         bv.smokeTimer -= dt;
@@ -569,19 +640,28 @@ export class ValleyRenderer {
     }
   }
 
-  private redrawBuilding(bv: BuildingView, b: BuildingInstance, pal: SeasonPalette): void {
+  private redrawBuilding(bv: BuildingView, b: BuildingInstance, pal: SeasonPalette, detail: ArtDetail): void {
     const def = defOf(b);
     const [w, h] = def.footprint;
     const { g, extra } = bv;
     g.clear();
     extra.clear();
-    const height = BUILDING_HEIGHT[b.definitionId];
-    const top = P(w / 2, h / 2, height + 16);
-    if (b.state === 'construction') {
-      drawConstruction(g, w, h, b.progressTicks / Math.max(1, requiredTicks(b)));
-    } else {
-      drawBuilding(g, b.definitionId, b.level, pal);
+    const seed = hashId(b.id);
+    bv.info =
+      b.state === 'construction'
+        ? drawStyledConstruction(g, w, h, b.progressTicks / Math.max(1, requiredTicks(b)), b.style, detail, seed)
+        : drawStyledBuilding(g, b, pal, detail, seed);
+    bv.glow.clear();
+    for (const q of bv.info.lights) bv.glow.poly(q.flat()).fill({ color: 0xffc95a, alpha: 0.95 });
+    bv.glow.alpha = this.night;
+    bv.glow.visible = this.night > 0.02 && isBuilt(b) && b.connected;
+    if (this.opts.cacheBodies) {
+      if (bv.body.isCachedAsTexture) bv.body.updateCacheTexture();
+      else bv.body.cacheAsTexture({ resolution: 2, antialias: true });
     }
+    this.tintKey = -1;
+    const height = bv.info.height;
+    const top: [number, number] = [P(w / 2, h / 2)[0], -height - 6];
     g.alpha = b.connected ? 1 : 0.7;
 
     if (b.state !== 'active') {
@@ -636,17 +716,115 @@ export class ValleyRenderer {
       extra.circle(bx, by + 4, 1.4).fill(0x3a2a1c);
     }
 
-    const fa = isBuilt(b) ? flagAnchor(b.definitionId, b.level) : null;
-    if (fa && !bv.flag) {
-      bv.flag = new Graphics();
-      bv.c.addChild(bv.flag);
+    const anchors = isBuilt(b) ? bv.info.flags : [];
+    while (bv.flags.length < anchors.length) {
+      const fg = new Graphics();
+      bv.c.addChild(fg);
+      bv.flags.push(fg);
     }
-    if (bv.flag) {
-      bv.flag.visible = !!fa;
-      if (fa) {
-        bv.flag.position.set(fa[0], fa[1] + 16);
-        drawFlag(bv.flag, 0, COLORS.flag);
+    bv.flags.forEach((fg, i) => {
+      const a = anchors[i];
+      fg.visible = !!a;
+      if (a) {
+        fg.position.set(a.at[0], a.at[1]);
+        drawFlag(fg, 0, a.color ?? CULTURES[b.style].flag);
       }
+    });
+  }
+
+  /** Pre-rendered texture for a repeated prop (trees, rocks): one draw call batch, not a Graphics each. */
+  private sprite(key: string, draw: (g: Graphics) => void): Sprite {
+    let entry = this.atlas.get(key);
+    if (!entry) {
+      const g = new Graphics();
+      draw(g);
+      const bounds = g.getLocalBounds();
+      const tex = this.app.renderer.generateTexture({ target: g, resolution: 2, antialias: true });
+      g.destroy();
+      entry = { tex, x: bounds.x, y: bounds.y };
+      this.atlas.set(key, entry);
+    }
+    const s = new Sprite(entry.tex);
+    s.position.set(entry.x, entry.y);
+    return s;
+  }
+
+  /** Frees textures of other seasons once nothing uses them. */
+  private pruneAtlas(season: Season): void {
+    for (const [key, entry] of this.atlas) {
+      if (key.startsWith('tree|') && !key.startsWith(`tree|${season}|`)) {
+        entry.tex.destroy(true);
+        this.atlas.delete(key);
+      }
+    }
+  }
+
+  /** Day/night: tints the world (not the window glows) and fades lit windows in. */
+  private updateLight(view: RendererView, hour: number, dt: number): void {
+    const target = view.dayNight ? nightFactor(hour) : 0;
+    const rate = view.reducedMotion ? 1 : Math.min(1, dt / 1400);
+    this.night += (target - this.night) * rate;
+    if (Math.abs(this.night - target) < 0.004) this.night = target;
+    const key = Math.round(this.night * 40) + (this.dropKind === 'overcast' || this.dropKind === 'rain' ? 100 : 0);
+    if (key === this.tintKey) return;
+    this.tintKey = key;
+    let tint = mix(0xffffff, 0x6f7fb8, this.night * 0.72);
+    if (this.dropKind === 'overcast' || this.dropKind === 'rain') tint = mix(tint, 0xb8c0c8, 0.25);
+    this.ground.tint = tint;
+    this.waterFx.tint = tint;
+    for (const pv of this.propViews.values()) pv.c.tint = tint;
+    for (const w of this.walkers) w.c.tint = tint;
+    for (const bv of this.buildingViews.values()) {
+      bv.body.tint = tint;
+      bv.glow.alpha = Math.min(1, this.night * 1.1);
+      bv.glow.visible = this.night > 0.02;
+    }
+  }
+
+  /** Rain and snow in screen space; deterministic per day, purely visual. */
+  private updateWeather(view: RendererView, day: number, season: Season, dt: number, motion: boolean): void {
+    const kind: Weather = view.weather ? weatherFor(view.game.seed, day, season) : 'clear';
+    const { width, height } = this.app.screen;
+    const want = !motion || (kind !== 'rain' && kind !== 'snow') ? 0 : Math.round((width * height) / (kind === 'rain' ? 7000 : 9000) * (this.opts.cacheBodies ? 0.5 : 1));
+    if (kind !== this.dropKind) {
+      for (const d of this.drops) d.g.destroy();
+      this.drops = [];
+      this.dropKind = kind;
+      this.tintKey = -1;
+    }
+    while (this.drops.length < want) {
+      const g = new Graphics();
+      if (kind === 'rain') g.moveTo(0, 0).lineTo(-2, 9).stroke({ color: 0xcfe3f2, width: 1.1, alpha: 0.55 });
+      else g.circle(0, 0, 1.6 + Math.random()).fill({ color: 0xffffff, alpha: 0.9 });
+      const d = { g, x: Math.random() * width, y: Math.random() * height, v: kind === 'rain' ? 0.55 + Math.random() * 0.25 : 0.035 + Math.random() * 0.03, d: Math.random() * 6 };
+      g.position.set(d.x, d.y);
+      this.fx.addChild(g);
+      this.drops.push(d);
+    }
+    while (this.drops.length > want) this.drops.pop()!.g.destroy();
+    const speed = Math.max(0.6, SPEED_FACTOR[view.game.speed] ?? 1);
+    for (const d of this.drops) {
+      d.y += d.v * dt * speed;
+      d.x += kind === 'rain' ? -0.12 * dt * speed : Math.sin(this.time / 900 + d.d) * 0.25;
+      if (d.y > height + 10) {
+        d.y = -10;
+        d.x = Math.random() * width;
+      }
+      if (d.x < -10) d.x = width + 5;
+      d.g.position.set(d.x, d.y);
+    }
+  }
+
+  /** Auto quality: a sustained low frame rate asks the app to step quality down. */
+  private watchFps(view: RendererView): void {
+    if (!view.autoQuality) return;
+    this.fpsSamples.push(this.app.ticker.FPS);
+    if (this.fpsSamples.length < 300) return;
+    const avg = this.fpsSamples.reduce((a, b) => a + b, 0) / this.fpsSamples.length;
+    this.fpsSamples = [];
+    if (avg < 30 && this.time - this.lowFpsAt > 20000) {
+      this.lowFpsAt = this.time;
+      this.cb.onLowFps?.(Math.round(avg));
     }
   }
 
@@ -673,7 +851,9 @@ export class ValleyRenderer {
     if (cart) drawCart(g, [0xb98a5a, 0xe2bb45, 0x9aa0a6][Math.floor(Math.random() * 3)]!);
     else drawVillager(g, VILLAGER_COLORS[Math.floor(Math.random() * VILLAGER_COLORS.length)]!);
     c.addChild(g);
+    c.cullable = true;
     this.objects.addChild(c);
+    this.tintKey = -1;
     return {
       c,
       from: [start[0], start[1]],
@@ -792,7 +972,9 @@ export class ValleyRenderer {
     if (hover) {
       if (tool.kind === 'build') {
         const def = BUILDINGS[tool.buildingId];
-        const ok = validatePlacement(view.game, tool.buildingId, hover.x, hover.y) === null;
+        const ok =
+          validatePlacement(view.game, tool.buildingId, hover.x, hover.y, tool.style ?? view.game.culture, tool.look ?? null) ===
+          null;
         this.drawRange(g, p, tool.buildingId, hover.x, hover.y);
         for (const [x, y] of footprintTiles(def, hover.x, hover.y)) {
           if (tileAt(p, x, y)) this.tileFill(g, x, y, ok ? COLORS.ok : COLORS.bad, 0.5);
@@ -807,10 +989,22 @@ export class ValleyRenderer {
           2,
           0.95,
         );
-        ghostSig = `${tool.buildingId}|${hover.x}|${hover.y}|${ok}`;
+        ghostSig = `${tool.buildingId}|${hover.x}|${hover.y}|${ok}|${tool.style ?? ''}|${tool.look ? JSON.stringify(tool.look) : ''}`;
         if (ghostSig !== this.ghostSig) {
           this.ghost.clear();
-          drawBuilding(this.ghost, tool.buildingId, 1, pal);
+          drawStyledBuilding(
+            this.ghost,
+            {
+              definitionId: tool.buildingId,
+              style: tool.style ?? view.game.culture,
+              look: tool.look ?? null,
+              level: 1,
+              condition: 10000,
+            },
+            pal,
+            view.detail,
+            7,
+          );
           this.ghost.position.set(isoX(hover.x, hover.y), isoY(hover.x, hover.y));
           this.ghost.alpha = ok ? 0.7 : 0.35;
         }

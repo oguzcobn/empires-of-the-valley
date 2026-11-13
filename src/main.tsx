@@ -28,6 +28,9 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
       const game = useApp.getState().game;
       return game ? levelCost(buildingId, 0, game.culture) : null;
     },
+    stats(): unknown {
+      return getRenderer()?.getStats() ?? null;
+    },
     tilePoint(x: number, y: number): unknown {
       return getRenderer()?.tileToClient(x, y) ?? null;
     },
