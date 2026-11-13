@@ -119,6 +119,7 @@ export function drawGroundTile(
   ctx: TileContext = { height: 0, frontLeft: 0, frontRight: 0 },
   roadType: RoadType = 'dirt',
   detail = 2,
+  paved = false,
 ): void {
   const h = ctx.height;
   const z = h * LEVEL;
@@ -178,7 +179,7 @@ export function drawGroundTile(
     g.circle(ox + 8, oy + 12, 1.6).fill(0xfff4b8);
     g.circle(ox - 9, oy + 19, 1.6).fill(0xf7c6d9);
   }
-  if (road) drawRoad(g, ox, oy, roadType, pal, detail);
+  if (road) drawRoad(g, ox, oy, roadType, pal, detail, paved);
 }
 
 function cliffTexture(g: Graphics, ax: number, ay: number, bx: number, by: number, drop: number, terrain: TerrainId, c: number): void {
@@ -205,9 +206,26 @@ function cliffTexture(g: Graphics, ax: number, ay: number, bx: number, by: numbe
   }
 }
 
-function drawRoad(g: Graphics, ox: number, oy: number, type: RoadType, pal: SeasonPalette, detail: number): void {
+function drawRoad(g: Graphics, ox: number, oy: number, type: RoadType, pal: SeasonPalette, detail: number, paved = false): void {
   const inset = 0.12;
   const d = [ox, oy + 32 * inset, ox + 32 * (1 - inset), oy + 16, ox, oy + 32 * (1 - inset), ox - 32 * (1 - inset), oy + 16];
+  if (type === 'dirt' && paved) {
+    // Raised stone-grey sidewalks embrace a dark two-lane road.
+    // Drawing in the ground layer keeps pedestrians and vehicles in front.
+    g.poly([ox, oy + 1, ox + 31, oy + 16, ox, oy + 31, ox - 31, oy + 16]).fill(0x9ea4a3);
+    g.poly([ox, oy + 5, ox + 24, oy + 16, ox, oy + 27, ox - 24, oy + 16]).fill(0x363d45);
+    g.moveTo(ox - 22, oy + 16).lineTo(ox, oy + 6).lineTo(ox + 22, oy + 16)
+      .stroke({ color: 0xcbd1ce, width: 1.25, alpha: 0.85 });
+    g.moveTo(ox - 22, oy + 16).lineTo(ox, oy + 26).lineTo(ox + 22, oy + 16)
+      .stroke({ color: 0xa9aeab, width: 1.25, alpha: 0.85 });
+    if (detail >= 1) {
+      for (const [dx, dy] of [[-12, 11], [1, 17], [12, 21]] as const)
+        g.moveTo(ox + dx, oy + dy).lineTo(ox + dx + 3.3, oy + dy + 1.5)
+          .stroke({ color: 0xf3d775, width: 0.8, alpha: 0.9 });
+      g.circle(ox + 16, oy + 16, 0.85).fill(0xbccbd0);
+    }
+    return;
+  }
   if (type === 'bridge') {
     // stone piers in the water and a timber deck with rails
     g.rect(ox - 14, oy + 16, 6, 9).fill(0x9a958a);
