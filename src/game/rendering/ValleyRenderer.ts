@@ -124,6 +124,10 @@ interface Walker {
 }
 interface TrafficCar {
   c: Container;
+  sprite: Graphics;
+  paint: number;
+  electric: boolean;
+  heading: string;
   from: [number, number];
   to: [number, number];
   prev: [number, number];
@@ -1251,12 +1255,16 @@ export class ValleyRenderer {
       const holder = new Container();
       const body = new Graphics();
       const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
-      drawCityCar(body, paints[this.trafficCars.length % paints.length]!, this.trafficCars.length % 3 === 0);
+      const paint = paints[this.trafficCars.length % paints.length]!;
+      const electric = this.trafficCars.length % 3 === 0;
+      const dx = to[0] - start[0], dy = to[1] - start[1];
+      drawCityCar(body, paint, electric, dx, dy);
       holder.addChild(body);
       holder.cullable = true;
       this.objects.addChild(holder);
       this.trafficCars.push({
-        c: holder, from: [start[0], start[1]], to,
+        c: holder, sprite: body, paint, electric, heading: `${dx},${dy}`,
+        from: [start[0], start[1]], to,
         prev: [start[0], start[1]], t: 0,
         speed: 0.5 + Math.random() * 0.24,
       });
@@ -1287,12 +1295,20 @@ export class ValleyRenderer {
       }
       const dx = car.to[0] - car.from[0];
       const dy = car.to[1] - car.from[1];
+      const heading = `${dx},${dy}`;
+      if (car.heading !== heading && (dx !== 0 || dy !== 0)) {
+        car.sprite.clear();
+        drawCityCar(car.sprite, car.paint, car.electric, dx, dy);
+        car.heading = heading;
+      }
       const x = car.from[0] + dx * car.t + 0.5;
       const y = car.from[1] + dy * car.t + 0.5;
       const [laneX, laneY] = vehicleLaneOffset(dx, dy, uk);
       const lift = this.hz(p, car.from[0], car.from[1]);
-      car.c.position.set(isoX(x + laneX, y + laneY), isoY(x + laneX, y + laneY) - lift);
-      car.c.rotation = Math.atan2(isoY(dx, dy), isoX(dx, dy));
+      car.c.position.set(
+        isoX(x + laneX, y + laneY),
+        isoY(x + laneX, y + laneY) - lift + (motion ? Math.sin(this.time / 330 + car.t) * 0.23 : 0),
+      );
       car.c.zIndex = x + y + 0.035;
     }
   }
