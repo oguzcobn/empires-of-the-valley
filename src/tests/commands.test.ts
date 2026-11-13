@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDINGS } from '../game/data/buildings';
 import { executeCommand } from '../game/systems/commands';
+import { applyTick, applyTicks } from '../game/systems/tick';
 import { housingCapacity, storageCaps } from '../game/systems/economy';
 import { findSite } from '../game/systems/placement';
 import { investedCost, levelCost } from '../game/systems/architecture';
@@ -96,11 +97,12 @@ describe('roads and connectivity', () => {
 });
 
 describe('construction lifecycle', () => {
-  it('completes after the defined time, not before', () => {
+  it('completes after its accelerated work requirement, not before', () => {
     let s = build(newCampaign(), 'hut').state;
-    s = days(s, 1);
+    const workTicks = Math.ceil(BUILDINGS.hut.levels[0]!.buildTicks / 3);
+    s = applyTicks(s, workTicks - 1);
     expect(home(s).buildings.at(-1)!.state).toBe('construction');
-    s = days(s, 1);
+    s = applyTick(s);
     expect(home(s).buildings.at(-1)!.state).toBe('active');
     expect(housingCapacity(home(s))).toBe(25);
   });
