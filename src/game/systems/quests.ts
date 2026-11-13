@@ -16,6 +16,24 @@ export function initialQuestProgress(): Partial<Record<QuestId, QuestProgress>> 
   return out;
 }
 
+/**
+ * Extends an older save with quests introduced in later releases.
+ * Previous quest states, counters and rewards are never reset or re-granted.
+ * Call before save validation, not only on the next simulation tick.
+ */
+export function ensureQuestProgress(s: GameState): void {
+  if (s.mode !== 'campaign') return;
+  for (const q of QUESTS) {
+    if (s.questProgress[q.id]) continue;
+    s.questProgress[q.id] = {
+      status: q.prerequisites.every((id) => s.questProgress[id]?.status === 'completed') ? 'active' : 'locked',
+      counters: q.objectives.map(() => 0),
+      rewardGranted: false,
+      completedTick: null,
+    };
+  }
+}
+
 /** Current/target value of one objective — the single source of truth for logic and UI. */
 export function objectiveProgress(
   s: GameState,
