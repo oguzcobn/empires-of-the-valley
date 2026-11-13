@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
-import { calendar } from '../game/core/time';
+import { calendar, clockHour } from '../game/core/time';
+import { nightFactor } from '../game/rendering/weather';
 import type { GameState } from '../game/core/types';
 import { BuildCatalog } from './BuildCatalog';
 import { Inspector } from './Inspector';
@@ -84,7 +85,8 @@ export function GameScreen({ game }: { game: GameState }): ReactElement {
   useShortcuts();
   const season = calendar(game.tick).season;
   return (
-    <main className={`game-screen season-${season} tool-${tool.kind}`}>
+    <main className={`game-screen season-${season} tool-${tool.kind}`}
+      style={{ '--sky-night': nightFactor(clockHour(game.tick)) } as React.CSSProperties}>
       <ValleyCanvas />
       <TopHud game={game} />
       <div className="left-column">
