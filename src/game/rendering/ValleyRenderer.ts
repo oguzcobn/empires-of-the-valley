@@ -7,7 +7,6 @@ import type { Weather } from './weather';
 
 extensions.add(CullerPlugin);
 import { calendar, clockHour } from '../core/time';
-import { advanceVisualHour } from './visualClock';
 import type { Season } from '../core/time';
 import type { ArchitectureStyle, BuildingId, BuildingInstance, BuildingLook, GameState, Province, Tile } from '../core/types';
 import { FOREST_TILE_MAX, HEIGHT_PX, MAX_HEIGHT } from '../data/balance';
@@ -157,8 +156,6 @@ export class ValleyRenderer {
   private dropKind: Weather = 'clear';
   private atlas = new Map<string, { tex: Texture; x: number; y: number }>();
   private night = 0;
-  /** Visual-only sky clock; faster game speed never makes day/night strobe. */
-  private visualHour: number | null = null;
   private tintKey = -1;
   private fpsSamples: number[] = [];
   private lowFpsAt = -1e9;
@@ -500,11 +497,9 @@ export class ValleyRenderer {
       this.lastTiles = p.tiles;
       this.lastSeason = cal.season;
     }
-    // Keep the visual sky on its own slow clock; changing speed never
-    // causes rapid flashing or affects the real game calendar.
-    // A continuous hour also avoids sudden jumps at discrete tick boundaries.
-    this.visualHour = advanceVisualHour(this.visualHour, clockHour(view.game.tick), dt, view.game.speed);
-    this.updateLight(view, this.visualHour, dt);
+    // Lighting follows the exact clock displayed by the HUD. Keeping a
+    // separate visual hour previously left the city sunny after 19:00.
+    this.updateLight(view, clockHour(view.game.tick), dt);
     this.updateWeather(view, cal.day, cal.season, dt, motion);
     this.watchFps(view);
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
@@ -900,23 +895,26 @@ export class ValleyRenderer {
   /** Day/night: tints the world (not the window glows) and fades lit windows in. */
   private updateLight(view: RendererView, hour: number, dt: number): void {
     const target = view.dayNight ? nightFactor(hour) : 0;
-    const rate = view.reducedMotion ? 1 : Math.min(1, dt / 1400);
+    const rate = view.reducedMotion ? 1 : Math.min(1, dt / 420);
     this.night += (target - this.night) * rate;
     if (Math.abs(this.night - target) < 0.004) this.night = target;
     const key = Math.round(this.night * 40) + (this.dropKind === 'overcast' || this.dropKind === 'rain' ? 100 : 0);
     if (key === this.tintKey) return;
     this.tintKey = key;
-    let tint = mix(0xffffff, 0x6f7fb8, this.night * 0.72);
+    let tint = mix(0xffffff, 0x283959, this.night * 0.92);
     if (this.dropKind === 'overcast' || this.dropKind === 'rain') tint = mix(tint, 0xb8c0c8, 0.25);
     this.ground.tint = tint;
     this.waterFx.tint = tint;
     for (const pv of this.propViews.values()) pv.c.tint = tint;
     for (const w of this.walkers) w.c.tint = tint;
+    for (const w of this.matchFans) w.c.tint = tint;
+    for (const car of this.trafficCars) car.c.tint = tint;
+    for (const guard of this.militiaSprites) guard.tint = tint;
     for (const b of this.boats) b.c.tint = tint;
     for (const bv of this.buildingViews.values()) {
       bv.body.tint = tint;
-      bv.glow.tint = tint;
-      bv.glow.alpha = Math.min(1, this.night * 1.1);
+      bv.glow.tint = 0xffffff;
+      bv.glow.alpha = Math.min(0.65, this.night * 0.65);
       // Do not light unbuilt or road-disconnected buildings.
       bv.glow.visible = this.night > 0.02 && bv.info.lights.length > 0;
     }
