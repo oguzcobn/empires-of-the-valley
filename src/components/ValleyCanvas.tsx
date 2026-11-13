@@ -118,6 +118,8 @@ export function ValleyCanvas(): ReactElement {
             s.toggleBuild(false);
             s.select(placed.id);
           }
+        } else if (tool.kind === 'army') {
+          s.dispatch({ type: 'moveMilitia', x, y });
         } else if (tool.kind === 'terrace') {
           s.dispatch({ type: 'buildTerrace', x, y });
         } else if (tool.kind === 'demolish') {
