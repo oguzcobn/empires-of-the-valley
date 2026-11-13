@@ -36,8 +36,26 @@ export interface DrawCtx {
   wear: 0 | 1 | 2;
 }
 
-export function newCtx(g: Graphics, detail: 0 | 1 | 2, seed: number, snow: boolean, wear: 0 | 1 | 2 = 0): DrawCtx {
-  return { g, detail, seed, snow, lights: [], smoke: [], flags: [], topY: 0, wear };
+export function newCtx(
+  g: Graphics,
+  detail: 0 | 1 | 2,
+  seed: number,
+  snow: boolean,
+  wear: 0 | 1 | 2 = 0,
+  illuminated = false,
+): DrawCtx {
+  const lights: Pt[][] = [];
+  if (illuminated) {
+    // Paint each lit window at its original point in the building's draw order.
+    // Roofs, balconies, walls and towers painted later naturally occlude it.
+    // A separate overlay of all windows would incorrectly shine through roofs.
+    const append = lights.push.bind(lights);
+    lights.push = (...panes: Pt[][]): number => {
+      for (const pane of panes) g.poly(pane.flat()).fill({ color: 0xffe08a, alpha: 0.98 });
+      return append(...panes);
+    };
+  }
+  return { g, detail, seed, snow, lights, smoke: [], flags: [], topY: 0, wear };
 }
 
 // ------------------------------------------------------------------ low level
