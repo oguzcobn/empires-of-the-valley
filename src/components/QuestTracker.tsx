@@ -94,7 +94,7 @@ export function QuestTracker({ game }: { game: GameState }): ReactElement | null
     <section className="quest card" aria-label={t('quest.tracker')} data-testid="quest-tracker">
       <header className="card-head">
         <h3>
-          <span className="eyebrow">{t('chapter.1.title')}</span>
+          <span className="eyebrow">{t(quest?.chapter === 2 ? 'chapter.2.title' : 'chapter.1.title')}</span>
           {quest ? t(`quest.${quest.id}.title`) : t('quest.allDone')}
         </h3>
         <button
