@@ -117,6 +117,8 @@ export const gameStateSchema = z
     culture: style,
     cityId: z.enum(['trabzon', 'edinburgh']).optional(),
     claimedDistricts: z.array(shortText).max(24).optional(),
+    militia: nat.max(200).optional(),
+    armyOrder: z.enum(['defend', 'patrol']).optional(),
     homeProvinceId: shortText,
     provinces: z.record(province),
     revealedProvinceIds: z.array(shortText).max(64),
