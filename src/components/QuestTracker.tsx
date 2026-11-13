@@ -24,6 +24,10 @@ export function objectiveLabel(o: Objective): string {
       return t('objective.foodBalanceStreak', { n: o.days });
     case 'population':
       return t('objective.population', { n: o.count });
+    case 'districtCount':
+      return t('objective.districtCount', { n: o.count });
+    case 'militiaCount':
+      return t('objective.militiaCount', { n: o.count });
     case 'techResearched':
       return t('objective.techResearched', { tech: `@tech.${o.techId}.name` });
     case 'prosperityStreak':
@@ -94,7 +98,7 @@ export function QuestTracker({ game }: { game: GameState }): ReactElement | null
     <section className="quest card" aria-label={t('quest.tracker')} data-testid="quest-tracker">
       <header className="card-head">
         <h3>
-          <span className="eyebrow">{t(quest?.chapter === 2 ? 'chapter.2.title' : 'chapter.1.title')}</span>
+          <span className="eyebrow">{t(quest?.chapter === 3 ? 'chapter.3.title' : quest?.chapter === 2 ? 'chapter.2.title' : 'chapter.1.title')}</span>
           {quest ? t(`quest.${quest.id}.title`) : t('quest.allDone')}
         </h3>
         <button
