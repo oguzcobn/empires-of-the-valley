@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import type { GameMode } from '../game/core/types';
-import { PLAYABLE_STYLES } from '../game/data/architecture';
 import type { PlayableStyle } from '../game/data/architecture';
 import { MonumentPreview } from './MonumentPreview';
 import { CITIES } from '../game/data/cities';
