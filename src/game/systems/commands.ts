@@ -31,6 +31,7 @@ import { lookSchema } from '../save/lookSchema';
 import { MAX_ORDERS, VESSELS } from '../data/shipyard';
 import { fleetCount } from './tourism';
 import { evaluateQuests } from './quests';
+import { findRoadPath } from '../rendering/armyPath';
 import { WORLD_BY_ID } from '../data/worldMap';
 
 export type Command =
@@ -291,7 +292,14 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
     case 'moveMilitia': {
       if ((s.militia ?? 0) <= 0) return { key: 'err.invalid' };
       if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y)) return { key: 'err.invalid' };
-      return tileAt(p, cmd.x, cmd.y)?.road ? null : { key: 'err.invalid' };
+      if (!tileAt(p, cmd.x, cmd.y)?.road) return { key: 'err.invalid' };
+      const start = s.armyTarget
+        ? [s.armyTarget.x, s.armyTarget.y] as [number, number]
+        : (() => {
+          const id = p.tiles.findIndex((t) => t.road);
+          return [id % p.width, Math.floor(id / p.width)] as [number, number];
+        })();
+      return findRoadPath(p, start, [cmd.x, cmd.y]) ? null : { key: 'err.invalid' };
     }
     case 'setArmyOrder':
       return cmd.order === 'defend' || cmd.order === 'patrol' ? null : { key: 'err.invalid' };
