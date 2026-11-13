@@ -24,6 +24,8 @@ export const ROAD_COSTS: Record<RoadType, Cost> = {
 };
 /** Retaining wall that turns a hill tile into a flat, farmable terrace. */
 export const TERRACE_COST: Cost = { stone: 6000, wood: 2000 };
+/** Upgrade a pre-existing dirt road to a two-lane paved street and sidewalks. */
+export const PAVING_COST: Cost = { stone: 2000, gold: 1000 };
 export const FOOD_PER_CITIZEN_PER_DAY = u(0.25);
 export const TOOL_WEAR_PER_WORKER_PER_DAY = u(0.03);
 export const NO_TOOLS_OUTPUT_PERMILLE = 500;
