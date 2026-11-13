@@ -245,10 +245,27 @@ function drawRoad(g: Graphics, ox: number, oy: number, type: RoadType, pal: Seas
   }
 }
 
-export function drawVillager(g: Graphics, color: number): void {
-  g.ellipse(0, 0, 4, 2).fill({ color: COLORS.shadow, alpha: 0.25 });
-  g.roundRect(-2.5, -9, 5, 8, 2).fill(color);
-  g.circle(0, -11.5, 2.6).fill(COLORS.skin);
+/** Tiny pseudo-3D citizen with arms, legs, face and side-lit clothing. */
+export function drawVillager(g: Graphics, color: number, variant = 0): void {
+  const skin = [0xeab995, 0xc78a63, 0xf1ccac, 0x9b654a][Math.abs(variant) % 4]!;
+  const hair = [0x372a24, 0x765238, 0xc49a54, 0x252a30][Math.abs(variant + 1) % 4]!;
+  const sway = (variant % 3) - 1;
+  g.ellipse(0.5, 0, 4.6, 2.1).fill({ color: COLORS.shadow, alpha: 0.24 });
+  // Legs and projecting shoes give the figure actual depth cues.
+  g.roundRect(-2.6, -4.2, 2, 4, 0.55).fill(0x444c57);
+  g.roundRect(0.7, -4.2, 2, 4, 0.55).fill(0x323944);
+  g.ellipse(-1.5, -0.5, 1.4, 0.8).fill(0x302b29);
+  g.ellipse(2, -0.5, 1.4, 0.8).fill(0x302b29);
+  // Coat with separate lit front and darker side panel.
+  g.roundRect(-3.5, -10.4, 7, 7.5, 1.6).fill({ color });
+  g.poly([0.4, -10.4, 3.5, -9.4, 3.5, -3.1, 0.4, -3.1]).fill({ color: 0x222f38, alpha: 0.2 });
+  g.moveTo(-3, -9.5).lineTo(-4.1, -5.5 + sway).stroke({ color: skin, width: 1.8, cap: 'round' });
+  g.moveTo(3, -9.5).lineTo(4.1, -5.5 - sway).stroke({ color: skin, width: 1.8, cap: 'round' });
+  g.ellipse(0, -12.3, 3, 3.6).fill({ color: skin });
+  g.ellipse(-0.7, -14, 2.7, 1.4).fill({ color: hair });
+  g.circle(1, -12.4, 0.35).fill(0x403229);
+  g.circle(-1, -12.4, 0.35).fill(0x403229);
+  g.moveTo(-0.6, -11.2).lineTo(0.6, -11.2).stroke({ color: 0x864f44, width: 0.45 });
 }
 
 export function drawCart(g: Graphics, load: number): void {
