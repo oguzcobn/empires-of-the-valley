@@ -1583,3 +1583,75 @@ fieldset.field.plain legend {
 .citizen-row small { font-size: .65rem; color: #806d56; }
 @media (prefers-reduced-motion:reduce) { .city-landmark { transition:none; transform:none!important; } }
 @media (max-width: 620px) { .city-pick { grid-template-columns: 1fr; } .city-landmark { height: 6.5rem; } }
+
+
+/* 2026-11 responsive viewport: fit the full game and show every command. */
+html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; }
+.game-screen, .valley-canvas { min-width: 0; overflow: hidden; }
+.valley-canvas canvas { display: block; width: 100%; height: 100%; }
+.toolbar {
+  left: .45rem;
+  right: .45rem;
+  bottom: .4rem;
+  width: auto;
+  max-width: none;
+  transform: none;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .28rem;
+  overflow-x: hidden;
+  overflow-y: visible;
+  padding: .12rem;
+}
+.toolbar .tool-group {
+  min-width: 0;
+  max-width: 100%;
+  gap: .12rem;
+  padding: .22rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.toolbar .btn {
+  min-width: 0;
+  padding: .25rem .37rem;
+  font-size: clamp(.68rem, .78vw, .83rem);
+  line-height: 1.17;
+}
+.toolbar .tool { min-width: 2.65rem; white-space: nowrap; }
+.toolbar .tool.small { padding-inline: .38rem; }
+.toolbar .tool .glyph { font-size: .9rem; }
+.top-hud { min-width: 0; }
+.hud-resources { min-width: 0; }
+.hud-time { flex-shrink: 0; }
+@media (max-width: 1270px) {
+  .top-hud { flex-wrap: wrap; gap: .35rem; }
+  .hud-resources { order: 3; flex-basis: 100%; }
+  .hud-time { margin-left: auto; }
+  .left-column, .right-column {
+    top: 7.7rem;
+    max-height: calc(100% - 15.3rem);
+  }
+  .info-strip { bottom: 7rem; }
+}
+@media (max-width: 780px) {
+  .top-hud { top: .3rem; left: .3rem; right: .3rem; }
+  .hud-resources { gap: .16rem; }
+  .hud-resources .chip { padding: .13rem .28rem; font-size: .68rem; }
+  .hud-resources .chip-cap, .hud-resources .chip-rate { font-size: .62rem; }
+  .hud-time { gap: .2rem; }
+  .hud-date { font-size: .66rem; }
+  .speed-btn { min-width: 1.95rem; padding: .2rem .38rem; }
+  .left-column, .right-column { top: 9.2rem; max-height: calc(100% - 18rem); }
+  .toolbar { max-height: 11rem; overflow-y: auto; overscroll-behavior: contain; }
+  .toolbar .btn { font-size: .7rem; }
+  .info-strip { bottom: 10.4rem; }
+}
+@media (max-width: 560px) {
+  .left-column { top: 9.2rem; max-height: 27%; width: calc(100% - .6rem); }
+  .right-column { top: auto; bottom: 10.9rem; max-height: 26%; width: calc(100% - .6rem); }
+  .toolbar { left: .2rem; right: .2rem; bottom: .22rem; }
+  .toolbar .tool-group { border-radius: .5rem; padding: .12rem; }
+  .toolbar .btn { padding: .16rem .3rem; }
+}
