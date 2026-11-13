@@ -387,6 +387,9 @@ export interface GameState {
   cityId?: CityId;
   /** Strategically secured surrounding districts, as world province IDs. */
   claimedDistricts?: ProvinceId[];
+  /** Trained guards who can hold or patrol newly secured districts. */
+  militia?: number;
+  armyOrder?: 'defend' | 'patrol';
   homeProvinceId: ProvinceId;
   provinces: Record<ProvinceId, Province>;
   revealedProvinceIds: ProvinceId[];
