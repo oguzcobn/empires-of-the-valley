@@ -119,6 +119,7 @@ export const gameStateSchema = z
     claimedDistricts: z.array(shortText).max(24).optional(),
     militia: nat.max(200).optional(),
     armyOrder: z.enum(['defend', 'patrol']).optional(),
+    armyTarget: z.object({ x: nat, y: nat }).strict().optional(),
     homeProvinceId: shortText,
     provinces: z.record(province),
     revealedProvinceIds: z.array(shortText).max(64),
