@@ -65,7 +65,8 @@ export type Command =
   | { type: 'setAutoPause'; enabled: boolean }
   | { type: 'claimDistrict'; provinceId: string }
   | { type: 'recruitMilitia'; amount: number }
-  | { type: 'setArmyOrder'; order: 'defend' | 'patrol' };
+  | { type: 'setArmyOrder'; order: 'defend' | 'patrol' }
+  | { type: 'moveMilitia'; x: number; y: number };
 
 const COST_KEYS = (cost: Cost): ResourceId[] => Object.keys(cost) as ResourceId[];
 
@@ -287,6 +288,11 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
       if (cmd.amount !== 5 || (s.militia ?? 0) + cmd.amount > 100) return { key: 'err.invalid' };
       if (!p.buildings.some((b) => b.definitionId === 'watchtower' && isBuilt(b))) return { key: 'err.invalid' };
       return missingFor(p, { gold: 10000, food: 5000 });
+    case 'moveMilitia': {
+      if ((s.militia ?? 0) <= 0) return { key: 'err.invalid' };
+      if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y)) return { key: 'err.invalid' };
+      return tileAt(p, cmd.x, cmd.y)?.road ? null : { key: 'err.invalid' };
+    }
     case 'setArmyOrder':
       return cmd.order === 'defend' || cmd.order === 'patrol' ? null : { key: 'err.invalid' };
     case 'setGameSpeed':
@@ -455,6 +461,10 @@ function applyCommand(s: GameState, cmd: Command): void {
       break;
     case 'setArmyOrder':
       s.armyOrder = cmd.order;
+      break;
+    case 'moveMilitia':
+      s.armyTarget = { x: cmd.x, y: cmd.y };
+      s.armyOrder = 'patrol';
       break;
     case 'setGameSpeed':
       s.speed = cmd.speed;
