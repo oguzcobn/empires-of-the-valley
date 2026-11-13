@@ -25,13 +25,16 @@ import { drawStyledBuilding, drawStyledConstruction } from './arch/buildings';
 import type { SpriteInfo } from './arch/buildings';
 import { CULTURES } from '../data/architecture';
 import { conditionBand } from '../systems/architecture';
+import { findRoadPath } from './armyPath';
+import type { GridPoint } from './armyPath';
 
 export type Tool =
   | { kind: 'select' }
   | { kind: 'build'; buildingId: BuildingId; style?: ArchitectureStyle; look?: BuildingLook | null }
   | { kind: 'road' }
   | { kind: 'terrace' }
-  | { kind: 'demolish' };
+  | { kind: 'demolish' }
+  | { kind: 'army' };
 
 /** Detail level of procedural art: 0 flat, 1 materials, 2 fine texture. */
 export type ArtDetail = 0 | 1 | 2;
@@ -150,6 +153,12 @@ export class ValleyRenderer {
   private buildingViews = new Map<string, BuildingView>();
   private propViews = new Map<number, PropView>();
   private walkers: Walker[] = [];
+  private militiaSprites: Container[] = [];
+  private militiaPos: GridPoint | null = null;
+  private militiaRoute: GridPoint[] = [];
+  private militiaRouteStep = 0;
+  private militiaRouteT = 0;
+  private militiaTargetKey = '';
   private particles: Particle[] = [];
   private boats: { c: Container; kind: 'fishing' | 'cargo' | 'yacht'; x: number; y: number; tx: number; ty: number; t: number }[] = [];
   private lastTiles: Tile[] | null = null;
@@ -469,6 +478,7 @@ export class ValleyRenderer {
     this.watchFps(view);
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
     this.updateWalkers(view, p, dt, motion);
+    this.updateMilitia(view, p, dt);
     this.updateBoats(view, p, dt, motion);
     this.updateParticles(dt);
     this.drawOverlays(view, p, pal);
@@ -963,6 +973,73 @@ export class ValleyRenderer {
     };
   }
 
+  /**
+   * Local militia visually follows connected roads (BFS), respecting the city's
+   * road network instead of cutting through buildings or water.
+   * Abstract tactical patrols are kept separate from the economy clock.
+   */
+  private updateMilitia(view: RendererView, p: Province, dt: number): void {
+    const count = Math.min(8, Math.ceil((view.game.militia ?? 0) / 5));
+    while (this.militiaSprites.length > count) {
+      this.militiaSprites.pop()!.destroy({ children: true });
+    }
+    while (this.militiaSprites.length < count) {
+      const i = this.militiaSprites.length;
+      const c = new Container();
+      const soldier = new Graphics();
+      drawVillager(soldier, i % 2 ? 0x416080 : 0x385675, i + 1);
+      soldier.ellipse(0, -15.3, 3.6, 1.4).fill(0x333a48);
+      soldier.moveTo(4.4, -9).lineTo(4.4, -2).stroke({ color: 0x858c96, width: 1 });
+      soldier.circle(-3.5, -6, 2.3).fill({ color: 0x65778b, alpha: 0.9 });
+      c.addChild(soldier);
+      c.cullable = true;
+      this.objects.addChild(c);
+      this.militiaSprites.push(c);
+    }
+    if (!count || !this.roadTiles.length) return;
+    const goal = view.game.armyTarget;
+    if (this.militiaPos === null) {
+      this.militiaPos = goal ? [goal.x, goal.y] : this.roadTiles[0]!;
+      this.militiaTargetKey = goal ? `${goal.x},${goal.y}` : '';
+    }
+    const key = goal ? `${goal.x},${goal.y}` : '';
+    if (key !== this.militiaTargetKey) {
+      this.militiaTargetKey = key;
+      this.militiaRoute = goal
+        ? findRoadPath(p, this.militiaPos, [goal.x, goal.y]) ?? []
+        : [];
+      this.militiaRouteStep = 0;
+      this.militiaRouteT = 0;
+    }
+    let pos: GridPoint = this.militiaPos;
+    if (this.militiaRoute.length > 1 && this.militiaRouteStep < this.militiaRoute.length - 1) {
+      if (view.game.speed !== 0 && !view.reducedMotion) this.militiaRouteT += dt / 650;
+      while (this.militiaRouteT >= 1 && this.militiaRouteStep < this.militiaRoute.length - 1) {
+        this.militiaRouteT -= 1;
+        this.militiaRouteStep++;
+      }
+      const curr = this.militiaRoute[this.militiaRouteStep]!;
+      const next = this.militiaRoute[Math.min(this.militiaRouteStep + 1, this.militiaRoute.length - 1)]!;
+      this.militiaPos = curr;
+      pos = [curr[0] + (next[0] - curr[0]) * this.militiaRouteT,
+        curr[1] + (next[1] - curr[1]) * this.militiaRouteT];
+      if (this.militiaRouteStep >= this.militiaRoute.length - 1) {
+        pos = next;
+        this.militiaPos = next;
+        this.militiaRoute = [];
+      }
+    }
+    const z = this.hz(p, Math.floor(pos[0]), Math.floor(pos[1]));
+    for (let i = 0; i < this.militiaSprites.length; i++) {
+      const c = this.militiaSprites[i]!;
+      const ox = (i % 4 - 1.5) * 5.5;
+      const oy = Math.floor(i / 4) * 4;
+      c.position.set(isoX(pos[0] + 0.5, pos[1] + 0.5) + ox,
+        isoY(pos[0] + 0.5, pos[1] + 0.5) + oy - z);
+      c.zIndex = pos[0] + pos[1] + 0.15 + i * 0.001;
+    }
+  }
+
   /** The city's fleet sails the lake and river (visual only, one sprite per vessel up to 9). */
   private updateBoats(view: RendererView, p: Province, dt: number, motion: boolean): void {
     const want: ('fishing' | 'cargo' | 'yacht')[] = [];
@@ -1158,6 +1235,11 @@ export class ValleyRenderer {
         const ok = !!t && t.terrain === 'hill' && !t.road && !t.buildingId;
         this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.5);
         this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2, 0.95);
+      } else if (tool.kind === 'army') {
+        const t = tileAt(p, hover.x, hover.y);
+        const ok = !!t?.road && (view.game.militia ?? 0) > 0;
+        this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.4);
+        this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2.2, 0.9);
       } else if (tool.kind === 'road') {
         const ok = checkRoadSite(p, hover.x, hover.y) === null;
         this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.5);
