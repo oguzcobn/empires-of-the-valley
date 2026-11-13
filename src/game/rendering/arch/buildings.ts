@@ -764,9 +764,10 @@ export function drawStyledBuilding(
   pal: SeasonPalette,
   detail: 0 | 1 | 2,
   seed: number,
+  illuminated = false,
 ): SpriteInfo {
   const wear = b.condition >= 5000 ? 0 : b.condition >= 2500 ? 1 : 2;
-  const ctx = newCtx(g, detail, seed, pal.snow, wear);
+  const ctx = newCtx(g, detail, seed, pal.snow, wear, illuminated);
   const look = renderLook(b);
   switch (b.definitionId) {
     case 'hut':
