@@ -521,17 +521,35 @@ export class ValleyRenderer {
   private drawWater(pal: SeasonPalette): void {
     const g = this.waterFx;
     g.clear();
-    const t = this.time / 700;
+    // Three layered travelling ripples + a shoreline foam response. Visual
+    // wave physics only; water tiles remain deterministic for game simulation.
+    const t = this.time / 1300;
+    const p = this.prov;
     for (const [x, y] of this.waterTiles) {
       const ox = isoX(x, y);
       const oy = isoY(x, y);
-      const shift = Math.sin(t + x * 0.9 + y * 1.7) * 5;
-      g.moveTo(ox - 12 + shift, oy + 13)
-        .lineTo(ox + 2 + shift, oy + 20)
-        .stroke({ color: pal.waterLight, width: 1.6, alpha: 0.75 });
-      g.moveTo(ox + 4 - shift, oy + 9)
-        .lineTo(ox + 13 - shift, oy + 13.5)
-        .stroke({ color: pal.waterLight, width: 1.2, alpha: 0.5 });
+      const phase = t + x * 0.42 + y * 0.65;
+      const swell = Math.sin(phase) * 2.5;
+      for (let layer = 0; layer < 3; layer++) {
+        const shift = Math.sin(phase + layer * 1.3) * (2.5 + layer);
+        const yy = oy + 8 + layer * 6 + swell * 0.5;
+        g.moveTo(ox - 14 + shift, yy)
+          .lineTo(ox - 4 + shift, yy + 4.5)
+          .lineTo(ox + 8 + shift, yy - 0.2)
+          .stroke({ color: pal.waterLight, width: layer === 1 ? 1.45 : 0.85,
+            alpha: 0.18 + (Math.sin(phase + layer) + 1) * 0.17 });
+      }
+      if (p) {
+        const coast = (dx: number, dy: number): boolean => {
+          const a = tileAt(p, x + dx, y + dy);
+          return !!a && a.terrain !== 'water' && a.terrain !== 'lake';
+        };
+        const foamAlpha = 0.22 + Math.abs(Math.sin(phase)) * 0.22;
+        if (coast(0, -1)) g.moveTo(ox, oy + 2).lineTo(ox + 19, oy + 12)
+          .stroke({ color: 0xe9f8fb, width: 1.5, alpha: foamAlpha });
+        if (coast(-1, 0)) g.moveTo(ox - 19, oy + 12).lineTo(ox, oy + 2)
+          .stroke({ color: 0xe9f8fb, width: 1.5, alpha: foamAlpha });
+      }
     }
   }
 
@@ -927,7 +945,7 @@ export class ValleyRenderer {
     const c = new Container();
     const g = new Graphics();
     if (cart) drawCart(g, [0xb98a5a, 0xe2bb45, 0x9aa0a6][Math.floor(Math.random() * 3)]!);
-    else drawVillager(g, VILLAGER_COLORS[Math.floor(Math.random() * VILLAGER_COLORS.length)]!);
+    else drawVillager(g, VILLAGER_COLORS[Math.floor(Math.random() * VILLAGER_COLORS.length)]!, Math.floor(Math.random() * 8));
     c.addChild(g);
     c.cullable = true;
     this.objects.addChild(c);
