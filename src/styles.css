@@ -1658,3 +1658,14 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
 
 /* Paving and road painting use a brush cursor, not camera-drag cursor. */
 .tool-pave .valley-canvas { cursor: crosshair; }
+
+.matchday-chip {
+  background: #f9e9d6;
+  border-color: #cc9449;
+  color: #713916;
+  font-weight: 800;
+  font-size: .74rem;
+}
+@media (max-width: 820px) {
+  .matchday-chip { font-size: .66rem; white-space: normal; max-width: 15rem; }
+}
