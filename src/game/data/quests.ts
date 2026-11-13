@@ -73,6 +73,11 @@ export const QUESTS: readonly Quest[] = [
   { id: 'q10', chapter: 2, prerequisites: ['q09'], objectives: [{ type: 'buildingCount', buildingId: 'watchtower', count: 1 }], rewards: [{ type: 'addResource', resourceId: 'tools', amount: u(15) }] },
   { id: 'q11', chapter: 2, prerequisites: ['q10'], objectives: [{ type: 'buildingCount', buildingId: 'quarry', count: 1 }, { type: 'population', count: 30 }], rewards: [{ type: 'addResource', resourceId: 'stone', amount: u(30) }] },
   { id: 'q12', chapter: 2, prerequisites: ['q11'], objectives: [{ type: 'prosperityStreak', happiness: 75, days: 7 }], rewards: [{ type: 'revealProvince', provinceId: 'cinar_ormani' }, { type: 'completeChapter', chapter: 2 }] },
+  // Chapter 3 — Bölgesel Güç: expand the city while maintaining a capable guard.
+  { id: 'q13', chapter: 3, prerequisites: ['q12'], objectives: [{ type: 'districtCount', count: 1 }], rewards: [{ type: 'addResource', resourceId: 'gold', amount: u(35) }] },
+  { id: 'q14', chapter: 3, prerequisites: ['q13'], objectives: [{ type: 'militiaCount', count: 10 }], rewards: [{ type: 'addResource', resourceId: 'tools', amount: u(15) }] },
+  { id: 'q15', chapter: 3, prerequisites: ['q14'], objectives: [{ type: 'districtCount', count: 3 }], rewards: [{ type: 'addResource', resourceId: 'food', amount: u(50) }] },
+  { id: 'q16', chapter: 3, prerequisites: ['q15'], objectives: [{ type: 'population', count: 40 }, { type: 'prosperityStreak', happiness: 75, days: 10 }], rewards: [{ type: 'completeChapter', chapter: 3 }] },
 ];
 
 export const QUEST_BY_ID = Object.fromEntries(QUESTS.map((q) => [q.id, q])) as Record<QuestId, Quest>;
