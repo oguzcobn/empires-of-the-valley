@@ -1,4 +1,6 @@
 import type { Graphics } from 'pixi.js';
+import { junctionKind } from './roadGeometry';
+import type { PavedLinks } from './roadGeometry';
 import type { RoadType, TerrainId } from '../core/types';
 import { COLORS } from './palette';
 import type { SeasonPalette } from './palette';
@@ -120,6 +122,7 @@ export function drawGroundTile(
   roadType: RoadType = 'dirt',
   detail = 2,
   paved = false,
+  pavedLinks: PavedLinks = { negX: false, posX: false, negY: false, posY: false },
 ): void {
   const h = ctx.height;
   const z = h * LEVEL;
@@ -179,7 +182,7 @@ export function drawGroundTile(
     g.circle(ox + 8, oy + 12, 1.6).fill(0xfff4b8);
     g.circle(ox - 9, oy + 19, 1.6).fill(0xf7c6d9);
   }
-  if (road) drawRoad(g, ox, oy, roadType, pal, detail, paved);
+  if (road) drawRoad(g, ox, oy, roadType, pal, detail, paved, pavedLinks);
 }
 
 function cliffTexture(g: Graphics, ax: number, ay: number, bx: number, by: number, drop: number, terrain: TerrainId, c: number): void {
@@ -206,23 +209,87 @@ function cliffTexture(g: Graphics, ax: number, ay: number, bx: number, by: numbe
   }
 }
 
-function drawRoad(g: Graphics, ox: number, oy: number, type: RoadType, pal: SeasonPalette, detail: number, paved = false): void {
+function drawRoad(
+  g: Graphics, ox: number, oy: number, type: RoadType,
+  pal: SeasonPalette, detail: number, paved = false,
+  links: PavedLinks = { negX: false, posX: false, negY: false, posY: false },
+): void {
   const inset = 0.12;
   const d = [ox, oy + 32 * inset, ox + 32 * (1 - inset), oy + 16, ox, oy + 32 * (1 - inset), ox - 32 * (1 - inset), oy + 16];
   if (type === 'dirt' && paved) {
-    // Raised stone-grey sidewalks embrace a dark two-lane road.
-    // Drawing in the ground layer keeps pedestrians and vehicles in front.
-    g.poly([ox, oy + 1, ox + 31, oy + 16, ox, oy + 31, ox - 31, oy + 16]).fill(0x9ea4a3);
-    g.poly([ox, oy + 5, ox + 24, oy + 16, ox, oy + 27, ox - 24, oy + 16]).fill(0x363d45);
-    g.moveTo(ox - 22, oy + 16).lineTo(ox, oy + 6).lineTo(ox + 22, oy + 16)
-      .stroke({ color: 0xcbd1ce, width: 1.25, alpha: 0.85 });
-    g.moveTo(ox - 22, oy + 16).lineTo(ox, oy + 26).lineTo(ox + 22, oy + 16)
-      .stroke({ color: 0xa9aeab, width: 1.25, alpha: 0.85 });
-    if (detail >= 1) {
-      for (const [dx, dy] of [[-12, 11], [1, 17], [12, 21]] as const)
-        g.moveTo(ox + dx, oy + dy).lineTo(ox + dx + 3.3, oy + dy + 1.5)
-          .stroke({ color: 0xf3d775, width: 0.8, alpha: 0.9 });
-      g.circle(ox + 16, oy + 16, 0.85).fill(0xbccbd0);
+    // The road surface reaches the tile boundary, not an inset square.
+    // Adjacent paved tiles share their full edge, producing continuous roads.
+    const center: [number, number] = [ox, oy + 16];
+    const corners: [number, number][] = [
+      [ox, oy], [ox + 32, oy + 16], [ox, oy + 32], [ox - 32, oy + 16],
+    ];
+    g.poly(corners.flat()).fill(0x353e49);
+    // The four sides are negY, posX, posY, negX in painter order.
+    const edgeConnected = [links.negY, links.posX, links.posY, links.negX];
+    for (let i = 0; i < 4; i++) {
+      if (edgeConnected[i]) continue; // no seam or sidewalk across a connected road
+      const a = corners[i]!;
+      const b = corners[(i + 1) % 4]!;
+      const amt = 0.18; // raised sidewalk strip, only along exposed outer edge
+      const ai: [number, number] = [
+        a[0] + (center[0] - a[0]) * amt,
+        a[1] + (center[1] - a[1]) * amt,
+      ];
+      const bi: [number, number] = [
+        b[0] + (center[0] - b[0]) * amt,
+        b[1] + (center[1] - b[1]) * amt,
+      ];
+      g.poly([...a, ...b, ...bi, ...ai]).fill(0xaeb6b5);
+      g.moveTo(ai[0], ai[1]).lineTo(bi[0], bi[1])
+        .stroke({ color: 0xe3e5df, width: 1.35, alpha: 0.92 });
+      if (detail >= 2)
+        g.moveTo(a[0], a[1]).lineTo(b[0], b[1])
+          .stroke({ color: 0x778387, width: 0.72, alpha: 0.78 });
+    }
+    // Line geometry follows the actual topology: straight, bends, T and +.
+    const shape = junctionKind(links);
+    const midpoints: [boolean, number, number][] = [
+      [links.negX, ox - 16, oy + 8],
+      [links.posX, ox + 16, oy + 24],
+      [links.negY, ox + 16, oy + 8],
+      [links.posY, ox - 16, oy + 24],
+    ];
+    const connected = midpoints.filter(([on]) => on);
+    if (shape === 'straight' || shape === 'corner') {
+      if (shape === 'corner') {
+        const a = connected[0]!, b = connected[1]!;
+        // Join the centerline smoothly rather than displaying four box markings.
+        g.moveTo(a[1] * 0.78 + ox * 0.22, a[2] * 0.78 + (oy + 16) * 0.22)
+          .quadraticCurveTo(ox, oy + 16,
+            b[1] * 0.78 + ox * 0.22, b[2] * 0.78 + (oy + 16) * 0.22)
+          .stroke({ color: 0xeedc8c, width: 1.25, alpha: 0.86 });
+      } else {
+        for (const [, mx, my] of connected) {
+          const vx = mx - ox, vy = my - (oy + 16);
+          g.moveTo(ox + vx * 0.20, oy + 16 + vy * 0.20)
+            .lineTo(ox + vx * 0.63, oy + 16 + vy * 0.63)
+            .stroke({ color: 0xf0db86, width: 1.35, alpha: 0.9 });
+        }
+      }
+    } else if ((shape === 'cross' || shape === 'tee') && detail >= 1) {
+      // Zebra crossings on each incoming approach, with a clear shared junction.
+      for (const [, mx, my] of connected) {
+        const vx = mx - ox, vy = my - (oy + 16);
+        const mag = Math.hypot(vx, vy);
+        if (!mag) continue;
+        const nx = -vy / mag * 5;
+        const ny = vx / mag * 5;
+        for (const offset of [0.57, 0.7, 0.83]) {
+          const px = ox + vx * offset, py = oy + 16 + vy * offset;
+          g.moveTo(px - nx, py - ny).lineTo(px + nx, py + ny)
+            .stroke({ color: 0xe8edf0, width: 1.45, alpha: 0.85 });
+        }
+      }
+    } else if (shape === 'end' && detail >= 1) {
+      const [, mx, my] = connected[0]!;
+      g.moveTo(ox + (mx - ox) * 0.62, oy + 16 + (my - (oy + 16)) * 0.62)
+        .lineTo(ox + (mx - ox) * 0.85, oy + 16 + (my - (oy + 16)) * 0.85)
+        .stroke({ color: 0xf1dd8e, width: 1.1, alpha: 0.8 });
     }
     return;
   }
