@@ -14,5 +14,6 @@ export function advanceVisualHour(
 ): number {
   const current = previous ?? gameHour;
   if (speed === 0 || dtMs <= 0) return current;
-  return (current + dtMs / TICK_MS) % 24;
+  // One visual day lasts 96 seconds, independent of 1x/2x/4x simulation speed.
+  return (current + dtMs / (TICK_MS * 8)) % 24;
 }
