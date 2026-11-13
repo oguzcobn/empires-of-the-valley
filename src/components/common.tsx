@@ -97,3 +97,10 @@ export function Row({ label, children }: { label: ReactNode; children: ReactNode
     </div>
   );
 }
+
+/** Plain-text cost, e.g. "3 Taş, 1 Odun" (for one-line hints). */
+export function costText(cost: Cost): string {
+  const ids = Object.keys(cost) as ResourceId[];
+  if (!ids.length) return t('ui.free');
+  return ids.map((id) => `${fmtAmount(cost[id] ?? 0)} ${t(`resource.${id}`)}`).join(', ');
+}

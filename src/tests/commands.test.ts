@@ -35,23 +35,23 @@ describe('placement', () => {
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.error.key).toBe(key);
     };
-    refuse(water % 24, Math.floor(water / 24), 'err.terrain.water');
-    refuse(11, 11, 'err.occupied'); // town center
-    refuse(8, 13, 'err.onRoad');
+    refuse(water % p.width, Math.floor(water / p.width), 'err.terrain.water');
+    refuse(15, 15, 'err.occupied'); // town center
+    refuse(12, 17, 'err.onRoad');
     refuse(-1, 3, 'err.outOfBounds');
-    refuse(7, 10, 'err.noRoad'); // clear grass, but not touching a road
+    refuse(11, 14, 'err.noRoad'); // clear grass, but not touching a road
     const poor = tweak(s, (d) => void (d.provinces[d.homeProvinceId]!.stocks.wood = 5000));
-    refuse(10, 14, 'err.cost', poor);
+    refuse(14, 18, 'err.cost', poor);
     const before = JSON.stringify(s);
-    executeCommand(s, { type: 'placeBuilding', buildingId: 'hut', x: 11, y: 11 });
+    executeCommand(s, { type: 'placeBuilding', buildingId: 'hut', x: 15, y: 15 });
     expect(JSON.stringify(s)).toBe(before);
   });
 
   it('requires fertile soil for farms and nearby deposits for extraction', () => {
     const s = newCampaign();
-    const farm = executeCommand(s, { type: 'placeBuilding', buildingId: 'farm', x: 10, y: 14 });
+    const farm = executeCommand(s, { type: 'placeBuilding', buildingId: 'farm', x: 14, y: 18 });
     expect(farm.ok === false && farm.error.key).toBe('err.needFertile');
-    const camp = executeCommand(s, { type: 'placeBuilding', buildingId: 'lumber_camp', x: 10, y: 14 });
+    const camp = executeCommand(s, { type: 'placeBuilding', buildingId: 'lumber_camp', x: 14, y: 18 });
     expect(camp.ok === false && camp.error.key).toBe('err.needForest');
   });
 
@@ -59,8 +59,8 @@ describe('placement', () => {
     const r = executeCommand(newCampaign(), {
       type: 'placeBuilding',
       buildingId: 'town_center',
-      x: 10,
-      y: 14,
+      x: 14,
+      y: 18,
     });
     expect(r.ok).toBe(false);
   });
@@ -69,27 +69,27 @@ describe('placement', () => {
 describe('roads and connectivity', () => {
   it('roads must extend the network and cost wood', () => {
     const s = newCampaign();
-    expect(executeCommand(s, { type: 'placeRoad', x: 7, y: 10 }).ok).toBe(false);
-    const next = must(s, { type: 'placeRoad', x: 6, y: 13 });
+    expect(executeCommand(s, { type: 'placeRoad', x: 11, y: 14 }).ok).toBe(false);
+    const next = must(s, { type: 'placeRoad', x: 10, y: 17 });
     expect(home(next).stocks.wood).toBe(160000 - 2000);
   });
 
   it('cutting the road disconnects buildings and stops their housing', () => {
     let s = newCampaign();
     expect(housingCapacity(home(s))).toBe(20);
-    s = must(s, { type: 'removeRoad', x: 10, y: 13 });
+    s = must(s, { type: 'removeRoad', x: 14, y: 17 });
     const p = home(s);
     expect(p.buildings.filter((b) => b.definitionId === 'hut' && !b.connected)).toHaveLength(2);
     expect(housingCapacity(p)).toBe(10);
-    s = must(s, { type: 'placeRoad', x: 10, y: 13 });
+    s = must(s, { type: 'placeRoad', x: 14, y: 17 });
     expect(housingCapacity(home(s))).toBe(20);
     expectValid(s);
   });
 
   it('a disconnected construction site makes no progress', () => {
     let s = newCampaign();
-    s = must(s, { type: 'placeBuilding', buildingId: 'hut', x: 7, y: 14 });
-    s = must(s, { type: 'removeRoad', x: 7, y: 13 });
+    s = must(s, { type: 'placeBuilding', buildingId: 'hut', x: 11, y: 18 });
+    s = must(s, { type: 'removeRoad', x: 11, y: 17 });
     s = days(s, 5);
     expect(home(s).buildings.at(-1)).toMatchObject({ state: 'construction', progressTicks: 0 });
   });

@@ -9,7 +9,7 @@ extensions.add(CullerPlugin);
 import { calendar, clockHour } from '../core/time';
 import type { Season } from '../core/time';
 import type { ArchitectureStyle, BuildingId, BuildingInstance, BuildingLook, GameState, Province, Tile } from '../core/types';
-import { FOREST_TILE_MAX } from '../data/balance';
+import { FOREST_TILE_MAX, HEIGHT_PX, MAX_HEIGHT } from '../data/balance';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { validatePlacement } from '../systems/commands';
 import { homeProvince, isBuilt, isOperating, totalPopulation } from '../systems/economy';
@@ -29,6 +29,7 @@ export type Tool =
   | { kind: 'select' }
   | { kind: 'build'; buildingId: BuildingId; style?: ArchitectureStyle; look?: BuildingLook | null }
   | { kind: 'road' }
+  | { kind: 'terrace' }
   | { kind: 'demolish' };
 
 /** Detail level of procedural art: 0 flat, 1 materials, 2 fine texture. */
@@ -88,6 +89,7 @@ interface BuildingView {
   g: Graphics;
   extra: Graphics;
   flags: Graphics[];
+  mask: Graphics | null;
   info: SpriteInfo;
   sig: string;
   smokeTimer: number;
@@ -139,6 +141,8 @@ export class ValleyRenderer {
   private tintKey = -1;
   private fpsSamples: number[] = [];
   private lowFpsAt = -1e9;
+  private size = 32;
+  private prov: Province | null = null;
   private opts: RendererOptions = { resolution: 2, antialias: true, cacheBodies: false };
   private buildingViews = new Map<string, BuildingView>();
   private propViews = new Map<number, PropView>();
@@ -225,7 +229,7 @@ export class ValleyRenderer {
     const { width, height } = this.app.screen;
     const scale = Math.max(0.5, Math.min(1.25, Math.min(width / 1500, height / 840)));
     this.world.scale.set(scale);
-    this.centerOnTile(12, 12.5);
+    this.centerOnTile(this.size / 2, this.size / 2 + 0.5);
   }
 
   centerOnTile(x: number, y: number): void {
@@ -239,10 +243,17 @@ export class ValleyRenderer {
   tileToClient(x: number, y: number): { x: number; y: number } {
     const rect = this.app.canvas.getBoundingClientRect();
     const s = this.world.scale.x;
+    const view = this.cb.getView();
+    const h = view ? this.hz(homeProvince(view.game), x, y) : 0;
     return {
       x: rect.left + this.world.x + isoX(x + 0.5, y + 0.5) * s,
-      y: rect.top + this.world.y + isoY(x + 0.5, y + 0.5) * s,
+      y: rect.top + this.world.y + (isoY(x + 0.5, y + 0.5) - h) * s,
     };
+  }
+
+  /** Elevation of a tile in screen pixels. */
+  private hz(p: Province, x: number, y: number): number {
+    return (tileAt(p, x, y)?.height ?? 0) * HEIGHT_PX;
   }
 
   zoomBy(factor: number, sx = this.app.screen.width / 2, sy = this.app.screen.height / 2): void {
@@ -267,9 +278,9 @@ export class ValleyRenderer {
     const s = this.world.scale.x;
     const cx = (width / 2 - this.world.x) / s;
     const cy = (height / 2 - this.world.y) / s;
-    const half = (24 * TW) / 2;
+    const half = (this.size * TW) / 2;
     const ccx = Math.max(-half, Math.min(half, cx));
-    const ccy = Math.max(0, Math.min(24 * TH, cy));
+    const ccy = Math.max(0, Math.min(this.size * TH, cy));
     this.world.position.set(width / 2 - ccx * s, height / 2 - ccy * s);
   }
 
@@ -278,10 +289,20 @@ export class ValleyRenderer {
   private tileFromEvent(e: { clientX: number; clientY: number }): { fx: number; fy: number } {
     const rect = this.app.canvas.getBoundingClientRect();
     const s = this.world.scale.x;
-    const t = worldToTile(
-      (e.clientX - rect.left - this.world.x) / s,
-      (e.clientY - rect.top - this.world.y) / s,
-    );
+    const px = (e.clientX - rect.left - this.world.x) / s;
+    const py = (e.clientY - rect.top - this.world.y) / s;
+    const view = this.cb.getView();
+    const flat = worldToTile(px, py);
+    if (!view) return { fx: flat.x, fy: flat.y };
+    // raised ground: the visible tile is the front-most one whose top surface is under the pointer
+    const p = homeProvince(view.game);
+    let best: { x: number; y: number } | null = null;
+    for (let h = MAX_HEIGHT; h >= 0; h--) {
+      const t = worldToTile(px, py + h * HEIGHT_PX);
+      const tile = tileAt(p, Math.floor(t.x), Math.floor(t.y));
+      if (tile && tile.height === h && (!best || t.x + t.y > best.x + best.y)) best = t;
+    }
+    const t = best ?? flat;
     return { fx: t.x, fy: t.y };
   }
 
@@ -342,7 +363,7 @@ export class ValleyRenderer {
       const { fx, fy } = this.tileFromEvent(e);
       const tx = Math.floor(fx);
       const ty = Math.floor(fy);
-      const inside = tx >= 0 && ty >= 0 && tx < 24 && ty < 24;
+      const inside = tx >= 0 && ty >= 0 && tx < this.size && ty < this.size;
       if (e.pointerType === 'mouse' || this.drag?.paint) this.setHover(inside ? { x: tx, y: ty } : null);
       if (!this.pointers.has(e.pointerId)) return;
       const prev = this.pointers.get(e.pointerId)!;
@@ -418,6 +439,11 @@ export class ValleyRenderer {
     const dt = Math.min(ticker.deltaMS, 100);
     this.time += dt;
     const p = homeProvince(view.game);
+    this.prov = p;
+    if (p.width !== this.size) {
+      this.size = p.width;
+      this.resetCamera();
+    }
     const cal = calendar(view.game.tick);
     const pal = SEASON_PALETTE[cal.season];
     const motion = !view.reducedMotion;
@@ -455,26 +481,29 @@ export class ValleyRenderer {
     g.clear();
     this.waterTiles = [];
     this.roadTiles = [];
-    // diorama skirt along the two front edges
-    for (let i = 0; i < p.width; i++) {
-      const tl = tileAt(p, i, p.height - 1)!;
-      const a = P(i, p.height);
-      const b = P(i + 1, p.height);
-      g.poly([a[0], a[1], b[0], b[1], b[0], b[1] + 20, a[0], a[1] + 20]).fill(
-        tl.terrain === 'water' ? 0x3f8fc0 : COLORS.earth,
-      );
-      const tr = tileAt(p, p.width - 1, i)!;
-      const c = P(p.width, i);
-      const d = P(p.width, i + 1);
-      g.poly([c[0], c[1], d[0], d[1], d[0], d[1] + 20, c[0], c[1] + 20]).fill(
-        tr.terrain === 'water' ? 0x347aa6 : COLORS.earthDark,
-      );
-    }
-    for (let y = 0; y < p.height; y++)
-      for (let x = 0; x < p.width; x++) {
+    // painter's order along diagonals so raised tiles and their cliffs overlap correctly
+    const detail = this.cb.getView()?.detail ?? 2;
+    for (let sum = 0; sum <= p.width + p.height - 2; sum++)
+      for (let x = Math.max(0, sum - p.height + 1); x <= Math.min(p.width - 1, sum); x++) {
+        const y = sum - x;
         const t = p.tiles[y * p.width + x]!;
-        drawGroundTile(g, x, y, t.terrain, t.variant, t.road, pal);
-        if (t.terrain === 'water') this.waterTiles.push([x, y]);
+        drawGroundTile(
+          g,
+          x,
+          y,
+          t.terrain,
+          t.variant,
+          t.road,
+          pal,
+          {
+            height: t.height,
+            frontLeft: tileAt(p, x, y + 1)?.height ?? -1,
+            frontRight: tileAt(p, x + 1, y)?.height ?? -1,
+          },
+          t.roadType,
+          detail,
+        );
+        if (t.terrain === 'water' || t.terrain === 'lake') this.waterTiles.push([x, y]);
         if (t.road) this.roadTiles.push([x, y]);
       }
     this.drawWater(pal);
@@ -522,7 +551,7 @@ export class ValleyRenderer {
       if (view?.sig === sig) continue;
       if (view) view.c.destroy({ children: true });
       const c = new Container();
-      c.position.set(isoX(x + 0.5, y + 0.5), isoY(x + 0.5, y + 0.5));
+      c.position.set(isoX(x + 0.5, y + 0.5), isoY(x + 0.5, y + 0.5) - t.height * HEIGHT_PX);
       c.zIndex = x + y + 1;
       let sway: Container | null = null;
       c.cullable = true;
@@ -592,7 +621,8 @@ export class ValleyRenderer {
         body.addChild(g);
         c.addChild(body, glow, extra);
         c.cullable = true;
-        c.position.set(isoX(b.x, b.y), isoY(b.x, b.y));
+        const base = Math.min(...footprintTiles(def, b.x, b.y).map(([fx, fy]) => tileAt(p, fx, fy)?.height ?? 0));
+        c.position.set(isoX(b.x, b.y), isoY(b.x, b.y) - base * HEIGHT_PX);
         c.zIndex = b.x + w + b.y + h - 1;
         this.objects.addChild(c);
         bv = {
@@ -602,6 +632,7 @@ export class ValleyRenderer {
           g,
           extra,
           flags: [],
+          mask: null,
           info: { lights: [], smoke: [], flags: [], height: 30 },
           sig: '',
           smokeTimer: Math.random() * 400,
@@ -649,15 +680,45 @@ export class ValleyRenderer {
     g.clear();
     extra.clear();
     const seed = hashId(b.id);
+    const landmarkSite = b.state === 'construction' && !!def.landmark;
     bv.info =
-      b.state === 'construction'
+      b.state === 'construction' && !landmarkSite
         ? drawStyledConstruction(g, w, h, b.progressTicks / Math.max(1, requiredTicks(b)), b.style, detail, seed)
         : drawStyledBuilding(g, b, pal, detail, seed);
+    if (bv.mask) {
+      bv.body.mask = null;
+      bv.mask.destroy();
+      bv.mask = null;
+    }
+    if (landmarkSite) {
+      // the monument rises stage by stage: reveal it from the ground up, scaffolding on top
+      const ratio = Math.min(1, b.progressTicks / Math.max(1, requiredTicks(b)));
+      const bounds = g.getLocalBounds();
+      const shown = 0.12 + 0.88 * ratio;
+      const mask = new Graphics()
+        .rect(bounds.x - 4, bounds.y + bounds.height * (1 - shown) - 2, bounds.width + 8, bounds.height * shown + 8)
+        .fill(0xffffff);
+      bv.c.addChild(mask);
+      bv.body.mask = mask;
+      bv.mask = mask;
+      const topY = bounds.y + bounds.height * (1 - shown);
+      for (let k = 0; k <= 6; k++) {
+        const x = bounds.x + (bounds.width * k) / 6;
+        extra.moveTo(x, bounds.y + bounds.height).lineTo(x, topY).stroke({ color: COLORS.woodDark, width: 1.6, alpha: 0.9 });
+      }
+      for (let y = bounds.y + bounds.height - 10; y > topY; y -= 12)
+        extra.moveTo(bounds.x, y).lineTo(bounds.x + bounds.width, y).stroke({ color: COLORS.woodDark, width: 1.2, alpha: 0.8 });
+      // a crane over the site
+      const cx = bounds.x + bounds.width * 0.75;
+      extra.moveTo(cx, bounds.y + bounds.height).lineTo(cx, topY - 26).lineTo(cx - 34, topY - 22).stroke({ color: 0xb5892f, width: 2 });
+      extra.moveTo(cx - 30, topY - 22).lineTo(cx - 30, topY - 4).stroke({ color: 0x3a2a1c, width: 0.8 });
+    }
     bv.glow.clear();
     for (const q of bv.info.lights) bv.glow.poly(q.flat()).fill({ color: 0xffc95a, alpha: 0.95 });
     bv.glow.alpha = this.night;
     bv.glow.visible = this.night > 0.02 && isBuilt(b) && b.connected;
-    if (this.opts.cacheBodies) {
+    if (this.opts.cacheBodies && landmarkSite && bv.body.isCachedAsTexture) bv.body.cacheAsTexture(false);
+    if (this.opts.cacheBodies && !landmarkSite) {
       if (bv.body.isCachedAsTexture) bv.body.updateCacheTexture();
       else bv.body.cacheAsTexture({ resolution: 2, antialias: true });
     }
@@ -918,7 +979,8 @@ export class ValleyRenderer {
       const fx = w.from[0] + (w.to[0] - w.from[0]) * w.t + 0.5;
       const fy = w.from[1] + (w.to[1] - w.from[1]) * w.t + 0.5;
       const bob = step > 0 && !w.cart ? Math.sin(this.time / 90 + w.phase) * 0.9 : 0;
-      w.c.position.set(isoX(fx, fy) + w.side, isoY(fx, fy) + bob + w.side * 0.25);
+      const lift = this.hz(p, w.from[0], w.from[1]) * (1 - w.t) + this.hz(p, w.to[0], w.to[1]) * w.t;
+      w.c.position.set(isoX(fx, fy) + w.side, isoY(fx, fy) + bob + w.side * 0.25 - lift);
       w.c.zIndex = fx + fy + 0.01;
       if (w.cart) w.c.scale.x = w.to[0] - w.from[0] - (w.to[1] - w.from[1]) < 0 ? -1 : 1;
     }
@@ -934,15 +996,16 @@ export class ValleyRenderer {
     width: number,
     alpha: number,
   ): void {
-    const a = P(x, y);
-    const b = P(x + w, y);
-    const c = P(x + w, y + h);
-    const d = P(x, y + h);
+    const z = this.prov ? this.hz(this.prov, Math.max(0, Math.min(this.size - 1, x)), Math.max(0, Math.min(this.size - 1, y))) : 0;
+    const a = P(x, y, z);
+    const b = P(x + w, y, z);
+    const c = P(x + w, y + h, z);
+    const d = P(x, y + h, z);
     g.poly([a[0], a[1], b[0], b[1], c[0], c[1], d[0], d[1]]).stroke({ color, width, alpha });
   }
 
   private tileFill(g: Graphics, x: number, y: number, color: number, alpha: number): void {
-    const a = P(x, y);
+    const a = P(x, y, this.prov ? this.hz(this.prov, x, y) : 0);
     g.poly([a[0], a[1], a[0] + 32, a[1] + 16, a[0], a[1] + 32, a[0] - 32, a[1] + 16]).fill({ color, alpha });
   }
 
@@ -1007,9 +1070,14 @@ export class ValleyRenderer {
             view.detail,
             7,
           );
-          this.ghost.position.set(isoX(hover.x, hover.y), isoY(hover.x, hover.y));
+          this.ghost.position.set(isoX(hover.x, hover.y), isoY(hover.x, hover.y) - this.hz(p, hover.x, hover.y));
           this.ghost.alpha = ok ? 0.7 : 0.35;
         }
+      } else if (tool.kind === 'terrace') {
+        const t = tileAt(p, hover.x, hover.y);
+        const ok = !!t && t.terrain === 'hill' && !t.road && !t.buildingId;
+        this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.5);
+        this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2, 0.95);
       } else if (tool.kind === 'road') {
         const ok = checkRoadSite(p, hover.x, hover.y) === null;
         this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.5);

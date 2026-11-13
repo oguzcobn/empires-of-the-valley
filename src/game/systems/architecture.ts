@@ -33,6 +33,9 @@ export function effectiveLook(b: StyledRef): BuildingLook {
 
 export const bonusesOf = (style: ArchitectureStyle): CultureBonuses => CULTURES[style].bonuses;
 
+/** Historic monuments weather slowly but steadily: restoration is part of heritage care. */
+export const LANDMARK_DECAY_PER_DAY = 10;
+
 /** Rounds to whole units so a displayed price is always exactly what is paid. */
 const wholeUnits = (milli: number): number => Math.round(milli / 1000) * 1000;
 
@@ -43,7 +46,9 @@ export function levelCost(
   style: ArchitectureStyle,
   customLook: BuildingLook | null = null,
 ): Cost {
-  const base = BUILDINGS[definitionId].levels[levelIndex]?.cost ?? {};
+  const def = BUILDINGS[definitionId];
+  const base = def.levels[levelIndex]?.cost ?? {};
+  if (def.landmark) return { ...base }; // historic designs: fixed costs, no workshop materials
   const look = customLook ?? defaultLook(style, definitionId, levelIndex + 1);
   const wall = WALL_RULES[look.wall].cost;
   const roof = ROOF_RULES[look.roofMaterial].cost;
@@ -69,6 +74,7 @@ export function investedCost(b: StyledRef): Cost {
 
 /** Daily condition loss in basis points: base x wall x roof x culture. */
 export function decayPerDay(b: StyledRef): number {
+  if (BUILDINGS[b.definitionId].landmark) return Math.max(1, Math.round((LANDMARK_DECAY_PER_DAY * bonusesOf(b.style).decayPermille) / 1000));
   const look = effectiveLook(b);
   let d = BASE_DECAY_PER_DAY * 1000;
   d = mulPermille(d, WALL_RULES[look.wall].decay);

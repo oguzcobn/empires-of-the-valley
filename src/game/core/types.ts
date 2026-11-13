@@ -3,10 +3,46 @@ import type { TKey } from '../../i18n/tr';
 export type ResourceId = 'wood' | 'stone' | 'food' | 'gold' | 'tools' | 'research';
 export const RESOURCE_IDS: readonly ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
 
-export type BuildingId =
-  'town_center' | 'hut' | 'warehouse' | 'lumber_camp' | 'farm' | 'quarry' | 'granary' | 'school';
+export type LandmarkId =
+  | 'edinburgh_castle'
+  | 'stirling_castle'
+  | 'scott_monument'
+  | 'sumela_monastery'
+  | 'galata_tower'
+  | 'selimiye_mosque';
 
-export type TerrainId = 'grass' | 'fertile' | 'forest' | 'water' | 'stone' | 'sand';
+export type BuildingId =
+  | 'town_center'
+  | 'hut'
+  | 'warehouse'
+  | 'lumber_camp'
+  | 'farm'
+  | 'quarry'
+  | 'granary'
+  | 'school'
+  | 'terrace_farm'
+  | LandmarkId;
+
+/**
+ * Terrain. `water` is a river (bridgeable), `lake` is still water (not bridgeable); `hill`,
+ * `rocky` and `mountain` are raised ground; `terrace` is a hill tile levelled behind a stone
+ * retaining wall by the player.
+ */
+export type TerrainId =
+  | 'grass'
+  | 'fertile'
+  | 'forest'
+  | 'water'
+  | 'stone'
+  | 'sand'
+  | 'hill'
+  | 'rocky'
+  | 'mountain'
+  | 'terrace'
+  | 'lake';
+
+/** Road structure chosen automatically from the terrain it crosses. */
+export type RoadType = 'dirt' | 'bridge' | 'stairs' | 'mountain' | 'tunnel';
 
 /**
  * Architectural cultures. The union already names the next cultures so content can be added
@@ -53,7 +89,7 @@ export interface BuildingLook {
   courtyard: CourtyardType;
   decor: DecorType;
 }
-export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy';
+export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy' | 'architecture';
 export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08';
 export type ProvinceId = string;
 export type FactionId = string;
@@ -70,9 +106,13 @@ export interface Tile {
   /** Remaining harvestable stock (wood for forest, stone for deposits), milli-units. */
   deposit: number;
   road: boolean;
+  /** Structure of the road on this tile (meaningful when `road`). */
+  roadType: RoadType;
   buildingId: string | null;
   /** Visual variation only (0..3). */
   variant: number;
+  /** Ground elevation in levels (0 = valley floor .. 4 = high mountain). */
+  height: number;
 }
 
 // ---------------------------------------------------------------- content definitions (immutable)
@@ -100,7 +140,39 @@ export interface LevelSpec {
   requires?: LevelRequirement;
 }
 
-export type BuildingCategory = 'housing' | 'production' | 'storage' | 'education' | 'governance';
+export type BuildingCategory =
+  'housing' | 'production' | 'storage' | 'education' | 'governance' | 'landmark';
+
+/** Special terrain rule of a landmark, checked for real by placement (see systems/placement.ts). */
+export type SiteRule = 'crag' | 'castleHill' | 'cityGarden' | 'mountainside' | 'hilltopWater' | 'grandPlain';
+
+export interface LandmarkStage {
+  cost: Cost;
+  days: number;
+}
+
+export interface LandmarkSpec {
+  /** Culture the monument belongs to (Atlas collection). */
+  culture: ArchitectureStyle;
+  site: SiteRule;
+  /** Construction stages; stage 1 is paid on placement, later ones when the previous finishes. */
+  stages: readonly LandmarkStage[];
+  /** Builders needed for full construction speed (progress scales with assigned builders). */
+  builders: number;
+  requires: LevelRequirement;
+  /** Tourism attraction points when complete and in good repair. */
+  attraction: number;
+  /** Culture points per day. */
+  culturePerDay: number;
+  /** Safety it adds to the city (castles, watch towers). */
+  safety: number;
+  /** Happiness for the whole city while in good repair. */
+  happiness: number;
+  /** Extra gold per visitor (museums, guided tours). */
+  museumGold: number;
+  /** Research per day (monastery libraries). */
+  researchPerDay: number;
+}
 
 export interface BuildingDefinition {
   id: BuildingId;
@@ -115,6 +187,9 @@ export interface BuildingDefinition {
   buildable: boolean;
   demolishable: boolean;
   levels: readonly LevelSpec[];
+  /** Footprint may span tiles of different heights (landmarks that terrace into slopes). */
+  allowSlope?: boolean;
+  landmark?: LandmarkSpec;
 }
 
 export type TechEffect =
@@ -184,6 +259,8 @@ export interface BuildingInstance {
   look: BuildingLook | null;
   /** Structural condition in basis points (10000 = perfect). Decays daily; restored by repairs. */
   condition: number;
+  /** Landmarks: construction stages already paid for (0 for ordinary buildings). */
+  paidStages: number;
 }
 
 export interface Population {

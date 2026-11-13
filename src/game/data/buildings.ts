@@ -1,15 +1,18 @@
 import { u } from '../core/fixed';
-import type { BuildingDefinition, BuildingId, BuildingInstance, LevelSpec, TerrainId } from '../core/types';
+import type { BuildingDefinition, BuildingId, BuildingInstance, LandmarkId, LevelSpec, TerrainId } from '../core/types';
+import { LANDMARKS } from './landmarks';
 
 const DAY = 24;
 const LAND: readonly TerrainId[] = ['grass', 'fertile', 'sand'];
+/** Small buildings may also stand on hills and on terraces (flat footprint required). */
+const LAND_AND_HILLS: readonly TerrainId[] = ['grass', 'fertile', 'sand', 'hill', 'terrace'];
 
 function level(partial: Partial<LevelSpec> & Pick<LevelSpec, 'cost' | 'buildTicks'>): LevelSpec {
   return { workerSlots: 0, housing: 0, storage: {}, goldIncome: 0, taxIncome: 0, upkeepGold: 0, ...partial };
 }
 
-/** Data-driven building catalog for Phase 1 (8 structures). */
-export const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
+/** Data-driven building catalog: the village (Phase 1), terraces and the historic landmarks. */
+const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
   town_center: {
     id: 'town_center',
     category: 'governance',
@@ -35,7 +38,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
     category: 'housing',
     era: 1,
     footprint: [1, 1],
-    validTerrains: LAND,
+    validTerrains: LAND_AND_HILLS,
     seasonal: false,
     usesTools: false,
     buildable: true,
@@ -224,7 +227,37 @@ export const BUILDINGS: Record<BuildingId, BuildingDefinition> = {
       }),
     ],
   },
+  terrace_farm: {
+    id: 'terrace_farm',
+    category: 'production',
+    era: 1,
+    footprint: [2, 2],
+    validTerrains: ['terrace'],
+    seasonal: true,
+    usesTools: true,
+    buildable: true,
+    demolishable: true,
+    levels: [
+      level({
+        cost: { wood: u(20), stone: u(15) },
+        buildTicks: 3 * DAY,
+        workerSlots: 2,
+        produces: { resourceId: 'food', perDay: u(5) },
+        upkeepGold: u(0.1),
+      }),
+      level({
+        cost: { wood: u(30), stone: u(25) },
+        buildTicks: 3 * DAY,
+        workerSlots: 3,
+        produces: { resourceId: 'food', perDay: u(8) },
+        upkeepGold: u(0.15),
+        requires: { townCenterLevel: 2 },
+      }),
+    ],
+  },
 };
+
+export const BUILDINGS: Record<BuildingId, BuildingDefinition> = { ...CORE, ...LANDMARKS };
 
 export const BUILDING_IDS = Object.keys(BUILDINGS) as BuildingId[];
 export const BUILDABLE_IDS = BUILDING_IDS.filter((id) => BUILDINGS[id].buildable);

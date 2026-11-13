@@ -25,14 +25,65 @@ import { evaluateQuests, questOnDayEnd, questOnProduced } from './quests';
 
 /** Ticks needed to finish the building's current job (first construction or upgrade). */
 export function requiredTicks(b: BuildingInstance): number {
-  const levels = BUILDINGS[b.definitionId].levels;
+  const def = BUILDINGS[b.definitionId];
+  if (def.landmark && b.state === 'construction') return stageBoundary(b, def.landmark.stages.length);
+  const levels = def.levels;
   return b.state === 'upgrading' ? levels[b.level]!.buildTicks : levels[b.level - 1]!.buildTicks;
+}
+
+/**
+ * Landmark work units completed when stage `k` ends (k = 1..n). One work unit is one builder-hour;
+ * with all builders assigned a stage takes exactly its listed days.
+ */
+export function stageBoundary(b: Pick<BuildingInstance, 'definitionId'>, k: number): number {
+  const spec = BUILDINGS[b.definitionId].landmark!;
+  let total = 0;
+  for (let i = 0; i < k; i++) total += spec.stages[i]!.days * 24 * spec.builders;
+  return total;
+}
+
+/** Current landmark stage (1-based) and whether it is waiting for the next stage's materials. */
+export function landmarkStage(b: BuildingInstance): { stage: number; waiting: boolean } {
+  const spec = BUILDINGS[b.definitionId].landmark!;
+  const waiting = b.progressTicks >= stageBoundary(b, b.paidStages) && b.paidStages < spec.stages.length;
+  return { stage: Math.min(spec.stages.length, b.paidStages), waiting };
+}
+
+/** Landmark construction: builders do the work, every stage is paid before it starts. */
+function landmarkStep(s: GameState, p: Province, b: BuildingInstance): boolean {
+  const spec = defOf(b).landmark!;
+  const n = spec.stages.length;
+  if (b.progressTicks >= stageBoundary(b, b.paidStages) && b.paidStages < n) {
+    const cost = spec.stages[b.paidStages]!.cost;
+    const ids = Object.keys(cost) as ResourceId[];
+    if (ids.some((id) => p.stocks[id] < (cost[id] ?? 0))) {
+      if (!b.unpaid)
+        logEvent(s, 'warning', 'event.landmarkWaiting', { building: `@building.${b.definitionId}.name` }, { x: b.x, y: b.y });
+      b.unpaid = true; // during landmark construction: waiting for the next stage's materials
+      return false;
+    }
+    for (const id of ids) spend(p, id, cost[id] ?? 0);
+    b.paidStages += 1;
+    b.unpaid = false;
+    logEvent(s, 'info', 'event.landmarkStage', { building: `@building.${b.definitionId}.name`, n: b.paidStages });
+  }
+  b.progressTicks = Math.min(stageBoundary(b, b.paidStages), b.progressTicks + Math.min(b.workers, spec.builders));
+  if (b.paidStages < n || b.progressTicks < stageBoundary(b, n)) return false;
+  b.state = 'active';
+  b.progressTicks = 0;
+  b.workers = Math.min(b.workers, specOf(b).workerSlots);
+  logEvent(s, 'success', 'event.built', { building: `@building.${b.definitionId}.name` }, { x: b.x, y: b.y });
+  return true;
 }
 
 function constructionStep(s: GameState, p: Province): void {
   let structural = false;
   for (const b of p.buildings) {
     if (b.state === 'active' || !b.connected) continue;
+    if (b.state === 'construction' && defOf(b).landmark) {
+      if (landmarkStep(s, p, b)) structural = true;
+      continue;
+    }
     b.progressTicks += 1;
     if (b.progressTicks < requiredTicks(b)) continue;
     if (b.state === 'upgrading') {

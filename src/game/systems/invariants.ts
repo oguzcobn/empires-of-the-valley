@@ -5,6 +5,7 @@ import { QUESTS } from '../data/quests';
 import { TECHNOLOGIES } from '../data/technologies';
 import { assignedWorkers, storageCaps } from './economy';
 import { CONDITION_MAX, DESIGNABLE, isPlayableStyle } from '../data/architecture';
+import { MAX_HEIGHT } from '../data/balance';
 import { footprintTiles, idx, inBounds } from './grid';
 
 /**
@@ -53,10 +54,14 @@ export function validateInvariants(s: GameState): string[] {
     if (b.look && !DESIGNABLE.includes(b.definitionId)) errors.push(`building ${b.id} cannot carry a design`);
     if (!Number.isInteger(b.condition) || b.condition < 0 || b.condition > CONDITION_MAX)
       errors.push(`building ${b.id} condition invalid`);
-    if (b.workers < 0 || b.workers > specOf(b).workerSlots)
+    const builders = def.landmark?.builders ?? 0;
+    if (b.workers < 0 || (b.state !== 'construction' && b.workers > specOf(b).workerSlots))
       errors.push(`building ${b.id} workers out of range`);
-    if (b.state === 'construction' && b.workers !== 0)
+    if (b.state === 'construction' && b.workers > builders)
       errors.push(`building ${b.id} staffed while under construction`);
+    if (!Number.isInteger(b.paidStages) || b.paidStages < 0 || b.paidStages > (def.landmark?.stages.length ?? 0))
+      errors.push(`building ${b.id} paid stages invalid`);
+    if (def.landmark && b.state === 'construction' && b.paidStages < 1) errors.push(`landmark ${b.id} unpaid`);
     if (b.state === 'upgrading' && b.level >= def.levels.length)
       errors.push(`building ${b.id} upgrading past max level`);
     for (const [x, y] of footprintTiles(def, b.x, b.y)) {
@@ -75,6 +80,11 @@ export function validateInvariants(s: GameState): string[] {
     if (t.buildingId && owner.get(i) !== t.buildingId)
       errors.push(`tile ${i} references missing building ${t.buildingId}`);
     if (t.deposit < 0 || !Number.isInteger(t.deposit)) errors.push(`tile ${i} deposit invalid`);
+    if (!Number.isInteger(t.height) || t.height < 0 || t.height > MAX_HEIGHT) errors.push(`tile ${i} height invalid`);
+    if (t.terrain === 'water' || t.terrain === 'lake') {
+      if (t.height !== 0) errors.push(`tile ${i} water above the valley floor`);
+      if (t.road && t.roadType !== 'bridge') errors.push(`tile ${i} road on water without bridge`);
+    }
   });
   if (p.buildings.filter((b) => b.definitionId === 'town_center').length !== 1)
     errors.push('town center count != 1');

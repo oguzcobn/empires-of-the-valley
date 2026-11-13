@@ -45,6 +45,15 @@ export const TECHNOLOGIES: Record<TechId, Technology> = {
     prerequisites: ['basic_agriculture'],
     effects: [{ type: 'outputMultiplier', buildingId: 'school', permille: 1500 }],
   },
+  architecture: {
+    id: 'architecture',
+    era: 1,
+    branch: 'engineering',
+    cost: u(70),
+    prerequisites: ['masonry', 'literacy'],
+    // unlocks the historic landmarks (checked by their level requirements)
+    effects: [],
+  },
 };
 
 export const TECH_IDS = Object.keys(TECHNOLOGIES) as TechId[];

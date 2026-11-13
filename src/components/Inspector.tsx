@@ -15,11 +15,11 @@ import {
   techOutputPermille,
 } from '../game/systems/economy';
 import { buildingById } from '../game/systems/grid';
-import { requiredTicks } from '../game/systems/tick';
+import { landmarkStage, requiredTicks } from '../game/systems/tick';
 import { DESIGNABLE, PLAYABLE_STYLES } from '../game/data/architecture';
 import { conditionBand, decayPerDay, levelCost, repairCost, restyleCost } from '../game/systems/architecture';
 import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
-import { Bar, CostList, Row } from './common';
+import { Bar, CostList, Row, costText } from './common';
 import { Icon } from './icons';
 import { requestDemolish } from './ValleyCanvas';
 
@@ -41,6 +41,57 @@ function StatusLine({ b }: { b: BuildingInstance }): ReactElement {
   else if (b.state === 'upgrading') [key, tone] = ['status.upgrading', 'info'];
   else if (spec.workerSlots > 0) key = 'status.working';
   return <p className={`status ${tone}`}>{t(key)}</p>;
+}
+
+/** Stage, materials and builders of a landmark under construction. */
+function LandmarkConstruction({ game, b, idle }: { game: GameState; b: BuildingInstance; idle: number }): ReactElement {
+  const dispatch = useApp((s) => s.dispatch);
+  const spec = defOf(b).landmark!;
+  const { stage, waiting } = landmarkStage(b);
+  const next = spec.stages[b.paidStages];
+  const p = homeProvince(game);
+  return (
+    <section className="section" data-testid="landmark-construction">
+      <h4>{t('landmark.stage', { n: stage, total: spec.stages.length })}</h4>
+      {waiting && next && (
+        <p className="hint warn" data-testid="landmark-waiting">
+          {t('landmark.waiting', { cost: costText(next.cost) })}
+        </p>
+      )}
+      {next && (
+        <Row label={t('landmark.stages')}>
+          <CostList cost={next.cost} stocks={p.stocks} />
+        </Row>
+      )}
+      <h4>{t('landmark.builders')}</h4>
+      <div className="stepper">
+        <button className="btn icon-btn" disabled={b.workers <= 0} onClick={() => dispatch({ type: 'assignWorkers', instanceId: b.id, workers: b.workers - 1 })} aria-label={t('inspector.removeWorker')}>
+          −
+        </button>
+        <span className="stepper-value" data-testid="builder-count">
+          <Icon name="worker" /> {b.workers} / {spec.builders}
+        </span>
+        <button
+          className="btn icon-btn"
+          disabled={b.workers >= spec.builders || idle <= 0}
+          onClick={() => dispatch({ type: 'assignWorkers', instanceId: b.id, workers: b.workers + 1 })}
+          aria-label={t('inspector.addWorker')}
+          data-testid="builder-plus"
+        >
+          +
+        </button>
+        <button
+          className="btn"
+          disabled={b.workers >= spec.builders || idle <= 0}
+          onClick={() => dispatch({ type: 'assignWorkers', instanceId: b.id, workers: Math.min(spec.builders, b.workers + idle) })}
+          data-testid="builder-max"
+        >
+          {t('inspector.fill')}
+        </button>
+      </div>
+      <p className={`hint ${b.workers === 0 ? 'warn' : ''}`}>{t('landmark.buildersHint', { n: spec.builders })}</p>
+    </section>
+  );
 }
 
 /** Culture, condition and repairs of one building. */
@@ -286,10 +337,18 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
       <p className="muted">{t(`building.${b.definitionId}.desc`)}</p>
       <StatusLine b={b} />
 
+      {b.state === 'construction' && def.landmark && (
+        <LandmarkConstruction game={game} b={b} idle={idle} />
+      )}
+
       {busy && (
         <section className="section">
           <Row label={t(b.state === 'construction' ? 'inspector.building' : 'inspector.upgrading')}>
-            {t('inspector.daysLeft', { n: Math.ceil((requiredTicks(b) - b.progressTicks) / 24) })}
+            {def.landmark && b.state === 'construction'
+              ? b.workers > 0
+                ? t('inspector.daysLeft', { n: Math.ceil((requiredTicks(b) - b.progressTicks) / 24 / b.workers) })
+                : '—'
+              : t('inspector.daysLeft', { n: Math.ceil((requiredTicks(b) - b.progressTicks) / 24) })}
           </Row>
           <Bar value={b.progressTicks} max={requiredTicks(b)} tone="info" />
           <button

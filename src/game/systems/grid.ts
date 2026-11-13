@@ -1,5 +1,5 @@
 import { BUILDINGS, defOf } from '../data/buildings';
-import type { BuildingDefinition, BuildingInstance, Province, Tile } from '../core/types';
+import type { BuildingDefinition, BuildingInstance, Province, RoadType, Tile } from '../core/types';
 
 /** Minimal province shape needed by spatial helpers (lets terrain generation reuse them). */
 export type GridLike = Pick<Province, 'width' | 'height' | 'tiles' | 'buildings'>;
@@ -53,6 +53,27 @@ export const townCenter = (p: Pick<Province, 'buildings'>): BuildingInstance | u
   p.buildings.find((b) => b.definitionId === 'town_center');
 
 /**
+ * Whether two adjacent road tiles connect. Level ground links freely; one level of difference
+ * needs stairs or a mountain road on either side; tunnels pass through up to three levels.
+ */
+export function canLink(a: { height: number; roadType: RoadType }, b: { height: number; roadType: RoadType }): boolean {
+  const dh = Math.abs(a.height - b.height);
+  if (a.roadType === 'tunnel' || b.roadType === 'tunnel') return dh <= 3;
+  if (dh === 0) return true;
+  if (dh === 1) return ['stairs', 'mountain'].includes(a.roadType) || ['stairs', 'mountain'].includes(b.roadType);
+  return false;
+}
+
+/** Perimeter tiles of a footprint, each with the footprint tile it touches. */
+export function perimeterPairs(def: BuildingDefinition, x: number, y: number): [number, number, number, number][] {
+  const [w, h] = def.footprint;
+  const out: [number, number, number, number][] = [];
+  for (let dx = 0; dx < w; dx++) out.push([x + dx, y - 1, x + dx, y], [x + dx, y + h, x + dx, y + h - 1]);
+  for (let dy = 0; dy < h; dy++) out.push([x - 1, y + dy, x, y + dy], [x + w, y + dy, x + w - 1, y + dy]);
+  return out;
+}
+
+/**
  * Set of road tile indexes reachable from the town center.
  * Roads are the logistics network: only buildings touching this set operate.
  */
@@ -61,20 +82,22 @@ export function connectedRoads(g: GridLike): Set<number> {
   const tc = townCenter(g);
   if (!tc) return seen;
   const queue: [number, number][] = [];
-  for (const [x, y] of perimeterTiles(BUILDINGS.town_center, tc.x, tc.y)) {
+  for (const [x, y, fx, fy] of perimeterPairs(BUILDINGS.town_center, tc.x, tc.y)) {
     const t = tileAt(g, x, y);
-    if (t?.road && !seen.has(idx(g, x, y))) {
+    const f = tileAt(g, fx, fy);
+    if (t?.road && f && Math.abs(t.height - f.height) <= 1 && !seen.has(idx(g, x, y))) {
       seen.add(idx(g, x, y));
       queue.push([x, y]);
     }
   }
   while (queue.length) {
     const [cx, cy] = queue.shift()!;
+    const cur = tileAt(g, cx, cy)!;
     for (const [dx, dy] of NEIGHBORS4) {
       const nx = cx + dx;
       const ny = cy + dy;
       const t = tileAt(g, nx, ny);
-      if (t?.road && !seen.has(idx(g, nx, ny))) {
+      if (t?.road && !seen.has(idx(g, nx, ny)) && canLink(cur, t)) {
         seen.add(idx(g, nx, ny));
         queue.push([nx, ny]);
       }
@@ -83,6 +106,7 @@ export function connectedRoads(g: GridLike): Set<number> {
   return seen;
 }
 
+/** A footprint touches the network when a connected road is next to it within one level. */
 export function touchesRoads(
   g: GridLike,
   def: BuildingDefinition,
@@ -90,7 +114,11 @@ export function touchesRoads(
   y: number,
   roads: Set<number>,
 ): boolean {
-  return perimeterTiles(def, x, y).some(([px, py]) => inBounds(g, px, py) && roads.has(idx(g, px, py)));
+  return perimeterPairs(def, x, y).some(([px, py, fx, fy]) => {
+    if (!inBounds(g, px, py) || !roads.has(idx(g, px, py))) return false;
+    const f = tileAt(g, fx, fy);
+    return !!f && Math.abs(tileAt(g, px, py)!.height - f.height) <= 1;
+  });
 }
 
 /** Recomputes the cached `connected` flag of every building. Call after any structural change. */

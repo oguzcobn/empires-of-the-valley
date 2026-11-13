@@ -1,17 +1,35 @@
 import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
-import type { BuildingCategory, GameState } from '../game/core/types';
+import type { BuildingCategory, BuildingId, GameState } from '../game/core/types';
 import { BUILDABLE_IDS, BUILDINGS } from '../game/data/buildings';
-import { missingFor } from '../game/systems/commands';
+import { missingFor, requirementError } from '../game/systems/commands';
 import { levelCost } from '../game/systems/architecture';
 import { PLAYABLE_STYLES } from '../game/data/architecture';
 import { homeProvince } from '../game/systems/economy';
-import { t } from '../i18n';
+import { t, tm } from '../i18n';
 import { CostList } from './common';
 import { Icon } from './icons';
 
-const CATEGORIES: ('all' | BuildingCategory)[] = ['all', 'housing', 'production', 'storage', 'education'];
+const CATEGORIES: ('all' | BuildingCategory)[] = ['all', 'housing', 'production', 'storage', 'education', 'landmark'];
+
+function LandmarkFacts({ game, id }: { game: GameState; id: BuildingId }): ReactElement {
+  const spec = BUILDINGS[id].landmark!;
+  const req = requirementError(game, BUILDINGS[id].levels[0]!);
+  const exists = homeProvince(game).buildings.some((b) => b.definitionId === id);
+  const days = spec.stages.reduce((a, st) => a + st.days, 0);
+  return (
+    <span className="landmark-facts" data-testid={`landmark-facts-${id}`}>
+      <span>
+        {t('landmark.stages')}: {spec.stages.length} · {t('ui.days', { n: days })} · {t('landmark.builders')}: {spec.builders}
+      </span>
+      <span>{t('landmark.benefits', { a: spec.attraction, c: spec.culturePerDay / 1000 })}</span>
+      <span className={req || exists ? 'warn' : 'ok'}>
+        {exists ? t('err.landmarkExists') : req ? tm(req) : `✔ ${t('landmark.requirements')}`}
+      </span>
+    </span>
+  );
+}
 
 export function BuildCatalog({ game }: { game: GameState }): ReactElement {
   const tool = useApp((s) => s.tool);
@@ -145,6 +163,7 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
                 )}
               </span>
               <span className="catalog-rule">{t(`building.${id}.rule`)}</span>
+              {def.landmark && <LandmarkFacts game={game} id={id} />}
               {!affordable && <span className="catalog-warn">{t('catalog.cannotAfford')}</span>}
             </button>
           );

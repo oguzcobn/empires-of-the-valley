@@ -34,6 +34,7 @@ import {
   windowRows,
 } from './kit';
 import type { DrawCtx, RoofResult } from './kit';
+import { drawLandmark } from './landmarks';
 
 /**
  * Culture-aware building compositions. Each building type is assembled from the kit using its
@@ -595,6 +596,28 @@ function quarry(ctx: DrawCtx, look: BuildingLook, level: number): void {
   if (P(1.5, 0.5, 34)[1] < ctx.topY) ctx.topY = P(1.5, 0.5, 34)[1];
 }
 
+function terraceFarm(ctx: DrawCtx, look: BuildingLook, level: number, pal: SeasonPalette): void {
+  // three stepped strips held by dry-stone retaining walls, crops on each
+  for (let k = 0; k < 3; k++) {
+    const v0 = 0.08 + k * 0.62;
+    const v1 = v0 + 0.56;
+    const z = (2 - k) * 4;
+    const wall = faceL(0.06, 1.94, v1);
+    paintWall(ctx, wall, 0, z + 3, 'granite', 'grey');
+    poly(ctx, [P(0.06, v0, z + 3), P(1.94, v0, z + 3), P(1.94, v1, z + 3), P(0.06, v1, z + 3)], pal.furrow);
+    for (let v = v0 + 0.06; v < v1 - 0.08; v += 0.16) {
+      const zc = z + 3 + pal.cropHeight * 0.8;
+      if (pal.cropHeight > 0) {
+        poly(ctx, [P(0.12, v + 0.1, z + 3), P(1.88, v + 0.1, z + 3), P(1.88, v + 0.1, zc), P(0.12, v + 0.1, zc)], shade(pal.crop, 0.85));
+        poly(ctx, [P(0.12, v, zc), P(1.88, v, zc), P(1.88, v + 0.1, zc), P(0.12, v + 0.1, zc)], pal.crop);
+      } else if (pal.snow) {
+        poly(ctx, [P(0.12, v, z + 3), P(1.88, v, z + 3), P(1.88, v + 0.1, z + 3), P(0.12, v + 0.1, z + 3)], 0xf4f7f9, 0.9);
+      }
+    }
+  }
+  mass(ctx, look, 1.5, 0.1, 1.92, 0.5, { z0: 11, floors: 1, door: 'L', windows: 'small', spacing: 0.5, axis: 'v', balcony: false, chimneys: level >= 2 });
+}
+
 // ------------------------------------------------------------------ entry point
 
 export const FOOTPRINT_PX_TOP = 0;
@@ -638,6 +661,11 @@ export function drawStyledBuilding(
     case 'quarry':
       quarry(ctx, look, b.level);
       break;
+    case 'terrace_farm':
+      terraceFarm(ctx, look, b.level, pal);
+      break;
+    default:
+      drawLandmark(ctx, b.definitionId, pal);
   }
   void rnd;
   return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };

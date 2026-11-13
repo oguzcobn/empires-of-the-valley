@@ -3,15 +3,14 @@ import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import { calendar } from '../game/core/time';
 import type { GameState } from '../game/core/types';
-import { ROAD_COST_WOOD } from '../game/data/balance';
+import { ROAD_COSTS, TERRACE_COST } from '../game/data/balance';
 import { BUILDINGS } from '../game/data/buildings';
 import { computeAlerts } from '../game/systems/alerts';
-import { validatePlacement } from '../game/systems/commands';
+import { roadQuote, validateCommand, validatePlacement } from '../game/systems/commands';
 import { depositInRange, homeProvince, totalPopulation } from '../game/systems/economy';
 import { buildingById, tileAt } from '../game/systems/grid';
-import { checkRoadSite } from '../game/systems/placement';
 import { fmtAmount, fmtInt, t, tm } from '../i18n';
-import { Modal } from './common';
+import { Modal, costText } from './common';
 import { getRenderer } from './ValleyCanvas';
 
 const SEVERITY_MARK = { danger: '▲', warning: '◆', info: '●' } as const;
@@ -87,7 +86,8 @@ export function InfoStrip({ game }: { game: GameState }): ReactElement {
   const p = homeProvince(game);
   let toolText = t('info.select');
   if (tool.kind === 'build') toolText = t('info.build', { building: `@building.${tool.buildingId}.name` });
-  else if (tool.kind === 'road') toolText = t('info.road', { n: fmtAmount(ROAD_COST_WOOD) });
+  else if (tool.kind === 'road') toolText = t('info.road', { n: fmtAmount(ROAD_COSTS.dirt.wood ?? 0) });
+  else if (tool.kind === 'terrace') toolText = t('info.terrace', { cost: costText(TERRACE_COST) });
   else if (tool.kind === 'demolish') toolText = t('info.demolish');
 
   let tileText = '';
@@ -100,10 +100,12 @@ export function InfoStrip({ game }: { game: GameState }): ReactElement {
       : tile.road
         ? t('terrain.road')
         : t(`terrain.${tile.terrain}`);
+    if (tile.height > 0) tileText += ` · ${t('terrain.height', { n: tile.height })}`;
+    if (tile.road && tile.roadType !== 'dirt') tileText += ` · ${t(`road.${tile.roadType}`)}`;
     if (!b && tile.terrain === 'forest') tileText += ` · ${t('info.woodLeft', { n: fmtInt(tile.deposit) })}`;
     if (!b && tile.terrain === 'stone') tileText += ` · ${t('info.stoneLeft', { n: fmtInt(tile.deposit) })}`;
     if (tool.kind === 'build') {
-      const error = validatePlacement(game, tool.buildingId, hover.x, hover.y);
+      const error = validatePlacement(game, tool.buildingId, hover.x, hover.y, tool.style ?? game.culture, tool.look ?? null);
       verdict = error ? { ok: false, text: tm(error) } : { ok: true, text: t('info.canBuild') };
       const harvests = BUILDINGS[tool.buildingId].harvests;
       if (harvests) {
@@ -111,7 +113,13 @@ export function InfoStrip({ game }: { game: GameState }): ReactElement {
         tileText += ` · ${t(harvests.terrain === 'forest' ? 'why.forestLeft' : 'why.stoneLeft', { n: fmtInt(left), r: harvests.radius })}`;
       }
     } else if (tool.kind === 'road') {
-      const error = checkRoadSite(p, hover.x, hover.y);
+      const quote = roadQuote(game, hover.x, hover.y);
+      verdict =
+        'error' in quote
+          ? { ok: false, text: tm(quote.error) }
+          : { ok: true, text: t('info.roadTyped', { type: `@road.${quote.type}`, cost: costText(quote.cost) }) };
+    } else if (tool.kind === 'terrace') {
+      const error = validateCommand(game, { type: 'buildTerrace', x: hover.x, y: hover.y });
       verdict = error ? { ok: false, text: tm(error) } : { ok: true, text: t('info.canBuild') };
     }
   }

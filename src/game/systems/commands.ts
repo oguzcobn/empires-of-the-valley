@@ -13,17 +13,18 @@ import type {
   MessageRef,
   Province,
   ResourceId,
+  RoadType,
   TaxRate,
   TechId,
 } from '../core/types';
 import { CONDITION_MAX, DESIGNABLE, isPlayableStyle } from '../data/architecture';
-import { DEMOLISH_REFUND_PERMILLE, ROAD_COST_WOOD, ROAD_REFUND_WOOD, TRADE_OFFERS } from '../data/balance';
+import { DEMOLISH_REFUND_PERMILLE, ROAD_COSTS, TERRACE_COST, TRADE_OFFERS } from '../data/balance';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { homeProvince, idleWorkers, isBuilt, storageCaps, totalPopulation } from './economy';
 import { logEvent } from './events';
 import { buildingById, footprintTiles, idx, refreshConnectivity, tileAt, townCenter } from './grid';
-import { checkRoadSite, checkSite } from './placement';
+import { checkRoadSite, checkSite, roadTypeFor } from './placement';
 import { investedCost, levelCost, repairCost, restyleCost, sameLook } from './architecture';
 import { lookSchema } from '../save/lookSchema';
 import { evaluateQuests } from './quests';
@@ -43,6 +44,7 @@ export type Command =
   | { type: 'restoreBuilding'; instanceId: string }
   | { type: 'setCulture'; style: ArchitectureStyle }
   | { type: 'placeRoad'; x: number; y: number }
+  | { type: 'buildTerrace'; x: number; y: number }
   | { type: 'removeRoad'; x: number; y: number }
   | { type: 'cancelConstruction'; instanceId: string }
   | { type: 'upgradeBuilding'; instanceId: string }
@@ -114,11 +116,34 @@ export function validatePlacement(
   const def = BUILDINGS[buildingId];
   if (!def?.buildable) return { key: 'err.notBuildable' };
   const p = homeProvince(s);
+  if (def.landmark && p.buildings.some((b) => b.definitionId === buildingId)) return { key: 'err.landmarkExists' };
   return (
     styleError(buildingId, style, look) ??
+    requirementError(s, def.levels[0]!) ??
     checkSite(p, def, x, y) ??
     missingFor(p, levelCost(buildingId, 0, style, look))
   );
+}
+
+/** Road structure and price for a tile, or the reason it cannot hold a road. */
+export function roadQuote(s: GameState, x: number, y: number): { type: RoadType; cost: Cost } | { error: MessageRef } {
+  const p = homeProvince(s);
+  const site = checkRoadSite(p, x, y);
+  if (site) return { error: site };
+  const type = roadTypeFor(p, x, y)!;
+  if (type === 'tunnel' && !s.researchedTechIds.includes('masonry')) return { error: { key: 'err.needMasonryTunnel' } };
+  return { type, cost: ROAD_COSTS[type] };
+}
+
+/** Cost of every construction stage a landmark has paid so far (for cancellation refunds). */
+function paidLandmarkCost(b: BuildingInstance): Cost {
+  const spec = defOf(b).landmark!;
+  const total: Cost = {};
+  for (let i = 0; i < b.paidStages; i++) {
+    const cost = spec.stages[i]!.cost;
+    for (const id of COST_KEYS(cost)) total[id] = (total[id] ?? 0) + (cost[id] ?? 0);
+  }
+  return total;
 }
 
 /** Pure validation: returns the reason a command is refused, or null if it may run. */
@@ -146,8 +171,16 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
     }
     case 'setCulture':
       return isPlayableStyle(cmd.style) ? null : { key: 'err.styleUnavailable' };
-    case 'placeRoad':
-      return checkRoadSite(p, cmd.x, cmd.y) ?? missingFor(p, { wood: ROAD_COST_WOOD });
+    case 'placeRoad': {
+      const quote = roadQuote(s, cmd.x, cmd.y);
+      return 'error' in quote ? quote.error : missingFor(p, quote.cost);
+    }
+    case 'buildTerrace': {
+      const t = tileAt(p, cmd.x, cmd.y);
+      if (!t) return { key: 'err.outOfBounds' };
+      if (t.terrain !== 'hill' || t.road || t.buildingId) return { key: 'err.notTerraceable' };
+      return missingFor(p, TERRACE_COST);
+    }
     case 'removeRoad':
       return tileAt(p, cmd.x, cmd.y)?.road ? null : { key: 'err.noRoadHere' };
     case 'cancelConstruction': {
@@ -179,8 +212,9 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
     case 'assignWorkers': {
       const b = buildingById(p, cmd.instanceId);
       if (!b) return { key: 'err.noBuilding' };
-      if (!isBuilt(b)) return { key: 'err.busy' };
-      const slots = specOf(b).workerSlots;
+      const builders = b.state === 'construction' ? defOf(b).landmark?.builders : undefined;
+      if (!isBuilt(b) && builders === undefined) return { key: 'err.busy' };
+      const slots = builders ?? specOf(b).workerSlots;
       if (!Number.isInteger(cmd.workers) || cmd.workers < 0 || cmd.workers > slots)
         return { key: 'err.workerSlots', params: { n: slots } };
       if (cmd.workers - b.workers > idleWorkers(p)) return { key: 'err.noIdleWorkers' };
@@ -247,21 +281,35 @@ function applyCommand(s: GameState, cmd: Command): void {
         style,
         look: look ? { ...look } : null,
         condition: CONDITION_MAX,
+        paidStages: def.landmark ? 1 : 0,
       };
       p.buildings.push(b);
       for (const [x, y] of footprintTiles(def, cmd.x, cmd.y)) p.tiles[idx(p, x, y)]!.buildingId = b.id;
       break;
     }
-    case 'placeRoad':
-      pay(p, { wood: ROAD_COST_WOOD });
-      p.tiles[idx(p, cmd.x, cmd.y)]!.road = true;
+    case 'placeRoad': {
+      const quote = roadQuote(s, cmd.x, cmd.y) as { type: RoadType; cost: Cost };
+      pay(p, quote.cost);
+      const t = p.tiles[idx(p, cmd.x, cmd.y)]!;
+      t.road = true;
+      t.roadType = quote.type;
       refreshConnectivity(p);
       break;
-    case 'removeRoad':
-      p.tiles[idx(p, cmd.x, cmd.y)]!.road = false;
-      refund(s, p, { wood: ROAD_REFUND_WOOD });
+    }
+    case 'removeRoad': {
+      const t = p.tiles[idx(p, cmd.x, cmd.y)]!;
+      t.road = false;
+      refund(s, p, ROAD_COSTS[t.roadType], DEMOLISH_REFUND_PERMILLE);
+      t.roadType = 'dirt';
       refreshConnectivity(p);
       break;
+    }
+    case 'buildTerrace': {
+      pay(p, TERRACE_COST);
+      p.tiles[idx(p, cmd.x, cmd.y)]!.terrain = 'terrace';
+      logEvent(s, 'success', 'event.terraced', {}, { x: cmd.x, y: cmd.y });
+      break;
+    }
     case 'cancelConstruction': {
       const b = buildingById(p, cmd.instanceId)!;
       if (b.state === 'upgrading') {
@@ -269,7 +317,7 @@ function applyCommand(s: GameState, cmd: Command): void {
         b.state = 'active';
         b.progressTicks = 0;
       } else {
-        refund(s, p, levelCost(b.definitionId, 0, b.style, b.look));
+        refund(s, p, defOf(b).landmark ? paidLandmarkCost(b) : levelCost(b.definitionId, 0, b.style, b.look));
         for (const [x, y] of footprintTiles(defOf(b), b.x, b.y)) p.tiles[idx(p, x, y)]!.buildingId = null;
         p.buildings.splice(p.buildings.indexOf(b), 1);
       }

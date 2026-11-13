@@ -69,14 +69,15 @@ test('phase 1: build, staff, produce, save, reload and continue', async ({ page 
   // invalid placement: on the town center and on water
   await page.keyboard.press('b');
   await page.getByTestId('build-hut').click();
-  await clickTile(page, 11, 11);
+  await clickTile(page, 15, 15);
   await expect(page.locator('.toast', { hasText: 'Burada başka bir yapı var.' })).toBeVisible();
   const water = await page.evaluate(() => {
     const g = (window as any).__EOV__.store.getState().game; // eslint-disable-line @typescript-eslint/no-explicit-any
-    const i = g.provinces[g.homeProvinceId].tiles.findIndex(
-      (t: { terrain: string }) => t.terrain === 'water',
+    const prov = g.provinces[g.homeProvinceId];
+    const i = prov.tiles.findIndex(
+      (t: { terrain: string }, k: number) => t.terrain === 'water' && Math.floor(k / prov.width) >= 6,
     );
-    return [i % 24, Math.floor(i / 24)];
+    return [i % prov.width, Math.floor(i / prov.width)];
   });
   await clickTile(page, water[0]!, water[1]!);
   await expect(page.locator('.toast', { hasText: 'Suyun üstüne inşa edilemez.' })).toBeVisible();

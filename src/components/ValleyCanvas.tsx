@@ -118,6 +118,8 @@ export function ValleyCanvas(): ReactElement {
             s.toggleBuild(false);
             s.select(placed.id);
           }
+        } else if (tool.kind === 'terrace') {
+          s.dispatch({ type: 'buildTerrace', x, y });
         } else if (tool.kind === 'demolish') {
           if (buildingId) requestDemolish(buildingId);
           else if (tileAt(homeProvince(s.game), x, y)?.road) s.dispatch({ type: 'removeRoad', x, y });

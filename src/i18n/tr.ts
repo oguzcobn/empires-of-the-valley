@@ -4,6 +4,7 @@
  * `{ad}` yer tutucuları parametrelerle doldurulur.
  */
 import { trArch } from './tr-arch';
+import { trTerrain } from './tr-terrain';
 
 export const tr = {
   // ------------------------------------------------------------ genel
@@ -32,7 +33,6 @@ export const tr = {
   'terrain.grass': 'Çayır',
   'terrain.fertile': 'Verimli toprak',
   'terrain.forest': 'Orman',
-  'terrain.water': 'Su',
   'terrain.stone': 'Taş yatağı',
   'terrain.sand': 'Kumluk',
   'terrain.road': 'Yol',
@@ -600,6 +600,7 @@ export const tr = {
     '2. bölüm henüz oynanamaz; sonraki aşamalarda eklenecek. O zamana dek vadini büyütmeye devam edebilirsin.',
   'chapterEnd.continue': 'Vadide kalmaya devam et',
   ...trArch,
+  ...trTerrain,
 } as const;
 
 export type TKey = keyof typeof tr;

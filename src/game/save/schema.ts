@@ -5,6 +5,7 @@ import { QUESTS } from '../data/quests';
 import { TECH_IDS } from '../data/technologies';
 import { ALL_STYLES, CONDITION_MAX } from '../data/architecture';
 import { lookSchema } from './lookSchema';
+import { MAX_HEIGHT } from '../data/balance';
 
 const int = z.number().int();
 const nat = int.nonnegative();
@@ -19,11 +20,13 @@ const style = z.enum(ALL_STYLES as unknown as [string, ...string[]]);
 
 const tile = z
   .object({
-    terrain: z.enum(['grass', 'fertile', 'forest', 'water', 'stone', 'sand']),
+    terrain: z.enum(['grass', 'fertile', 'forest', 'water', 'stone', 'sand', 'hill', 'rocky', 'mountain', 'terrace', 'lake']),
     deposit: nat,
     road: z.boolean(),
+    roadType: z.enum(['dirt', 'bridge', 'stairs', 'mountain', 'tunnel']),
     buildingId: shortText.nullable(),
     variant: nat.max(3),
+    height: nat.max(MAX_HEIGHT),
   })
   .strict();
 
@@ -43,6 +46,7 @@ const building = z
     style,
     look: lookSchema.nullable(),
     condition: nat.max(CONDITION_MAX),
+    paidStages: nat.max(8),
   })
   .strict();
 

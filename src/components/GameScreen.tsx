@@ -60,6 +60,7 @@ function useShortcuts(): void {
       else if (key === '3') s.dispatch({ type: 'setGameSpeed', speed: 4 });
       else if (key === 'b') s.toggleBuild();
       else if (key === 'r') s.setTool(s.tool.kind === 'road' ? { kind: 'select' } : { kind: 'road' });
+      else if (key === 't') s.setTool(s.tool.kind === 'terrace' ? { kind: 'select' } : { kind: 'terrace' });
       else if (key === 'x') s.setTool(s.tool.kind === 'demolish' ? { kind: 'select' } : { kind: 'demolish' });
       else if (key === 'm') s.openPanel('world');
       else if (key === '+' || key === '=') getRenderer()?.zoomBy(1.2);

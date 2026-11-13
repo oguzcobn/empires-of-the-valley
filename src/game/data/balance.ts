@@ -1,11 +1,29 @@
 import { u } from '../core/fixed';
-import type { ResourceMap, TaxRate, TradeOffer } from '../core/types';
+import type { Cost, ResourceMap, RoadType, TaxRate, TradeOffer } from '../core/types';
 
 /** Phase 1 balance sheet. Values are provisional and exercised by src/tests/balance.test.ts. */
-export const SCHEMA_VERSION = 2;
-export const GAME_VERSION = '0.2.0';
+export const SCHEMA_VERSION = 3;
+export const GAME_VERSION = '0.3.0';
 
-export const MAP_SIZE = 24;
+/** The valley (core) is 24x24; since the terrain update it sits inside a 32x32 map ringed by
+ * highlands at the back and a lake shore at the front. */
+export const MAP_SIZE = 32;
+export const CORE_SIZE = 24;
+export const CORE_OFFSET = 4;
+export const MAX_HEIGHT = 4;
+/** Screen pixels per elevation level. */
+export const HEIGHT_PX = 12;
+
+/** Road structures: the road tool picks the type from the ground it crosses. */
+export const ROAD_COSTS: Record<RoadType, Cost> = {
+  dirt: { wood: 2000 },
+  stairs: { stone: 3000, wood: 1000 },
+  mountain: { stone: 3000 },
+  bridge: { wood: 5000, stone: 4000 },
+  tunnel: { stone: 12000, wood: 6000, gold: 5000 },
+};
+/** Retaining wall that turns a hill tile into a flat, farmable terrace. */
+export const TERRACE_COST: Cost = { stone: 6000, wood: 2000 };
 export const FOOD_PER_CITIZEN_PER_DAY = u(0.25);
 export const TOOL_WEAR_PER_WORKER_PER_DAY = u(0.03);
 export const NO_TOOLS_OUTPUT_PERMILLE = 500;

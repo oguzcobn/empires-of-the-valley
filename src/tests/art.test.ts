@@ -24,15 +24,23 @@ describe('procedural architecture art', () => {
           expect(ops, `${style} ${id} ${level}`).toBeGreaterThan(40);
           const [w, h] = BUILDINGS[id].footprint;
           expect(info.height + (w + h) * 8, `${style} ${id} ${level}`).toBeGreaterThan(12);
-          if (id !== 'farm' && id !== 'quarry') expect(info.lights.length, `${style} ${id}`).toBeGreaterThan(0);
+          if (!['farm', 'quarry', 'terrace_farm'].includes(id) && !BUILDINGS[id].landmark) expect(info.lights.length, `${style} ${id}`).toBeGreaterThan(0);
         }
   });
 
   it('cultures are geometrically different, not recoloured copies', () => {
-    for (const id of BUILDING_IDS) {
+    for (const id of BUILDING_IDS.filter((x) => !BUILDINGS[x].landmark)) {
       const a = draw(id, 'scottish', 1, 2);
       const b = draw(id, 'turkish', 1, 2);
       expect(a.ops === b.ops && a.info.height === b.info.height, id).toBe(false);
+    }
+  });
+
+  it('historic landmarks are large, detailed sprites', () => {
+    for (const id of BUILDING_IDS.filter((x) => BUILDINGS[x].landmark)) {
+      const { info, ops } = draw(id, BUILDINGS[id].landmark!.culture as 'scottish' | 'turkish', 1, 2);
+      expect(ops, id).toBeGreaterThan(30);
+      expect(info.height, id).toBeGreaterThan(20);
     }
   });
 

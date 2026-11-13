@@ -198,7 +198,7 @@ const look = (l: Partial<BuildingLook> & Pick<BuildingLook, 'wall' | 'roofMateri
   ...l,
 });
 
-type LookTable = Record<BuildingId, readonly BuildingLook[]>;
+type LookTable = Partial<Record<BuildingId, readonly BuildingLook[]>>;
 
 /** Default looks per building and level (index = level - 1). Last entry repeats for higher levels. */
 export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
@@ -361,7 +361,7 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
 
 export function defaultLook(style: ArchitectureStyle, id: BuildingId, level: number): BuildingLook {
   const table = (DEFAULT_LOOKS[style] ?? DEFAULT_LOOKS[LEGACY_STYLE])!;
-  const levels = table[id];
+  const levels = table[id] ?? table.farm!;
   return levels[Math.max(0, Math.min(levels.length - 1, level - 1))]!;
 }
 

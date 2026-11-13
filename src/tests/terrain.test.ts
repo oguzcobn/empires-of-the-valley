@@ -16,7 +16,7 @@ describe('terrain generation', () => {
       const state = createNewGame({ seed, mode: 'campaign' });
       expectValid(state);
       const p = home(state);
-      expect(p.tiles).toHaveLength(24 * 24);
+      expect(p.tiles).toHaveLength(32 * 32);
       for (const id of ['lumber_camp', 'farm', 'quarry', 'school', 'granary', 'hut'] as const) {
         expect(findSite(p, BUILDINGS[id]), `seed ${seed} ${id}`).not.toBeNull();
       }

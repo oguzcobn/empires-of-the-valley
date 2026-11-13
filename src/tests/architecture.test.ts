@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { BuildingLook, GameState } from '../game/core/types';
 import { CONDITION_MAX, LEGACY_STYLE, defaultLook } from '../game/data/architecture';
-import { SCHEMA_VERSION } from '../game/data/balance';
+import { CORE_OFFSET, SCHEMA_VERSION } from '../game/data/balance';
 import { migrate } from '../game/save/migrations';
 import { createSaveFile, loadSaveFile, parseSaveText } from '../game/save/serialize';
 import {
@@ -46,9 +46,18 @@ describe('legacy saves (schema v1)', () => {
       const after = home(s);
       expect(after.buildings).toHaveLength(before.buildings.length);
       after.buildings.forEach((b, i) => {
-        expect(b).toMatchObject(before.buildings[i]!);
-        expect(b).toMatchObject({ style: LEGACY_STYLE, look: null, condition: CONDITION_MAX });
+        const old = before.buildings[i]! as { x: number; y: number };
+        // the 24x24 valley now sits in the centre of the 32x32 map: same layout, shifted
+        expect(b).toMatchObject({ ...old, x: old.x + CORE_OFFSET, y: old.y + CORE_OFFSET });
+        expect(b).toMatchObject({ style: LEGACY_STYLE, look: null, condition: CONDITION_MAX, paidStages: 0 });
       });
+      const oldTiles = (raw.state.provinces as Record<string, { tiles: Record<string, unknown>[] }>)[s.homeProvinceId]!.tiles;
+      for (let y = 0; y < 24; y++)
+        for (let x = 0; x < 24; x++) {
+          const t = after.tiles[(y + CORE_OFFSET) * after.width + x + CORE_OFFSET]!;
+          expect(t).toMatchObject({ ...oldTiles[y * 24 + x], height: 0 });
+        }
+      expect(after.buildings.every((b) => b.connected === (before.buildings.find((o) => o.id === b.id) as { connected: boolean }).connected)).toBe(true);
       expect(after.stocks).toEqual(before.stocks);
       expect(s.tick).toBe(raw.state.tick);
       expect(s.questProgress).toEqual(raw.state.questProgress);

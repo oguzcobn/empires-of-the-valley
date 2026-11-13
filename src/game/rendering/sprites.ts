@@ -1,5 +1,5 @@
 import type { Graphics } from 'pixi.js';
-import type { TerrainId } from '../core/types';
+import type { RoadType, TerrainId } from '../core/types';
 import { COLORS } from './palette';
 import type { SeasonPalette } from './palette';
 import { shade } from './iso';
@@ -90,7 +90,24 @@ export function drawRocks(g: Graphics, variant: number, rich: boolean): void {
   rock(-1, 6, 6, 5, 0xb5bac0);
 }
 
-/** One ground tile: diamond with seasonal colour and per-terrain texture. */
+/** Neighbour heights needed to draw a tile's visible cliff faces (front-left, front-right). */
+export interface TileContext {
+  height: number;
+  /** Height of the tile in front-left (x, y+1); -1 = map edge. */
+  frontLeft: number;
+  /** Height of the tile in front-right (x+1, y); -1 = map edge. */
+  frontRight: number;
+}
+
+const LEVEL = 12;
+
+function cliffColor(terrain: TerrainId): number {
+  if (terrain === 'terrace') return 0xa9a497;
+  if (terrain === 'rocky' || terrain === 'mountain' || terrain === 'stone') return 0x8a8579;
+  return 0x8a6a45;
+}
+
+/** One ground tile at its elevation: top diamond with seasonal colour and texture, cliffs, road. */
 export function drawGroundTile(
   g: Graphics,
   x: number,
@@ -99,25 +116,61 @@ export function drawGroundTile(
   variant: number,
   road: boolean,
   pal: SeasonPalette,
+  ctx: TileContext = { height: 0, frontLeft: 0, frontRight: 0 },
+  roadType: RoadType = 'dirt',
+  detail = 2,
 ): void {
+  const h = ctx.height;
+  const z = h * LEVEL;
   const ox = (x - y) * 32;
-  const oy = (x + y) * 16;
+  const oy = (x + y) * 16 - z;
+  // cliffs first (they hang below this tile's top)
+  const edge = (to: number): number => (to < 0 ? -20 / LEVEL : to);
+  const fl = edge(ctx.frontLeft);
+  if (fl < h) {
+    const zb = fl * LEVEL;
+    const c = cliffColor(terrain);
+    const pts = [ox - 32, oy + 16, ox, oy + 32, ox, oy + 32 + (z - zb), ox - 32, oy + 16 + (z - zb)];
+    g.poly(pts).fill(c);
+    if (detail >= 1) cliffTexture(g, ox - 32, oy + 16, ox, oy + 32, z - zb, terrain, c);
+  }
+  const fr = edge(ctx.frontRight);
+  if (fr < h) {
+    const zb = fr * LEVEL;
+    const c = shade(cliffColor(terrain), 0.78);
+    const pts = [ox, oy + 32, ox + 32, oy + 16, ox + 32, oy + 16 + (z - zb), ox, oy + 32 + (z - zb)];
+    g.poly(pts).fill(c);
+    if (detail >= 1) cliffTexture(g, ox, oy + 32, ox + 32, oy + 16, z - zb, terrain, c);
+  }
   const diamond = [ox, oy, ox + 32, oy + 16, ox, oy + 32, ox - 32, oy + 16];
   const grass = pal.grass[(variant + ((x + y) & 1) * 2) % pal.grass.length]!;
   let color = grass;
   if (terrain === 'fertile') color = pal.fertile;
   else if (terrain === 'sand') color = pal.sand;
   else if (terrain === 'water') color = pal.water;
+  else if (terrain === 'lake') color = shade(pal.water, 0.9);
   else if (terrain === 'stone') color = shade(grass, 0.94);
-  else if (terrain === 'forest') color = shade(grass, 0.9);
+  else if (terrain === 'forest') color = shade(grass, 0.9 - h * 0.02);
+  else if (terrain === 'hill') color = shade(grass, 0.97 - h * 0.03);
+  else if (terrain === 'rocky') color = pal.snow ? 0xd9dde0 : 0x9d988c;
+  else if (terrain === 'mountain') color = pal.snow || h >= 4 ? 0xe7ebee : 0x8b867b;
+  else if (terrain === 'terrace') color = pal.snow ? 0xe4e8ea : shade(pal.fertile, 1.08);
   g.poly(diamond).fill(color);
-  if (terrain === 'fertile') {
+  if (terrain === 'fertile' || terrain === 'terrace') {
     for (let i = 1; i <= 3; i++) {
       const t = i / 4;
       g.moveTo(ox - 32 * t, oy + 16 * t)
         .lineTo(ox + 32 * (1 - t), oy + 16 * (1 + t))
-        .stroke({ color: pal.furrow, width: 1.5, alpha: 0.7 });
+        .stroke({ color: terrain === 'terrace' ? shade(pal.grass[0]!, 0.9) : pal.furrow, width: 1.5, alpha: 0.7 });
     }
+  } else if ((terrain === 'rocky' || terrain === 'mountain') && detail >= 1) {
+    const rock = terrain === 'mountain' ? 0x6f6a60 : 0x7d786d;
+    g.poly([ox - 10, oy + 18, ox - 4, oy + 12, ox + 2, oy + 17]).fill(pal.snow ? 0xc9cfd3 : rock);
+    g.poly([ox + 4, oy + 22, ox + 10, oy + 15, ox + 15, oy + 21]).fill(pal.snow ? 0xc0c7cc : shade(rock, 0.9));
+    if (terrain === 'mountain' && h >= 3 && !pal.snow) g.poly([ox - 6, oy + 12, ox, oy + 6, ox + 6, oy + 12]).fill(0xf1f4f6);
+  } else if (terrain === 'hill' && !pal.snow && detail >= 1) {
+    g.ellipse(ox - 6, oy + 18, 7, 2.5).fill({ color: shade(grass, 1.08), alpha: 0.7 });
+    g.ellipse(ox + 8, oy + 14, 6, 2).fill({ color: shade(grass, 0.9), alpha: 0.7 });
   } else if (terrain === 'grass' && variant === 0 && !pal.snow) {
     g.poly([ox - 6, oy + 18, ox - 4, oy + 13, ox - 2, oy + 18]).fill(shade(grass, 0.86));
     g.poly([ox + 5, oy + 22, ox + 7, oy + 17, ox + 9, oy + 22]).fill(shade(grass, 0.86));
@@ -125,18 +178,67 @@ export function drawGroundTile(
     g.circle(ox + 8, oy + 12, 1.6).fill(0xfff4b8);
     g.circle(ox - 9, oy + 19, 1.6).fill(0xf7c6d9);
   }
-  if (road) {
-    const inset = 0.12;
-    g.poly([
-      ox,
-      oy + 32 * inset,
-      ox + 32 * (1 - inset),
-      oy + 16,
-      ox,
-      oy + 32 * (1 - inset),
-      ox - 32 * (1 - inset),
-      oy + 16,
-    ]).fill(pal.snow ? 0xd8c9a8 : COLORS.road);
+  if (road) drawRoad(g, ox, oy, roadType, pal, detail);
+}
+
+function cliffTexture(g: Graphics, ax: number, ay: number, bx: number, by: number, drop: number, terrain: TerrainId, c: number): void {
+  if (terrain === 'terrace') {
+    // dry-stone retaining wall: courses of blocks
+    for (let k = 3; k < drop; k += 3.5) {
+      g.moveTo(ax, ay + k).lineTo(bx, by + k).stroke({ color: shade(c, 0.7), width: 0.7, alpha: 0.8 });
+      for (let j = (k / 3.5) % 2 ? 0.25 : 0.12; j < 1; j += 0.25) {
+        const x = ax + (bx - ax) * j;
+        const y = ay + (by - ay) * j + k;
+        g.moveTo(x, y).lineTo(x, y - 3.5).stroke({ color: shade(c, 0.7), width: 0.6, alpha: 0.7 });
+      }
+    }
+    g.moveTo(ax, ay + 0.8).lineTo(bx, by + 0.8).stroke({ color: shade(c, 1.2), width: 1.6 });
+  } else if (terrain === 'rocky' || terrain === 'mountain' || terrain === 'stone') {
+    for (let k = 4; k < drop; k += 5) {
+      const w = (k * 7) % 3;
+      g.moveTo(ax, ay + k + w).lineTo((ax + bx) / 2, (ay + by) / 2 + k).lineTo(bx, by + k + 1).stroke({ color: shade(c, 0.72), width: 0.8, alpha: 0.7 });
+    }
+  } else {
+    g.moveTo(ax, ay + 1).lineTo(bx, by + 1).stroke({ color: 0x6c9a45, width: 2, alpha: 0.9 });
+    for (let k = 6; k < drop; k += 6)
+      g.moveTo(ax, ay + k).lineTo(bx, by + k).stroke({ color: shade(c, 0.82), width: 0.7, alpha: 0.6 });
+  }
+}
+
+function drawRoad(g: Graphics, ox: number, oy: number, type: RoadType, pal: SeasonPalette, detail: number): void {
+  const inset = 0.12;
+  const d = [ox, oy + 32 * inset, ox + 32 * (1 - inset), oy + 16, ox, oy + 32 * (1 - inset), ox - 32 * (1 - inset), oy + 16];
+  if (type === 'bridge') {
+    // stone piers in the water and a timber deck with rails
+    g.rect(ox - 14, oy + 16, 6, 9).fill(0x9a958a);
+    g.rect(ox + 8, oy + 16, 6, 9).fill(0x8a857a);
+    g.poly(d).fill(0xa8794a);
+    if (detail >= 1)
+      for (let i = 1; i < 6; i++) {
+        const t = i / 6;
+        g.moveTo(ox - 28 * (1 - t), oy + 16 - 14 * (1 - t) + 14 * t * 0)
+          .lineTo(ox + 28 * t, oy + 16 + 14 * t - 14)
+          .stroke({ color: 0x7d5532, width: 0.6, alpha: 0.6 });
+      }
+    g.moveTo(ox - 28, oy + 14).lineTo(ox, oy).stroke({ color: 0x5a3b22, width: 1.4 });
+    g.moveTo(ox, oy + 30).lineTo(ox + 28, oy + 16).stroke({ color: 0x5a3b22, width: 1.4 });
+    return;
+  }
+  const fill =
+    type === 'stairs' ? 0xc2bcae : type === 'mountain' ? 0xb3ad9f : type === 'tunnel' ? 0x6a655c : pal.snow ? 0xd8c9a8 : COLORS.road;
+  g.poly(d).fill(fill);
+  if (type === 'stairs') {
+    for (let i = 1; i < 5; i++) {
+      const t = i / 5;
+      g.moveTo(ox - 28 + 28 * t, oy + 16 - 14 * t).lineTo(ox + 28 * t, oy + 30 - 14 * t).stroke({ color: 0x8f897d, width: 1.2 });
+    }
+  } else if (type === 'mountain') {
+    for (const [dx, dy] of [[-12, 15], [10, 19], [2, 9], [-4, 23]] as const) g.circle(ox + dx, oy + dy, 1.6).fill(0x8a8579);
+  } else if (type === 'tunnel') {
+    // portal arch in the rock
+    g.poly([ox - 12, oy + 22, ox - 12, oy + 12, ox - 6, oy + 6, ox + 2, oy + 6, ox + 6, oy + 12, ox + 6, oy + 22]).fill(0x2a2622);
+    g.moveTo(ox - 14, oy + 22).lineTo(ox - 14, oy + 11).lineTo(ox - 7, oy + 4).lineTo(ox + 3, oy + 4).lineTo(ox + 8, oy + 11).lineTo(ox + 8, oy + 22).stroke({ color: 0xb9b2a4, width: 2 });
+  } else {
     g.circle(ox - 8, oy + 15, 1.5).fill(COLORS.roadEdge);
     g.circle(ox + 9, oy + 18, 1.5).fill(COLORS.roadEdge);
     g.circle(ox + 1, oy + 11, 1.2).fill(COLORS.roadEdge);

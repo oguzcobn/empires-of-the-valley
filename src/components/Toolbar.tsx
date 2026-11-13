@@ -59,6 +59,16 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           {t('tool.road')}
         </button>
         <button
+          className={`btn tool ${tool.kind === 'terrace' ? 'active' : ''}`}
+          aria-pressed={tool.kind === 'terrace'}
+          onClick={() => setTool(tool.kind === 'terrace' ? { kind: 'select' } : { kind: 'terrace' })}
+          title={`${t('tool.terrace')} (T)`}
+          data-testid="tool-terrace"
+        >
+          <span className="glyph">≋</span>
+          {t('tool.terrace')}
+        </button>
+        <button
           className={`btn tool ${tool.kind === 'demolish' ? 'active danger' : ''}`}
           aria-pressed={tool.kind === 'demolish'}
           onClick={() => setTool(tool.kind === 'demolish' ? { kind: 'select' } : { kind: 'demolish' })}
