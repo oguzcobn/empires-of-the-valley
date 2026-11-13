@@ -113,24 +113,27 @@ export function evaluateQuests(s: GameState): void {
     changed = false;
     for (const q of QUESTS) {
       const progress = s.questProgress[q.id];
-      if (!progress) continue;
+      // Upgrade older saves in place when a newly introduced quest is encountered.
+      const entry = progress ?? (s.questProgress[q.id] = {
+        status: 'locked', counters: q.objectives.map(() => 0), rewardGranted: false, completedTick: null,
+      });
       if (
-        progress.status === 'locked' &&
+        entry.status === 'locked' &&
         q.prerequisites.every((id) => s.questProgress[id]?.status === 'completed')
       ) {
-        progress.status = 'active';
+        entry.status = 'active';
         changed = true;
       }
-      if (progress.status !== 'active') continue;
+      if (entry.status !== 'active') continue;
       const done = q.objectives.every((o, i) => {
-        const { current, target } = objectiveProgress(s, o, progress.counters[i]!);
+        const { current, target } = objectiveProgress(s, o, entry.counters[i] ?? 0);
         return current >= target;
       });
       if (!done) continue;
-      progress.status = 'completed';
-      progress.completedTick = s.tick;
-      if (!progress.rewardGranted) {
-        progress.rewardGranted = true;
+      entry.status = 'completed';
+      entry.completedTick = s.tick;
+      if (!entry.rewardGranted) {
+        entry.rewardGranted = true;
         grantRewards(s, q.id);
       }
       logEvent(s, 'quest', 'event.questComplete', { title: `@quest.${q.id}.title` });
