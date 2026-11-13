@@ -16,10 +16,13 @@ export function weatherFor(seed: number, day: number, season: Season): Weather {
   return r < 0.1 ? 'rain' : r < 0.2 ? 'overcast' : 'clear';
 }
 
-/** 0 = full daylight, 1 = deep night, smooth dusk and dawn. */
+/** 0 = daylight, 1 = darkness. Always uses the SAME hour as the HUD. */
 export function nightFactor(hour: number): number {
-  if (hour >= 7 && hour <= 18) return 0;
-  if (hour > 18 && hour < 21) return (hour - 18) / 3;
-  if (hour >= 5 && hour < 7) return (7 - hour) / 2;
+  const h = ((hour % 24) + 24) % 24;
+  // Sunrise starts at 05:00, daylight is established by 06:00.
+  if (h >= 5 && h < 6) return 0.65 * (6 - h);
+  if (h >= 6 && h < 19) return 0;
+  // Sunset starts exactly at 19:00, true night by 20:00.
+  if (h >= 19 && h < 20) return 0.32 + 0.68 * (h - 19);
   return 1;
 }
