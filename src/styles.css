@@ -1553,3 +1553,33 @@ fieldset.field.plain legend {
   margin: 6px 0;
   background: #fffaf0;
 }
+
+
+/* City campaign selector — perspective animation of original isometric landmark art. */
+.city-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.city-card { position: relative; isolation: isolate; min-height: 15rem; overflow: hidden; gap: 0.35rem; }
+.city-card h4 { font-size: 1.2rem; margin: 0.25rem 0; }
+.city-card small { display: block; font-size: 0.73rem; }
+.city-landmark { width: 100%; max-width: 16rem; height: 9rem; object-fit: contain; margin: 0 auto;
+  filter: drop-shadow(0 0.5rem 0.35rem rgba(20,30,24,.22));
+  transform: perspective(450px) rotateY(-7deg) rotateX(4deg);
+  transform-origin: center bottom;
+  transition: transform .6s cubic-bezier(.2,.8,.2,1), filter .6s ease;
+}
+.city-card:hover .city-landmark, .city-card:focus-visible .city-landmark,
+.city-card[aria-pressed=true] .city-landmark {
+  transform: perspective(450px) rotateY(9deg) rotateX(-3deg) scale(1.1) translateY(-3px);
+  filter: drop-shadow(0 0.8rem 0.7rem rgba(23,38,29,.35));
+}
+.city-card[aria-pressed=true] { border-color: #d48930; box-shadow: inset 0 0 0 2px #d48930; }
+.city-edinburgh { background: linear-gradient(165deg,#e7eff8,#f9f6ee 65%); }
+.city-trabzon { background: linear-gradient(165deg,#e7f5ed,#fff8e9 65%); }
+.citizen-roster { min-width: 0; }
+.citizens-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(9rem,1fr)); gap: 0.45rem; max-height: 19rem; overflow-y: auto; }
+.citizen-row { display: flex; gap: 0.5rem; align-items: center; background: #f6f1e7;
+  padding: 0.4rem 0.55rem; border: 1px solid #e4d8bf; border-radius: 0.55rem; }
+.citizen-row span:last-child { min-width:0; display: grid; }
+.citizen-row strong { font-size: .78rem; }
+.citizen-row small { font-size: .65rem; color: #806d56; }
+@media (prefers-reduced-motion:reduce) { .city-landmark { transition:none; transform:none!important; } }
+@media (max-width: 620px) { .city-pick { grid-template-columns: 1fr; } .city-landmark { height: 6.5rem; } }
