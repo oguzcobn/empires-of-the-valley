@@ -1145,9 +1145,26 @@ export class ValleyRenderer {
         this.walkers.splice(i, 1);
       }
     }
+    // Simulated match days attract a small crowd in local or visiting kit.
+    // Match days are fictional world events, not imported real match schedules.
+    const match = matchDayFor(view.game);
+    const key = match ? `${match.team}:${match.day}` : '';
+    if (this.activeFanMatch !== key) {
+      for (const fan of this.matchFans) fan.c.destroy({ children: true });
+      this.matchFans = [];
+      this.activeFanMatch = key;
+      if (match) {
+        const fans = Math.min(12, Math.max(3, Math.floor(totalPopulation(p) / 4)));
+        for (let i = 0; i < fans; i++) {
+          const fan = this.spawnWalker(false, match, i);
+          if (fan) this.matchFans.push(fan);
+        }
+      }
+    }
     const isRoad = (x: number, y: number): boolean => !!tileAt(p, x, y)?.road;
-    const step = motion ? (dt / 1000) * (SPEED_FACTOR[view.game.speed] ?? 0) : 0;
-    for (const w of this.walkers) {
+    // Movement animation stays comfortable even at 4x world-simulation speed.
+    const step = motion ? (dt / 1000) * Math.min(1.35, SPEED_FACTOR[view.game.speed] ?? 0) : 0;
+    for (const w of [...this.walkers, ...this.matchFans]) {
       if (!isRoad(w.to[0], w.to[1]) && this.roadTiles.length) {
         const r = this.roadTiles[Math.floor(Math.random() * this.roadTiles.length)]!;
         w.from = [r[0], r[1]];
@@ -1167,7 +1184,9 @@ export class ValleyRenderer {
           .map(([dx, dy]) => [w.to[0] + dx, w.to[1] + dy] as [number, number])
           .filter(([x, y]) => isRoad(x, y));
         const forward = options.filter(([x, y]) => x !== w.from[0] || y !== w.from[1]);
-        const pool = forward.length ? forward : options;
+        const eligible = w.fan
+          ? forward.filter(([x, y]) => tileAt(p, x, y)?.paved) : forward;
+        const pool = eligible.length ? eligible : forward.length ? forward : options;
         w.prev = w.from;
         w.from = w.to;
         if (pool.length) w.to = pool[Math.floor(Math.random() * pool.length)]!;
@@ -1177,9 +1196,99 @@ export class ValleyRenderer {
       const fy = w.from[1] + (w.to[1] - w.from[1]) * w.t + 0.5;
       const bob = step > 0 && !w.cart ? Math.sin(this.time / 90 + w.phase) * 0.9 : 0;
       const lift = this.hz(p, w.from[0], w.from[1]) * (1 - w.t) + this.hz(p, w.to[0], w.to[1]) * w.t;
-      w.c.position.set(isoX(fx, fy) + w.side, isoY(fx, fy) + bob + w.side * 0.25 - lift);
-      w.c.zIndex = fx + fy + 0.01;
-      if (w.cart) w.c.scale.x = w.to[0] - w.from[0] - (w.to[1] - w.from[1]) < 0 ? -1 : 1;
+      const dx = w.to[0] - w.from[0];
+      const dy = w.to[1] - w.from[1];
+      const paved = !!tileAt(p, w.from[0], w.from[1])?.paved && !!tileAt(p, w.to[0], w.to[1])?.paved;
+      // Two protected sidewalk offsets, one on each edge of a paved tile.
+      // Pedestrians never stand in the centre of a vehicle's lane.
+      const sidewalk = paved && !w.cart && (dx !== 0 || dy !== 0);
+      const side = w.side >= 0 ? 1 : -1;
+      const wx = sidewalk ? -dy * side * 0.30 : 0;
+      const wy = sidewalk ? dx * side * 0.30 : 0;
+      w.c.position.set(
+        isoX(fx + wx, fy + wy) + (sidewalk ? 0 : w.side),
+        isoY(fx + wx, fy + wy) + bob + (sidewalk ? 0 : w.side * 0.25) - lift,
+      );
+      w.c.zIndex = fx + fy + 0.015;
+      if (w.cart) w.c.scale.x = dx - dy < 0 ? -1 : 1;
+      if (w.flare) drawSupporterFlare(w.flare, motion ? this.time : 0, w.phase);
+    }
+  }
+
+  /**
+   * Small visual traffic sim: vehicles only spawn on linked paved streets,
+   * stay on their legal road tiles and use opposite lanes for UK vs Türkiye.
+   * It deliberately does not drive on stairs, bridges or mountain trails.
+   */
+  private updateTraffic(view: RendererView, p: Province, dt: number, motion: boolean): void {
+    const isPaved = (x: number, y: number): boolean => {
+      const t = tileAt(p, x, y);
+      return !!t?.road && !!t.paved && t.roadType === 'dirt';
+    };
+    const neighbors = (x: number, y: number): [number, number][] =>
+      (NEIGHBORS4.map(([dx, dy]) => [x + dx, y + dy] as [number, number]))
+        .filter(([nx, ny]) =>
+          isPaved(nx, ny) &&
+          tileAt(p, nx, ny)?.height === tileAt(p, x, y)?.height);
+    const linked = this.pavedRoadTiles.filter(([x, y]) => neighbors(x, y).length > 0);
+    const desired = Math.min(8, Math.floor(linked.length / 4));
+    while (this.trafficCars.length > desired) this.trafficCars.pop()!.c.destroy({ children: true });
+    let attempts = 0;
+    while (this.trafficCars.length < desired && attempts++ < 18) {
+      if (!linked.length) break;
+      const start = linked[Math.floor(Math.random() * linked.length)]!;
+      const possible = neighbors(start[0], start[1]);
+      if (!possible.length) continue;
+      if (this.trafficCars.some((car) => car.from[0] === start[0] && car.from[1] === start[1])) continue;
+      const to = possible[Math.floor(Math.random() * possible.length)]!;
+      const holder = new Container();
+      const body = new Graphics();
+      const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
+      drawCityCar(body, paints[this.trafficCars.length % paints.length]!, this.trafficCars.length % 3 === 0);
+      holder.addChild(body);
+      holder.cullable = true;
+      this.objects.addChild(holder);
+      this.trafficCars.push({
+        c: holder, from: [start[0], start[1]], to,
+        prev: [start[0], start[1]], t: 0,
+        speed: 0.5 + Math.random() * 0.24,
+      });
+    }
+    const uk = view.game.cityId === 'edinburgh' ||
+      (!view.game.cityId && view.game.culture === 'scottish');
+    const roadSide = uk ? -0.13 : 0.13;
+    for (const car of this.trafficCars) {
+      if (!isPaved(car.from[0], car.from[1]) || !isPaved(car.to[0], car.to[1])) {
+        car.c.visible = false;
+        car.t = 1;
+        continue;
+      }
+      car.c.visible = true;
+      const carAhead = this.trafficCars.some((other) =>
+        other !== car && other.from[0] === car.from[0] &&
+        other.from[1] === car.from[1] && other.to[0] === car.to[0] &&
+        other.to[1] === car.to[1] && other.t > car.t && other.t - car.t < 0.36);
+      if (!carAhead && motion && view.game.speed !== 0)
+        car.t += Math.min(0.12, dt / 1000) * car.speed;
+      if (car.t >= 1) {
+        car.prev = car.from;
+        car.from = car.to;
+        const directions = neighbors(car.from[0], car.from[1]);
+        const forward = directions.filter(([x, y]) => x !== car.prev[0] || y !== car.prev[1]);
+        const choice = forward.length ? forward : directions;
+        car.to = choice.length ? choice[Math.floor(Math.random() * choice.length)]! : car.from;
+        car.t = 0;
+      }
+      const dx = car.to[0] - car.from[0];
+      const dy = car.to[1] - car.from[1];
+      const x = car.from[0] + dx * car.t + 0.5;
+      const y = car.from[1] + dy * car.t + 0.5;
+      const laneX = -dy * roadSide;
+      const laneY = dx * roadSide;
+      const lift = this.hz(p, car.from[0], car.from[1]);
+      car.c.position.set(isoX(x + laneX, y + laneY), isoY(x + laneX, y + laneY) - lift);
+      car.c.rotation = Math.atan2(isoY(dx, dy), isoX(dx, dy));
+      car.c.zIndex = x + y + 0.035;
     }
   }
 
