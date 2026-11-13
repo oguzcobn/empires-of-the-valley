@@ -3,6 +3,7 @@ import { BUILDINGS } from '../game/data/buildings';
 import { executeCommand } from '../game/systems/commands';
 import { housingCapacity, storageCaps } from '../game/systems/economy';
 import { findSite } from '../game/systems/placement';
+import { investedCost, levelCost } from '../game/systems/architecture';
 import { build, buildAndStaff, days, expectValid, home, must, newCampaign, tweak } from './helpers';
 
 describe('placement', () => {
@@ -13,8 +14,10 @@ describe('placement', () => {
     for (const [x, y] of plan.roads) s = must(s, { type: 'placeRoad', x, y });
     const woodBefore = home(s).stocks.wood;
     s = must(s, { type: 'placeBuilding', buildingId: 'lumber_camp', x: plan.x, y: plan.y });
-    expect(home(s).stocks.wood).toBe(woodBefore - 30000);
-    expect(home(s).stocks.stone).toBe(70000 - 10000);
+    const cost = levelCost('lumber_camp', 0, s.culture);
+    expect(cost.wood).toBeGreaterThan(0);
+    expect(home(s).stocks.wood).toBe(woodBefore - cost.wood!);
+    expect(home(s).stocks.stone).toBe(70000 - cost.stone!);
     expect(home(s).buildings.at(-1)).toMatchObject({
       definitionId: 'lumber_camp',
       state: 'construction',
@@ -113,8 +116,9 @@ describe('construction lifecycle', () => {
     const built = days(placed.state, 2);
     const before = home(built).stocks;
     const demolished = must(built, { type: 'demolishBuilding', instanceId: placed.id });
-    expect(home(demolished).stocks.wood).toBe(before.wood + 10000);
-    expect(home(demolished).stocks.stone).toBe(before.stone + 2500);
+    const invested = investedCost(home(built).buildings.find((b) => b.id === placed.id)!);
+    expect(home(demolished).stocks.wood).toBe(before.wood + Math.floor(invested.wood! / 2));
+    expect(home(demolished).stocks.stone).toBe(before.stone + Math.floor(invested.stone! / 2));
     expectValid(demolished);
   });
 

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { SLOT_IDS, useApp } from '../app/store';
 import type { SlotId } from '../app/store';
@@ -486,7 +486,40 @@ export function SavePanel({ inGame }: { inGame: boolean }): ReactElement {
           </span>
         )}
       </div>
+      <BackupList />
     </>
+  );
+}
+
+function BackupList(): ReactElement | null {
+  const backups = useApp((s) => s.backups);
+  const { refreshBackups, downloadBackup } = useApp.getState();
+  useEffect(() => {
+    void refreshBackups();
+  }, [refreshBackups]);
+  if (!backups.length) return null;
+  return (
+    <section className="section" data-testid="backups">
+      <h4>{t('save.backups')}</h4>
+      <p className="hint">{t('save.backupsHint')}</p>
+      <ul className="slots">
+        {backups.slice(0, 6).map((b) => (
+          <li key={b.id} className="slot">
+            <div>
+              <b>{b.source}</b>
+              <p className="muted">
+                v{b.schemaVersion} · {new Date(b.createdAt).toLocaleString('tr-TR')}
+              </p>
+            </div>
+            <div className="slot-actions">
+              <button className="btn" onClick={() => downloadBackup(b.id)}>
+                {t('save.backupDownload')}
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

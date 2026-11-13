@@ -4,6 +4,7 @@ import { useApp } from '../app/store';
 import type { BuildingCategory, GameState } from '../game/core/types';
 import { BUILDABLE_IDS, BUILDINGS } from '../game/data/buildings';
 import { missingFor } from '../game/systems/commands';
+import { levelCost } from '../game/systems/architecture';
 import { homeProvince } from '../game/systems/economy';
 import { t } from '../i18n';
 import { CostList } from './common';
@@ -56,7 +57,8 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
         {items.map((id) => {
           const def = BUILDINGS[id];
           const spec = def.levels[0]!;
-          const affordable = missingFor(p, spec.cost) === null;
+          const cost = levelCost(id, 0, game.culture);
+          const affordable = missingFor(p, cost) === null;
           const active = tool.kind === 'build' && tool.buildingId === id;
           return (
             <button
@@ -74,7 +76,7 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
               </span>
               <span className="catalog-desc">{t(`building.${id}.effect`)}</span>
               <span className="catalog-meta">
-                <CostList cost={spec.cost} stocks={p.stocks} />
+                <CostList cost={cost} stocks={p.stocks} />
                 <span className="cost" title={t('catalog.buildTime')}>
                   <Icon name="clock" size={15} />
                   {t('ui.days', { n: spec.buildTicks / 24 })}

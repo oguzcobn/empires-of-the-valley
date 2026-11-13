@@ -1,4 +1,5 @@
-import type { BuildingId, GameState } from '../game/core/types';
+import type { ArchitectureStyle, BuildingId, GameState } from '../game/core/types';
+import { levelCost } from '../game/systems/architecture';
 import { BUILDINGS } from '../game/data/buildings';
 import { executeCommand, missingFor } from '../game/systems/commands';
 import { idleWorkers } from '../game/systems/economy';
@@ -9,8 +10,12 @@ import { build, days, expectValid, home, must, newCampaign } from './helpers';
  * A simple scripted governor: builds what the chapter needs as soon as it is affordable,
  * staffs it, queues research and waits. Mirrors what a new player following Mira would do.
  */
-export function playChapterOne(seed: number, maxDays = 110): { state: GameState; log: string[] } {
-  let s = newCampaign(seed);
+export function playChapterOne(
+  seed: number,
+  maxDays = 110,
+  culture?: ArchitectureStyle,
+): { state: GameState; log: string[] } {
+  let s = newCampaign(seed, culture);
   const log: string[] = [];
   const order: [BuildingId, number][] = [
     ['lumber_camp', 2],
@@ -28,7 +33,7 @@ export function playChapterOne(seed: number, maxDays = 110): { state: GameState;
     if (next < order.length) {
       const [id] = order[next]!;
       const plan = findSite(p, BUILDINGS[id]);
-      const cost = { ...BUILDINGS[id].levels[0]!.cost };
+      const cost = { ...levelCost(id, 0, s.culture) };
       cost.wood = (cost.wood ?? 0) + (plan?.roads.length ?? 0) * 2000;
       if (plan && !missingFor(p, cost)) {
         s = build(s, id).state;

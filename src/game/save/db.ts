@@ -11,14 +11,31 @@ interface SaveRecord extends SaveFile {
 
 const DB_NAME = 'empires-of-the-valley';
 const STORE = 'saves';
+/** Raw copies of older-version saves, taken before they are migrated (never modified). */
+const BACKUPS = 'backups';
+/** Architecture Workshop designs (see save/designs.ts). */
+export const DESIGNS = 'designs';
+
+export interface BackupRecord {
+  id: string;
+  createdAt: string;
+  source: string;
+  schemaVersion: number;
+  raw: unknown;
+}
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 function db(): Promise<IDBPDatabase> {
-  dbPromise ??= openDB(DB_NAME, 1, {
+  // v1: saves. v2 (architecture update): backups and workshop designs. Existing saves are kept.
+  dbPromise ??= openDB(DB_NAME, 2, {
     upgrade(database) {
       if (!database.objectStoreNames.contains(STORE))
         database.createObjectStore(STORE, { keyPath: 'slotId' });
+      if (!database.objectStoreNames.contains(BACKUPS))
+        database.createObjectStore(BACKUPS, { keyPath: 'id' });
+      if (!database.objectStoreNames.contains(DESIGNS))
+        database.createObjectStore(DESIGNS, { keyPath: 'id' });
     },
   });
   dbPromise.catch(() => {
@@ -47,6 +64,20 @@ export async function listSlots(): Promise<{ slotId: SlotId; meta: SaveMeta }[]>
     .map((r) => ({ slotId: r.slotId, meta: r.meta }))
     .sort((a, b) => b.meta.savedAt.localeCompare(a.meta.savedAt));
 }
+
+export async function writeBackup(source: string, schemaVersion: number, raw: unknown, now = new Date()): Promise<string> {
+  const id = `${source}-v${schemaVersion}-${now.toISOString()}`;
+  await (await db()).put(BACKUPS, { id, createdAt: now.toISOString(), source, schemaVersion, raw } satisfies BackupRecord);
+  return id;
+}
+
+export async function listBackups(): Promise<BackupRecord[]> {
+  const all = (await (await db()).getAll(BACKUPS)) as BackupRecord[];
+  return all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** Shared connection for other stores of the same database (designs). */
+export const database = db;
 
 /** Test helper: forget the cached connection. */
 export function resetDbConnection(): void {

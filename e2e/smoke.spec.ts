@@ -91,7 +91,8 @@ test('phase 1: build, staff, produce, save, reload and continue', async ({ page 
   await page.getByTestId('build-lumber_camp').click();
   await clickTile(page, plan.x, plan.y);
   s = await snapshot(page);
-  expect(s.stocks.wood).toBe(160000 - 30000 - plan.roads.length * 2000);
+  const campCost = await page.evaluate(() => (window as any).__EOV__.cost('lumber_camp')); // eslint-disable-line @typescript-eslint/no-explicit-any
+  expect(s.stocks.wood).toBe(160000 - campCost.wood - plan.roads.length * 2000);
   const camp = s.buildings.at(-1)!;
   expect(camp).toMatchObject({ definitionId: 'lumber_camp', state: 'construction', x: plan.x, y: plan.y });
   await expect(page.getByTestId('inspector')).toContainText('Oduncu Kampı');

@@ -20,6 +20,7 @@ import {
 import { logEvent } from './events';
 import { refreshConnectivity, tilesInRange } from './grid';
 import { populationDayEnd } from './population';
+import { decayPerDay } from './architecture';
 import { evaluateQuests, questOnDayEnd, questOnProduced } from './quests';
 
 /** Ticks needed to finish the building's current job (first construction or upgrade). */
@@ -146,6 +147,15 @@ function dayEnd(s: GameState, p: Province): void {
   const cal = calendar(s.tick);
   questOnDayEnd(s, p);
   populationDayEnd(s, p, cal.day);
+
+  // buildings weather: stone lasts, timber and thatch need care (see data/architecture.ts)
+  for (const b of p.buildings) {
+    if (b.state === 'construction') continue;
+    const before = b.condition;
+    b.condition = Math.max(0, b.condition - decayPerDay(b));
+    if (before >= 5000 && b.condition < 5000)
+      logEvent(s, 'warning', 'event.worn', { building: `@building.${b.definitionId}.name` }, { x: b.x, y: b.y });
+  }
 
   // forests regrow slowly
   const regrow = mulPermille(FOREST_REGROW_PER_DAY, techScalar(s, 'forestRegrowMultiplier'));

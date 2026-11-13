@@ -3,6 +3,8 @@
  * `en.ts` oluşturup src/i18n/index.ts içine kaydetmek yeterlidir.
  * `{ad}` yer tutucuları parametrelerle doldurulur.
  */
+import { trArch } from './tr-arch';
+
 export const tr = {
   // ------------------------------------------------------------ genel
   'ui.close': 'Kapat',
@@ -597,6 +599,7 @@ export const tr = {
   'chapterEnd.note':
     '2. bölüm henüz oynanamaz; sonraki aşamalarda eklenecek. O zamana dek vadini büyütmeye devam edebilirsin.',
   'chapterEnd.continue': 'Vadide kalmaya devam et',
+  ...trArch,
 } as const;
 
 export type TKey = keyof typeof tr;

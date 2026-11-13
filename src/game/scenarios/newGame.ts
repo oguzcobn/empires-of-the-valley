@@ -1,5 +1,6 @@
 import { seedToState } from '../core/rng';
-import type { GameMode, GameState } from '../core/types';
+import type { ArchitectureStyle, GameMode, GameState } from '../core/types';
+import { LEGACY_STYLE, isPlayableStyle } from '../data/architecture';
 import {
   GAME_VERSION,
   MAP_SIZE,
@@ -18,13 +19,16 @@ import { generateValley } from '../systems/terrain';
 export interface NewGameOptions {
   seed: number;
   mode: GameMode;
+  /** Culture of the starting hamlet and default for new buildings. */
+  culture?: ArchitectureStyle;
 }
 
 /** Builds the Phase 1 starting state: Bereket Vadisi, 12 settlers, hamlet, road and stocks. */
-export function createNewGame({ seed, mode }: NewGameOptions): GameState {
+export function createNewGame({ seed, mode, culture = LEGACY_STYLE }: NewGameOptions): GameState {
+  if (!isPlayableStyle(culture)) throw new Error(`culture ${culture} is not playable`);
   const safeSeed = Math.abs(Math.trunc(seed)) % 2147483647;
   const world = WORLD_BY_ID[HOME_PROVINCE_ID]!;
-  const valley = generateValley(safeSeed, HOME_PROVINCE_ID);
+  const valley = generateValley(safeSeed, HOME_PROVINCE_ID, culture);
   const state: GameState = {
     schemaVersion: SCHEMA_VERSION,
     gameVersion: GAME_VERSION,
@@ -34,6 +38,7 @@ export function createNewGame({ seed, mode }: NewGameOptions): GameState {
     tick: 0,
     speed: 0,
     playerFactionId: 'player',
+    culture,
     homeProvinceId: HOME_PROVINCE_ID,
     provinces: {
       [HOME_PROVINCE_ID]: {

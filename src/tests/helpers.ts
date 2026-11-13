@@ -1,5 +1,5 @@
 import { produce } from 'immer';
-import type { BuildingId, GameState, Province } from '../game/core/types';
+import type { ArchitectureStyle, BuildingId, GameState, Province } from '../game/core/types';
 import { BUILDINGS } from '../game/data/buildings';
 import { createNewGame } from '../game/scenarios/newGame';
 import { executeCommand } from '../game/systems/commands';
@@ -9,7 +9,8 @@ import { validateInvariants } from '../game/systems/invariants';
 import { findSite } from '../game/systems/placement';
 import { applyTicks } from '../game/systems/tick';
 
-export const newCampaign = (seed = 42): GameState => createNewGame({ seed, mode: 'campaign' });
+export const newCampaign = (seed = 42, culture?: ArchitectureStyle): GameState =>
+  createNewGame({ seed, mode: 'campaign', culture });
 export const home = (s: GameState): Province => homeProvince(s);
 export const days = (s: GameState, n: number): GameState => applyTicks(s, n * 24);
 export const tweak = (s: GameState, fn: (draft: GameState) => void): GameState => produce(s, fn);

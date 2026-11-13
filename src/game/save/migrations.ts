@@ -1,14 +1,39 @@
+import { CONDITION_MAX, LEGACY_STYLE } from '../data/architecture';
 import { SCHEMA_VERSION } from '../data/balance';
 
 /** A migration upgrades raw save data from version N to N+1. Register new ones by source version. */
 export type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
 
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
 /**
- * Phase 1 ships schema version 1, so the registry is empty. When Phase 2 changes the format
- * (e.g. farms producing grain instead of food), add `1: (data) => ...` here and bump
- * SCHEMA_VERSION; the pipeline below and its tests already cover chained upgrades.
+ * v1 -> v2 (architecture update): every building gains a culture, an optional custom look and a
+ * structural condition. Saves from before architecture existed get the legacy default culture
+ * and perfect condition, so nothing changes for the player except the new art.
+ * Malformed input is passed through untouched; the strict schema rejects it afterwards.
  */
-export const MIGRATIONS: Record<number, Migration> = {};
+function v1ToV2(data: Record<string, unknown>): Record<string, unknown> {
+  const provinces = isObj(data.provinces) ? data.provinces : null;
+  const nextProvinces: Record<string, unknown> = {};
+  if (provinces) {
+    for (const [id, raw] of Object.entries(provinces)) {
+      if (!isObj(raw) || !Array.isArray(raw.buildings)) {
+        nextProvinces[id] = raw;
+        continue;
+      }
+      nextProvinces[id] = {
+        ...raw,
+        buildings: raw.buildings.map((b) =>
+          isObj(b) ? { style: LEGACY_STYLE, look: null, condition: CONDITION_MAX, ...b } : b,
+        ),
+      };
+    }
+  }
+  return { culture: LEGACY_STYLE, ...data, ...(provinces ? { provinces: nextProvinces } : {}) };
+}
+
+/** Registry of format upgrades, keyed by source version. Chains run in order (1 -> 2 -> ...). */
+export const MIGRATIONS: Record<number, Migration> = { 1: v1ToV2 };
 
 export type MigrationResult =
   | { ok: true; data: Record<string, unknown> }

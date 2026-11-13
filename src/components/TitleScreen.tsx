@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import type { GameMode } from '../game/core/types';
+import { PLAYABLE_STYLES } from '../game/data/architecture';
+import type { PlayableStyle } from '../game/data/architecture';
+import { CulturePreview } from './CulturePreview';
 import { GAME_VERSION } from '../game/data/balance';
 import { t } from '../i18n';
 import { Modal } from './common';
@@ -13,10 +16,11 @@ const randomSeed = (): number => Math.floor(Math.random() * 900000) + 100000;
 function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void }): ReactElement {
   const startNewGame = useApp((s) => s.startNewGame);
   const [seedText, setSeedText] = useState(String(randomSeed()));
+  const [culture, setCulture] = useState<PlayableStyle>('turkish');
   const seed = Number(seedText);
   const valid = /^\d{1,9}$/.test(seedText);
   return (
-    <Modal title={t(mode === 'campaign' ? 'newGame.campaign' : 'newGame.sandbox')} onClose={onClose}>
+    <Modal title={t(mode === 'campaign' ? 'newGame.campaign' : 'newGame.sandbox')} onClose={onClose} wide>
       <p>{t(mode === 'campaign' ? 'newGame.campaignDesc' : 'newGame.sandboxDesc')}</p>
       <label className="field">
         <span>{t('newGame.seed')}</span>
@@ -35,6 +39,31 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
         </span>
       </label>
       <p className={`hint ${valid ? '' : 'warn'}`}>{t(valid ? 'newGame.seedHint' : 'newGame.seedInvalid')}</p>
+      <fieldset className="field plain">
+        <legend>{t('arch.pickCulture')}</legend>
+        <p className="hint">{t('arch.pickCultureHint')}</p>
+        <div className="culture-pick" role="group" aria-label={t('newGame.culture')}>
+          {PLAYABLE_STYLES.map((st) => (
+            <button
+              key={st}
+              type="button"
+              className="culture-card"
+              aria-pressed={culture === st}
+              onClick={() => setCulture(st)}
+              data-testid={`culture-${st}`}
+            >
+              <CulturePreview style={st} />
+              <h4>{t(`style.${st}.long`)}</h4>
+              <span className="muted">{t(`style.${st}.desc`)}</span>
+              <ul>
+                <li>{t(`style.${st}.bonus1`)}</li>
+                <li>{t(`style.${st}.bonus2`)}</li>
+                <li>{t(`style.${st}.bonus3`)}</li>
+              </ul>
+            </button>
+          ))}
+        </div>
+      </fieldset>
       <div className="actions">
         <button className="btn" onClick={onClose}>
           {t('ui.cancel')}
@@ -42,7 +71,7 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
         <button
           className="btn primary"
           disabled={!valid}
-          onClick={() => startNewGame(mode, seed)}
+          onClick={() => startNewGame(mode, seed, culture)}
           data-testid="start-game"
         >
           {t('newGame.start')}

@@ -1,6 +1,7 @@
 import { makeRng } from '../core/rng';
 import type { LocalRng } from '../core/rng';
-import type { BuildingId, BuildingInstance, TerrainId, Tile } from '../core/types';
+import type { ArchitectureStyle, BuildingId, BuildingInstance, TerrainId, Tile } from '../core/types';
+import { CONDITION_MAX, LEGACY_STYLE } from '../data/architecture';
 import { FOREST_TILE_MAX, MAP_SIZE, STONE_TILE_MAX } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
 import { footprintTiles } from './grid';
@@ -110,7 +111,11 @@ function generateAttempt(seed: number): Tile[] {
 }
 
 /** Stamps the starting hamlet onto freshly generated tiles and returns its building instances. */
-export function stampStart(tiles: Tile[], provinceId: string): BuildingInstance[] {
+export function stampStart(
+  tiles: Tile[],
+  provinceId: string,
+  style: ArchitectureStyle = LEGACY_STYLE,
+): BuildingInstance[] {
   const buildings: BuildingInstance[] = [];
   for (const [x, y] of START_LAYOUT.roads) tiles[y * MAP_SIZE + x]!.road = true;
   START_LAYOUT.buildings.forEach((spec, i) => {
@@ -129,6 +134,9 @@ export function stampStart(tiles: Tile[], provinceId: string): BuildingInstance[
       state: 'active',
       connected: true,
       unpaid: false,
+      style,
+      look: null,
+      condition: CONDITION_MAX,
     });
   });
   return buildings;
@@ -152,10 +160,14 @@ export interface GeneratedValley {
 }
 
 /** Seeded valley generation. Retries with derived seeds until the start is verified playable. */
-export function generateValley(seed: number, provinceId: string): GeneratedValley {
+export function generateValley(
+  seed: number,
+  provinceId: string,
+  style: ArchitectureStyle = LEGACY_STYLE,
+): GeneratedValley {
   for (let attempt = 0; attempt < 24; attempt++) {
     const tiles = generateAttempt((seed >>> 0) * 31 + attempt * 7919);
-    const buildings = stampStart(tiles, provinceId);
+    const buildings = stampStart(tiles, provinceId, style);
     if (isPlayableStart({ width: MAP_SIZE, height: MAP_SIZE, tiles, buildings })) {
       return { tiles, buildings, attempts: attempt + 1 };
     }

@@ -15,8 +15,15 @@ import { assignedWorkers, housingCapacity, idleWorkers, isOperating, totalPopula
 import { logEvent } from './events';
 
 export interface HappinessFactor {
-  id: 'base' | 'food' | 'housing' | 'employment' | 'education' | 'tax' | 'tools';
+  id: 'base' | 'food' | 'housing' | 'employment' | 'education' | 'tax' | 'tools' | 'maintenance';
   value: number;
+}
+
+/** Mean structural condition of finished buildings (basis points); 10000 when there are none. */
+export function averageCondition(p: Province): number {
+  const built = p.buildings.filter((b) => b.state !== 'construction');
+  if (!built.length) return 10000;
+  return Math.floor(built.reduce((sum, b) => sum + b.condition, 0) / built.length);
 }
 
 /** Transparent happiness model: the population panel shows exactly these factors. */
@@ -37,6 +44,7 @@ export function happinessFactors(p: Province): HappinessFactor[] {
     },
     { id: 'tax', value: TAX_HAPPINESS[p.taxRate] },
     { id: 'tools', value: p.stocks.tools <= 0 ? -3 : 0 },
+    { id: 'maintenance', value: averageCondition(p) < 5000 ? -4 : 0 },
   ];
 }
 

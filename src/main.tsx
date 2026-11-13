@@ -6,6 +6,7 @@ import { BUILDINGS } from './game/data/buildings';
 import { homeProvince } from './game/systems/economy';
 import { findSite } from './game/systems/placement';
 import { applyTicks } from './game/systems/tick';
+import { levelCost } from './game/systems/architecture';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(<App />);
@@ -22,6 +23,10 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
     plan(buildingId: keyof typeof BUILDINGS): unknown {
       const game = useApp.getState().game;
       return game ? findSite(homeProvince(game), BUILDINGS[buildingId]) : null;
+    },
+    cost(buildingId: keyof typeof BUILDINGS): unknown {
+      const game = useApp.getState().game;
+      return game ? levelCost(buildingId, 0, game.culture) : null;
     },
     tilePoint(x: number, y: number): unknown {
       return getRenderer()?.tileToClient(x, y) ?? null;

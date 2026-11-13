@@ -1,0 +1,57 @@
+/** Türkçe metinler — Mimari Kültürler genişlemesi. */
+export const trArch = {
+  'style.scottish': 'İskoç',
+  'style.turkish': 'Türk',
+  'style.japanese': 'Japon',
+  'style.medieval_european': 'Orta Çağ Avrupa',
+  'style.scottish.long': 'İskoç mimarisi',
+  'style.turkish.long': 'Türk mimarisi',
+  'style.scottish.desc':
+    'Granit ve kumtaşı duvarlar, arduvaz çatılar, basamaklı alınlıklar ve kule evler. Highland köylerinden Edinburgh’ün Georgian sokaklarına.',
+  'style.turkish.desc':
+    'Ahşap karkas ve taş dolgu, geniş saçaklı kiremit çatılar, cumbalar ve avlular. Anadolu köylerinden Karadeniz evlerine, Safranbolu konaklarına.',
+  'style.scottish.bonus1': 'Yapılar %25 daha yavaş yıpranır.',
+  'style.scottish.bonus2': 'Okullar %10 daha fazla araştırma üretir.',
+  'style.scottish.bonus3': 'Gözetleme kuleleri 1 karo daha geniş alanı korur.',
+  'style.turkish.bonus1': 'Onarımlar %25 daha ucuzdur (usta geleneği).',
+  'style.turkish.bonus2': 'Çarşılar %20 daha fazla altın getirir.',
+  'style.turkish.bonus3': 'Her han seviyesi 2 yatak fazla sunar (kervansaray geleneği).',
+  'style.mixed': 'Karma',
+
+  'err.styleUnavailable': 'Bu mimari kültür henüz oynanabilir değil.',
+  'err.notDesignable': 'Bu yapı türü için atölye tasarımı kullanılamaz.',
+  'err.invalidDesign': 'Tasarım verisi geçersiz.',
+  'err.sameStyle': 'Yapı zaten bu mimariye sahip.',
+  'err.noRepairNeeded': 'Yapı zaten kusursuz durumda.',
+
+  'event.restyled': '{building} yeniden düzenlendi: {style} mimarisi.',
+  'event.restored': '{building} onarıldı.',
+  'event.worn': '{building} yıpranmaya başladı. Onarım verimini geri getirir.',
+
+  'happiness.maintenance': 'Bakımsız yapılar',
+
+  'condition.label': 'Yapı durumu',
+  'condition.good': 'İyi',
+  'condition.worn': 'Yıpranmış (üretim −%15)',
+  'condition.poor': 'Bakımsız (üretim −%30)',
+  'condition.decay': 'Yıpranma: günde %{n}',
+  'condition.repair': 'Onar',
+  'condition.repairHint': 'Malzemeler ve kültür yıpranma hızını belirler. Onarım durumu %100’e çıkarır.',
+
+  'arch.style': 'Mimari',
+  'arch.change': 'Mimariyi değiştir',
+  'arch.changeCost': 'Yeniden düzenleme maliyeti',
+  'arch.cityCulture': 'Şehir kültürü',
+  'arch.cityCultureHint': 'Yeni yapılar bu kültürle kurulur. Her yapı kendi mimarisini korur.',
+  'arch.pickCulture': 'Mimari kültürünü seç',
+  'arch.pickCultureHint': 'Kurduğun her yapının görünümünü ve küçük bir avantajı belirler. Sonradan değiştirebilir, karıştırabilirsin.',
+  'arch.legacyNote': 'Bu kayıt mimari güncellemesinden önce yapılmış. Yapılar varsayılan olarak Türk mimarisiyle açıldı; her birini sonradan değiştirebilirsin.',
+  'workshop.custom': 'özel tasarım',
+  'newGame.culture': 'Mimari kültür',
+  'save.backups': 'Güncelleme yedekleri',
+  'save.backupsHint': 'Eski sürümden açılan kayıtların dönüştürülmeden önceki halleri burada saklanır. İstediğin zaman indirebilirsin.',
+  'save.backupDownload': 'Yedeği indir',
+  'save.backupNone': 'Henüz yedek yok.',
+  'save.backupMade': 'Eski kayıt dönüştürülmeden önce yedeklendi.',
+  'save.backupFailed': 'Yedek alınamadı ({detail}); kayıt yine de açıldı.',
+} as const;

@@ -2,8 +2,8 @@ import { u } from '../core/fixed';
 import type { ResourceMap, TaxRate, TradeOffer } from '../core/types';
 
 /** Phase 1 balance sheet. Values are provisional and exercised by src/tests/balance.test.ts. */
-export const SCHEMA_VERSION = 1;
-export const GAME_VERSION = '0.1.0';
+export const SCHEMA_VERSION = 2;
+export const GAME_VERSION = '0.2.0';
 
 export const MAP_SIZE = 24;
 export const FOOD_PER_CITIZEN_PER_DAY = u(0.25);

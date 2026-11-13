@@ -17,6 +17,7 @@ import {
 import { defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { tilesInRange } from './grid';
+import { bonusesOf, conditionPermille } from './architecture';
 
 export const UNCAPPED = Number.MAX_SAFE_INTEGER;
 
@@ -83,6 +84,8 @@ export function dailyOutput(s: GameState, p: Province, b: BuildingInstance): num
   if (def.seasonal && calendar(s.tick).season === 'winter') return 0;
   let rate = Math.floor((spec.produces.perDay * Math.min(b.workers, spec.workerSlots)) / spec.workerSlots);
   rate = mulPermille(rate, techOutputPermille(s, def.id));
+  rate = mulPermille(rate, conditionPermille(b.condition));
+  if (def.id === 'school') rate = mulPermille(rate, bonusesOf(b.style).schoolPermille);
   if (def.usesTools && p.stocks.tools <= 0) rate = mulPermille(rate, NO_TOOLS_OUTPUT_PERMILLE);
   // extraction can never exceed what is physically left in range
   if (def.harvests) rate = Math.min(rate, depositInRange(p, b));

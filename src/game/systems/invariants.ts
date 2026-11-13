@@ -4,6 +4,7 @@ import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { QUESTS } from '../data/quests';
 import { TECHNOLOGIES } from '../data/technologies';
 import { assignedWorkers, storageCaps } from './economy';
+import { CONDITION_MAX, DESIGNABLE, isPlayableStyle } from '../data/architecture';
 import { footprintTiles, idx, inBounds } from './grid';
 
 /**
@@ -18,6 +19,7 @@ export function validateInvariants(s: GameState): string[] {
   if (!Number.isInteger(s.rngState) || s.rngState < 0 || s.rngState > 0xffffffff)
     errors.push('rng state invalid');
   if (p.tiles.length !== p.width * p.height) errors.push('tile count mismatch');
+  if (!isPlayableStyle(s.culture)) errors.push('city culture not playable');
 
   const caps = storageCaps(s, p);
   for (const id of RESOURCE_IDS) {
@@ -47,6 +49,10 @@ export function validateInvariants(s: GameState): string[] {
       errors.push(`building ${b.id} level invalid`);
       continue;
     }
+    if (!isPlayableStyle(b.style)) errors.push(`building ${b.id} has unplayable style ${b.style}`);
+    if (b.look && !DESIGNABLE.includes(b.definitionId)) errors.push(`building ${b.id} cannot carry a design`);
+    if (!Number.isInteger(b.condition) || b.condition < 0 || b.condition > CONDITION_MAX)
+      errors.push(`building ${b.id} condition invalid`);
     if (b.workers < 0 || b.workers > specOf(b).workerSlots)
       errors.push(`building ${b.id} workers out of range`);
     if (b.state === 'construction' && b.workers !== 0)

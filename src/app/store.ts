@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { advanceClock } from '../game/core/clock';
-import type { BuildingId, EventKind, GameMode, GameState, MessageRef } from '../game/core/types';
+import type { ArchitectureStyle, BuildingId, EventKind, GameMode, GameState, MessageRef } from '../game/core/types';
 import type { Tool } from '../game/rendering/ValleyRenderer';
-import { SLOT_IDS, deleteSlot, listSlots, readSlot, writeSlot } from '../game/save/db';
+import { SLOT_IDS, deleteSlot, listBackups, listSlots, readSlot, writeBackup, writeSlot } from '../game/save/db';
+import type { BackupRecord } from '../game/save/db';
+import { SCHEMA_VERSION } from '../game/data/balance';
 import type { SlotId } from '../game/save/db';
 import { createSaveFile, loadSaveFile, parseSaveText, MAX_IMPORT_BYTES } from '../game/save/serialize';
 import type { SaveMeta } from '../game/save/serialize';
@@ -67,7 +69,10 @@ interface AppStore {
   tickMs: number;
   focus: { x: number; y: number; n: number } | null;
 
-  startNewGame(mode: GameMode, seed: number): void;
+  startNewGame(mode: GameMode, seed: number, culture?: ArchitectureStyle): void;
+  backups: BackupRecord[];
+  refreshBackups(): Promise<void>;
+  downloadBackup(id: string): void;
   dispatch(cmd: Command, quiet?: boolean): boolean;
   frame(dtMs: number): void;
   setTool(tool: Tool): void;
@@ -105,6 +110,20 @@ const initialSettings = loadSettings();
 setMuted(initialSettings.muted);
 
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/** Stores an untouched copy of an older-format save before it is migrated. Returns true if old. */
+async function backupIfOld(source: string, raw: unknown): Promise<boolean> {
+  const version = (raw as { state?: { schemaVersion?: unknown } } | null)?.state?.schemaVersion;
+  if (typeof version !== 'number' || version >= SCHEMA_VERSION) return false;
+  try {
+    await writeBackup(source, version, raw);
+    useApp.getState().toast('info', t('save.backupMade'));
+    void useApp.getState().refreshBackups();
+  } catch (e) {
+    useApp.getState().toast('error', t('save.backupFailed', { detail: errorText(e) }));
+  }
+  return true;
+}
 
 export const useApp = create<AppStore>((set, get) => {
   /** Single place where a new game state enters the store: surfaces new events as notifications. */
@@ -178,8 +197,28 @@ export const useApp = create<AppStore>((set, get) => {
     tickMs: 0,
     focus: null,
 
-    startNewGame(mode, seed) {
-      enterGame(createNewGame({ mode, seed }));
+    backups: [],
+    async refreshBackups() {
+      try {
+        set({ backups: await listBackups() });
+      } catch {
+        set({ backups: [] });
+      }
+    },
+    downloadBackup(id) {
+      const record = get().backups.find((b) => b.id === id);
+      if (!record) return;
+      const blob = new Blob([JSON.stringify(record.raw)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `empires-of-the-valley-yedek-${record.source}-v${record.schemaVersion}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    },
+
+    startNewGame(mode, seed, culture) {
+      enterGame(createNewGame({ mode, seed, culture }));
       set({ introOpen: true });
     },
 
@@ -324,10 +363,12 @@ export const useApp = create<AppStore>((set, get) => {
           get().toast('error', tm(loaded.error));
           return false;
         }
+        const legacy = await backupIfOld(slot, raw);
         // Always resume paused so the player can look around first.
         enterGame({ ...loaded.state, speed: 0 });
         set({ introOpen: false });
         get().toast('success', t('save.loaded'));
+        if (legacy) get().toast('info', t('arch.legacyNote'));
         return true;
       } catch (e) {
         get().toast('error', t('save.err.read', { detail: errorText(e) }));
@@ -388,7 +429,14 @@ export const useApp = create<AppStore>((set, get) => {
         get().toast('error', tm(loaded.error as MessageRef));
         return false;
       }
+      let legacy = false;
+      try {
+        legacy = await backupIfOld(`import-${file.name.slice(0, 40)}`, JSON.parse(await file.text()));
+      } catch {
+        /* already validated above; a failed backup must not block the import */
+      }
       enterGame({ ...loaded.state, speed: 0 });
+      if (legacy) get().toast('info', t('arch.legacyNote'));
       set({ introOpen: false });
       get().toast('success', t('save.imported'));
       return true;

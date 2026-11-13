@@ -7,6 +7,52 @@ export type BuildingId =
   'town_center' | 'hut' | 'warehouse' | 'lumber_camp' | 'farm' | 'quarry' | 'granary' | 'school';
 
 export type TerrainId = 'grass' | 'fertile' | 'forest' | 'water' | 'stone' | 'sand';
+
+/**
+ * Architectural cultures. The union already names the next cultures so content can be added
+ * without a save-format change; only cultures marked `implemented` in data/architecture.ts are
+ * playable (validated on every command and save).
+ */
+export type ArchitectureStyle = 'scottish' | 'turkish' | 'japanese' | 'medieval_european';
+
+export type RoofType = 'gable' | 'crow_step' | 'hip' | 'pyramid' | 'flat' | 'dome';
+export type RoofMaterial = 'slate' | 'clay' | 'thatch' | 'shingle' | 'lead' | 'earth';
+export type WallMaterial =
+  | 'granite'
+  | 'sandstone'
+  | 'harl'
+  | 'timber_frame'
+  | 'stone_timber'
+  | 'plaster'
+  | 'brick'
+  | 'wood';
+export type FacadeColor =
+  'white' | 'cream' | 'ochre' | 'rose' | 'sky' | 'sage' | 'grey' | 'honey' | 'terracotta' | 'umber';
+export type WindowType = 'sash' | 'small' | 'arched' | 'latticed' | 'bay';
+export type DoorType = 'plank' | 'arched' | 'double' | 'fanlight';
+export type TowerType = 'none' | 'turret' | 'square' | 'clock' | 'bell';
+export type BalconyType = 'none' | 'cumba' | 'iron' | 'gallery';
+export type ChimneyType = 'none' | 'gable' | 'twin' | 'central';
+export type GardenType = 'none' | 'hedge' | 'orchard' | 'flowers';
+export type CourtyardType = 'none' | 'avlu' | 'well';
+export type DecorType = 'none' | 'flowerboxes' | 'lanterns' | 'banners';
+
+/** Parametric appearance of a building. Materials also change cost and durability (data-driven). */
+export interface BuildingLook {
+  floors: 1 | 2 | 3 | 4;
+  roof: RoofType;
+  roofMaterial: RoofMaterial;
+  wall: WallMaterial;
+  facade: FacadeColor;
+  windows: WindowType;
+  door: DoorType;
+  tower: TowerType;
+  balcony: BalconyType;
+  chimney: ChimneyType;
+  garden: GardenType;
+  courtyard: CourtyardType;
+  decor: DecorType;
+}
 export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy';
 export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08';
 export type ProvinceId = string;
@@ -132,6 +178,12 @@ export interface BuildingInstance {
   connected: boolean;
   /** Upkeep could not be paid this tick; the building is idle. */
   unpaid: boolean;
+  /** Architectural culture of this building (kept per building, so districts can differ). */
+  style: ArchitectureStyle;
+  /** Custom appearance from the Architecture Workshop; null = the culture's default look. */
+  look: BuildingLook | null;
+  /** Structural condition in basis points (10000 = perfect). Decays daily; restored by repairs. */
+  condition: number;
 }
 
 export interface Population {
@@ -208,6 +260,8 @@ export interface GameState {
   tick: number;
   speed: GameSpeed;
   playerFactionId: FactionId;
+  /** Default culture for new buildings. Each building also stores its own style. */
+  culture: ArchitectureStyle;
   homeProvinceId: ProvinceId;
   provinces: Record<ProvinceId, Province>;
   revealedProvinceIds: ProvinceId[];

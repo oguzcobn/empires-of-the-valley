@@ -1,7 +1,9 @@
 import { produce } from 'immer';
 import { mulPermille } from '../core/fixed';
 import type {
+  ArchitectureStyle,
   BuildingId,
+  BuildingLook,
   BuildingInstance,
   CommandResult,
   Cost,
@@ -14,6 +16,7 @@ import type {
   TaxRate,
   TechId,
 } from '../core/types';
+import { CONDITION_MAX, DESIGNABLE, isPlayableStyle } from '../data/architecture';
 import { DEMOLISH_REFUND_PERMILLE, ROAD_COST_WOOD, ROAD_REFUND_WOOD, TRADE_OFFERS } from '../data/balance';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
@@ -21,10 +24,24 @@ import { homeProvince, idleWorkers, isBuilt, storageCaps, totalPopulation } from
 import { logEvent } from './events';
 import { buildingById, footprintTiles, idx, refreshConnectivity, tileAt, townCenter } from './grid';
 import { checkRoadSite, checkSite } from './placement';
+import { investedCost, levelCost, repairCost, restyleCost, sameLook } from './architecture';
+import { lookSchema } from '../save/lookSchema';
 import { evaluateQuests } from './quests';
 
 export type Command =
-  | { type: 'placeBuilding'; buildingId: BuildingId; x: number; y: number }
+  | {
+      type: 'placeBuilding';
+      buildingId: BuildingId;
+      x: number;
+      y: number;
+      /** Defaults to the city's culture. */
+      style?: ArchitectureStyle;
+      /** Workshop design; null/undefined = culture default. */
+      look?: BuildingLook | null;
+    }
+  | { type: 'setBuildingStyle'; instanceId: string; style: ArchitectureStyle; look: BuildingLook | null }
+  | { type: 'restoreBuilding'; instanceId: string }
+  | { type: 'setCulture'; style: ArchitectureStyle }
   | { type: 'placeRoad'; x: number; y: number }
   | { type: 'removeRoad'; x: number; y: number }
   | { type: 'cancelConstruction'; instanceId: string }
@@ -74,26 +91,34 @@ export function requirementError(s: GameState, spec: LevelSpec): MessageRef | nu
   return null;
 }
 
+/** Validates a culture/design pair for a building type (untrusted input from UI or imports). */
+export function styleError(
+  buildingId: BuildingId,
+  style: unknown,
+  look: unknown,
+): MessageRef | null {
+  if (!isPlayableStyle(style)) return { key: 'err.styleUnavailable' };
+  if (look === null || look === undefined) return null;
+  if (!DESIGNABLE.includes(buildingId)) return { key: 'err.notDesignable' };
+  return lookSchema.safeParse(look).success ? null : { key: 'err.invalidDesign' };
+}
+
 export function validatePlacement(
   s: GameState,
   buildingId: BuildingId,
   x: number,
   y: number,
+  style: ArchitectureStyle = s.culture,
+  look: BuildingLook | null = null,
 ): MessageRef | null {
   const def = BUILDINGS[buildingId];
-  if (!def.buildable) return { key: 'err.notBuildable' };
+  if (!def?.buildable) return { key: 'err.notBuildable' };
   const p = homeProvince(s);
-  return checkSite(p, def, x, y) ?? missingFor(p, def.levels[0]!.cost);
-}
-
-/** Total cost invested in a building up to its current level. */
-function investedCost(b: BuildingInstance): Cost {
-  const total: Cost = {};
-  for (let l = 0; l < b.level; l++) {
-    const cost = BUILDINGS[b.definitionId].levels[l]!.cost;
-    for (const id of COST_KEYS(cost)) total[id] = (total[id] ?? 0) + (cost[id] ?? 0);
-  }
-  return total;
+  return (
+    styleError(buildingId, style, look) ??
+    checkSite(p, def, x, y) ??
+    missingFor(p, levelCost(buildingId, 0, style, look))
+  );
 }
 
 /** Pure validation: returns the reason a command is refused, or null if it may run. */
@@ -102,7 +127,25 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
   switch (cmd.type) {
     case 'placeBuilding':
       if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y)) return { key: 'err.outOfBounds' };
-      return validatePlacement(s, cmd.buildingId, cmd.x, cmd.y);
+      return validatePlacement(s, cmd.buildingId, cmd.x, cmd.y, cmd.style ?? s.culture, cmd.look ?? null);
+    case 'setBuildingStyle': {
+      const b = buildingById(p, cmd.instanceId);
+      if (!b) return { key: 'err.noBuilding' };
+      const bad = styleError(b.definitionId, cmd.style, cmd.look);
+      if (bad) return bad;
+      if (b.state !== 'active') return { key: 'err.busy' };
+      if (b.style === cmd.style && sameLook(b.look, cmd.look)) return { key: 'err.sameStyle' };
+      return missingFor(p, restyleCost(b.definitionId, cmd.style, cmd.look));
+    }
+    case 'restoreBuilding': {
+      const b = buildingById(p, cmd.instanceId);
+      if (!b) return { key: 'err.noBuilding' };
+      if (!isBuilt(b)) return { key: 'err.busy' };
+      if (b.condition >= CONDITION_MAX) return { key: 'err.noRepairNeeded' };
+      return missingFor(p, repairCost(b));
+    }
+    case 'setCulture':
+      return isPlayableStyle(cmd.style) ? null : { key: 'err.styleUnavailable' };
     case 'placeRoad':
       return checkRoadSite(p, cmd.x, cmd.y) ?? missingFor(p, { wood: ROAD_COST_WOOD });
     case 'removeRoad':
@@ -119,7 +162,7 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
       const next = defOf(b).levels[b.level];
       if (!next) return { key: 'err.maxLevel' };
       if (!b.connected) return { key: 'err.noRoad' };
-      return requirementError(s, next) ?? missingFor(p, next.cost);
+      return requirementError(s, next) ?? missingFor(p, levelCost(b.definitionId, b.level, b.style, b.look));
     }
     case 'demolishBuilding': {
       const b = buildingById(p, cmd.instanceId);
@@ -186,7 +229,9 @@ function applyCommand(s: GameState, cmd: Command): void {
   switch (cmd.type) {
     case 'placeBuilding': {
       const def = BUILDINGS[cmd.buildingId];
-      pay(p, def.levels[0]!.cost);
+      const style = cmd.style ?? s.culture;
+      const look = cmd.look ?? null;
+      pay(p, levelCost(def.id, 0, style, look));
       const b: BuildingInstance = {
         id: `b${s.nextBuildingId++}`,
         definitionId: def.id,
@@ -199,6 +244,9 @@ function applyCommand(s: GameState, cmd: Command): void {
         state: 'construction',
         connected: true,
         unpaid: false,
+        style,
+        look: look ? { ...look } : null,
+        condition: CONDITION_MAX,
       };
       p.buildings.push(b);
       for (const [x, y] of footprintTiles(def, cmd.x, cmd.y)) p.tiles[idx(p, x, y)]!.buildingId = b.id;
@@ -217,11 +265,11 @@ function applyCommand(s: GameState, cmd: Command): void {
     case 'cancelConstruction': {
       const b = buildingById(p, cmd.instanceId)!;
       if (b.state === 'upgrading') {
-        refund(s, p, defOf(b).levels[b.level]!.cost);
+        refund(s, p, levelCost(b.definitionId, b.level, b.style, b.look));
         b.state = 'active';
         b.progressTicks = 0;
       } else {
-        refund(s, p, defOf(b).levels[0]!.cost);
+        refund(s, p, levelCost(b.definitionId, 0, b.style, b.look));
         for (const [x, y] of footprintTiles(defOf(b), b.x, b.y)) p.tiles[idx(p, x, y)]!.buildingId = null;
         p.buildings.splice(p.buildings.indexOf(b), 1);
       }
@@ -229,7 +277,7 @@ function applyCommand(s: GameState, cmd: Command): void {
     }
     case 'upgradeBuilding': {
       const b = buildingById(p, cmd.instanceId)!;
-      pay(p, defOf(b).levels[b.level]!.cost);
+      pay(p, levelCost(b.definitionId, b.level, b.style, b.look));
       b.state = 'upgrading';
       b.progressTicks = 0;
       break;
@@ -244,6 +292,27 @@ function applyCommand(s: GameState, cmd: Command): void {
     }
     case 'assignWorkers':
       buildingById(p, cmd.instanceId)!.workers = cmd.workers;
+      break;
+    case 'setBuildingStyle': {
+      const b = buildingById(p, cmd.instanceId)!;
+      pay(p, restyleCost(b.definitionId, cmd.style, cmd.look));
+      b.style = cmd.style;
+      b.look = cmd.look ? { ...cmd.look } : null;
+      logEvent(s, 'success', 'event.restyled', {
+        building: `@building.${b.definitionId}.name`,
+        style: `@style.${cmd.style}`,
+      });
+      break;
+    }
+    case 'restoreBuilding': {
+      const b = buildingById(p, cmd.instanceId)!;
+      pay(p, repairCost(b));
+      b.condition = CONDITION_MAX;
+      logEvent(s, 'success', 'event.restored', { building: `@building.${b.definitionId}.name` }, { x: b.x, y: b.y });
+      break;
+    }
+    case 'setCulture':
+      s.culture = cmd.style;
       break;
     case 'setTaxRate':
       p.taxRate = cmd.taxRate;

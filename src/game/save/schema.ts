@@ -3,6 +3,8 @@ import type { GameState } from '../core/types';
 import { BUILDING_IDS } from '../data/buildings';
 import { QUESTS } from '../data/quests';
 import { TECH_IDS } from '../data/technologies';
+import { ALL_STYLES, CONDITION_MAX } from '../data/architecture';
+import { lookSchema } from './lookSchema';
 
 const int = z.number().int();
 const nat = int.nonnegative();
@@ -13,6 +15,7 @@ const buildingId = z.enum(BUILDING_IDS as [string, ...string[]]);
 const techId = z.enum(TECH_IDS as [string, ...string[]]);
 const questId = z.enum(QUESTS.map((q) => q.id) as [string, ...string[]]);
 const shortText = z.string().max(80);
+const style = z.enum(ALL_STYLES as unknown as [string, ...string[]]);
 
 const tile = z
   .object({
@@ -37,6 +40,9 @@ const building = z
     state: z.enum(['construction', 'active', 'upgrading']),
     connected: z.boolean(),
     unpaid: z.boolean(),
+    style,
+    look: lookSchema.nullable(),
+    condition: nat.max(CONDITION_MAX),
   })
   .strict();
 
@@ -104,6 +110,7 @@ export const gameStateSchema = z
     tick: nat,
     speed: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)]),
     playerFactionId: shortText,
+    culture: style,
     homeProvinceId: shortText,
     provinces: z.record(province),
     revealedProvinceIds: z.array(shortText).max(64),

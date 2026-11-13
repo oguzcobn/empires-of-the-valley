@@ -16,6 +16,8 @@ import {
 } from '../game/systems/economy';
 import { buildingById } from '../game/systems/grid';
 import { requiredTicks } from '../game/systems/tick';
+import { PLAYABLE_STYLES } from '../game/data/architecture';
+import { conditionBand, decayPerDay, levelCost, repairCost, restyleCost } from '../game/systems/architecture';
 import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
 import { Bar, CostList, Row } from './common';
 import { Icon } from './icons';
@@ -39,6 +41,78 @@ function StatusLine({ b }: { b: BuildingInstance }): ReactElement {
   else if (b.state === 'upgrading') [key, tone] = ['status.upgrading', 'info'];
   else if (spec.workerSlots > 0) key = 'status.working';
   return <p className={`status ${tone}`}>{t(key)}</p>;
+}
+
+/** Culture, condition and repairs of one building. */
+function ArchitectureSection({ game, b }: { game: GameState; b: BuildingInstance }): ReactElement {
+  const dispatch = useApp((s) => s.dispatch);
+  const p = homeProvince(game);
+  const band = conditionBand(b.condition);
+  const repair = repairCost(b);
+  const repairError = validateCommand(game, { type: 'restoreBuilding', instanceId: b.id });
+  const others = PLAYABLE_STYLES.filter((st) => st !== b.style || b.look !== null);
+  return (
+    <section className="section" data-testid="arch-section">
+      <h4>{t('arch.style')}</h4>
+      <Row label={t('arch.style')}>
+        <span className={`style-badge style-${b.style}`} data-testid="building-style">
+          {t(`style.${b.style}`)}
+          {b.look ? ` · ${t('workshop.custom')}` : ''}
+        </span>
+      </Row>
+      {isBuilt(b) && (
+        <>
+          <Row label={t('condition.label')}>
+            <span className={`status-inline ${band === 'good' ? 'ok' : band === 'worn' ? 'warn' : 'bad'}`}>
+              {Math.floor(b.condition / 100)}% · {t(`condition.${band}`)}
+            </span>
+          </Row>
+          <Bar value={b.condition} max={10000} tone={band === 'good' ? 'ok' : band === 'worn' ? 'warn' : 'bad'} />
+          <p className="hint">
+            {t('condition.decay', { n: (decayPerDay(b) / 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) })} ·{' '}
+            {t('condition.repairHint')}
+          </p>
+          {b.condition < 10000 && (
+            <div className="row-actions">
+              <CostList cost={repair} stocks={p.stocks} />
+              <button
+                className="btn"
+                disabled={!!repairError}
+                title={repairError ? tm(repairError) : undefined}
+                onClick={() => dispatch({ type: 'restoreBuilding', instanceId: b.id })}
+                data-testid="restore"
+              >
+                {t('condition.repair')}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      {b.state === 'active' && others.length > 0 && (
+        <div className="restyle">
+          <p className="hint">{t('arch.change')}</p>
+          {others.map((st) => {
+            const cmd = { type: 'setBuildingStyle' as const, instanceId: b.id, style: st, look: null };
+            const error = validateCommand(game, cmd);
+            return (
+              <div key={st} className="row-actions">
+                <CostList cost={restyleCost(b.definitionId, st, null)} stocks={p.stocks} />
+                <button
+                  className="btn"
+                  disabled={!!error}
+                  title={error ? tm(error) : undefined}
+                  onClick={() => dispatch(cmd)}
+                  data-testid={`restyle-${st}`}
+                >
+                  {t(`style.${st}.long`)}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
 }
 
 /** Explains, factor by factor, why a production building yields what it yields. */
@@ -82,6 +156,10 @@ function OutputBreakdown({
           })}
         </li>
         {tech !== 1000 && <li className="pos">{t('why.tech', { pct: Math.round(tech / 10 - 100) })}</li>}
+        {b.condition < 5000 && (
+          <li className="bad">{t(b.condition < 2500 ? 'condition.poor' : 'condition.worn')}</li>
+        )}
+        {def.id === 'school' && b.style === 'scottish' && <li className="pos">{t('style.scottish.bonus2')}</li>}
         {noTools && <li className="bad">{t('why.noTools', { pct: 100 - NO_TOOLS_OUTPUT_PERMILLE / 10 })}</li>}
         {winter && <li className="bad">{t('why.winter')}</li>}
         {!b.connected && <li className="bad">{t('why.disconnected')}</li>}
@@ -169,6 +247,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
   const def = defOf(b);
   const spec = specOf(b);
   const next = def.levels[b.level];
+  const nextCost = next ? levelCost(b.definitionId, b.level, b.style, b.look) : {};
   const idle = idleWorkers(p);
   const busy = b.state !== 'active';
   const upgradeError = next ? validateCommand(game, { type: 'upgradeBuilding', instanceId: b.id }) : null;
@@ -261,6 +340,8 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
 
       {isBuilt(b) && <OutputBreakdown game={game} p={p} b={b} />}
 
+      <ArchitectureSection game={game} b={b} />
+
       {isBuilt(b) &&
         (spec.housing > 0 || storage.length > 0 || spec.goldIncome > 0 || spec.upkeepGold > 0) && (
           <section className="section">
@@ -332,7 +413,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
           {next ? (
             <>
               <Row label={t('inspector.upgradeCost')}>
-                <CostList cost={next.cost} stocks={p.stocks} />
+                <CostList cost={nextCost} stocks={p.stocks} />
               </Row>
               <p className="hint">{t(`building.${b.definitionId}.upgrade`)}</p>
               <button
@@ -345,7 +426,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
               </button>
               {upgradeError && (
                 <p className="hint warn">
-                  {tm(requirementError(game, next) ?? missingFor(p, next.cost) ?? upgradeError)}
+                  {tm(requirementError(game, next) ?? missingFor(p, nextCost) ?? upgradeError)}
                 </p>
               )}
             </>
