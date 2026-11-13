@@ -43,7 +43,8 @@ describe('roof-occluded illuminated windows', () => {
     ctx.lights.push(pane);
     g.poly([10, 2, 12, 2, 11, 0]).fill(0x222222);
     expect(sequence).toEqual(['window', 'roof']);
-    expect(ctx.lights).toEqual([pane]);
+    expect(ctx.lights).toHaveLength(1);
+    expect(ctx.lights[0]).toEqual(pane);
   });
 
   it('does not paint a glow for the ordinary daytime drawing pass', () => {
