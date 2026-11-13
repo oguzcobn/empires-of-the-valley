@@ -29,6 +29,7 @@ import { findRoadPath } from './armyPath';
 import { matchDayFor } from '../data/matchDays';
 import type { MatchDay } from '../data/matchDays';
 import { drawCityCar, drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
+import { pedestrianSidewalkOffset, vehicleLaneOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
 
 export type Tool =
@@ -1202,9 +1203,7 @@ export class ValleyRenderer {
       // Two protected sidewalk offsets, one on each edge of a paved tile.
       // Pedestrians never stand in the centre of a vehicle's lane.
       const sidewalk = paved && !w.cart && (dx !== 0 || dy !== 0);
-      const side = w.side >= 0 ? 1 : -1;
-      const wx = sidewalk ? -dy * side * 0.30 : 0;
-      const wy = sidewalk ? dx * side * 0.30 : 0;
+      const [wx, wy] = sidewalk ? pedestrianSidewalkOffset(dx, dy, w.side) : [0, 0];
       w.c.position.set(
         isoX(fx + wx, fy + wy) + (sidewalk ? 0 : w.side),
         isoY(fx + wx, fy + wy) + bob + (sidewalk ? 0 : w.side * 0.25) - lift,
@@ -1232,6 +1231,14 @@ export class ValleyRenderer {
           tileAt(p, nx, ny)?.height === tileAt(p, x, y)?.height);
     const linked = this.pavedRoadTiles.filter(([x, y]) => neighbors(x, y).length > 0);
     const desired = Math.min(8, Math.floor(linked.length / 4));
+    // Deleted or demolished paved roads must immediately release their cars.
+    for (let i = this.trafficCars.length - 1; i >= 0; i--) {
+      const car = this.trafficCars[i]!;
+      if (!isPaved(car.from[0], car.from[1]) || !isPaved(car.to[0], car.to[1])) {
+        car.c.destroy({ children: true });
+        this.trafficCars.splice(i, 1);
+      }
+    }
     while (this.trafficCars.length > desired) this.trafficCars.pop()!.c.destroy({ children: true });
     let attempts = 0;
     while (this.trafficCars.length < desired && attempts++ < 18) {
@@ -1256,7 +1263,6 @@ export class ValleyRenderer {
     }
     const uk = view.game.cityId === 'edinburgh' ||
       (!view.game.cityId && view.game.culture === 'scottish');
-    const roadSide = uk ? -0.13 : 0.13;
     for (const car of this.trafficCars) {
       if (!isPaved(car.from[0], car.from[1]) || !isPaved(car.to[0], car.to[1])) {
         car.c.visible = false;
@@ -1283,8 +1289,7 @@ export class ValleyRenderer {
       const dy = car.to[1] - car.from[1];
       const x = car.from[0] + dx * car.t + 0.5;
       const y = car.from[1] + dy * car.t + 0.5;
-      const laneX = -dy * roadSide;
-      const laneY = dx * roadSide;
+      const [laneX, laneY] = vehicleLaneOffset(dx, dy, uk);
       const lift = this.hz(p, car.from[0], car.from[1]);
       car.c.position.set(isoX(x + laneX, y + laneY), isoY(x + laneX, y + laneY) - lift);
       car.c.rotation = Math.atan2(isoY(dx, dy), isoX(dx, dy));
