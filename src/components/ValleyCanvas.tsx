@@ -93,8 +93,14 @@ export function ValleyCanvas(): ReactElement {
       },
       onRoadPaint(x, y) {
         const s = useApp.getState();
-        if (!s.game || tileAt(homeProvince(s.game), x, y)?.road) return;
-        s.dispatch({ type: 'placeRoad', x, y });
+        if (!s.game) return;
+        const tile = tileAt(homeProvince(s.game), x, y);
+        if (s.tool.kind === 'pave') {
+          if (tile?.road && tile.roadType === 'dirt' && !tile.paved)
+            s.dispatch({ type: 'paveRoad', x, y });
+        } else if (s.tool.kind === 'road' && !tile?.road) {
+          s.dispatch({ type: 'placeRoad', x, y });
+        }
       },
       onTileClick(x, y, buildingId) {
         const s = useApp.getState();
