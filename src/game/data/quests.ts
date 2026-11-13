@@ -68,6 +68,11 @@ export const QUESTS: readonly Quest[] = [
     objectives: [{ type: 'prosperityStreak', happiness: 75, days: 10 }],
     rewards: [{ type: 'completeChapter', chapter: 1 }],
   },
+  // Chapter 2 — Vadinin Efendisi.
+  { id: 'q09', chapter: 2, prerequisites: ['q08'], objectives: [{ type: 'buildingCount', buildingId: 'market', count: 1 }], rewards: [{ type: 'addResource', resourceId: 'gold', amount: u(40) }] },
+  { id: 'q10', chapter: 2, prerequisites: ['q09'], objectives: [{ type: 'buildingCount', buildingId: 'watchtower', count: 1 }], rewards: [{ type: 'addResource', resourceId: 'tools', amount: u(15) }] },
+  { id: 'q11', chapter: 2, prerequisites: ['q10'], objectives: [{ type: 'buildingCount', buildingId: 'quarry', count: 1 }, { type: 'population', count: 30 }], rewards: [{ type: 'addResource', resourceId: 'stone', amount: u(30) }] },
+  { id: 'q12', chapter: 2, prerequisites: ['q11'], objectives: [{ type: 'prosperityStreak', happiness: 75, days: 7 }], rewards: [{ type: 'revealProvince', provinceId: 'cinar_ormani' }, { type: 'completeChapter', chapter: 2 }] },
 ];
 
 export const QUEST_BY_ID = Object.fromEntries(QUESTS.map((q) => [q.id, q])) as Record<QuestId, Quest>;
