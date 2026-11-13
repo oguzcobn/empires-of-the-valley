@@ -3,6 +3,7 @@ import type { GameState, MessageRef } from '../core/types';
 import { GAME_VERSION } from '../data/balance';
 import { homeProvince, totalPopulation } from '../systems/economy';
 import { validateInvariants } from '../systems/invariants';
+import { ensureQuestProgress } from '../systems/quests';
 import { migrate } from './migrations';
 import { parseGameState } from './schema';
 
@@ -75,6 +76,9 @@ export function loadSaveFile(raw: unknown): LoadResult {
     return { ok: false, error: { key: 'save.err.invalid', params: { detail: parsed.issues[0] ?? '' } } };
   if (!parsed.state.provinces[parsed.state.homeProvinceId])
     return { ok: false, error: { key: 'save.err.invalid', params: { detail: 'homeProvince' } } };
+  // Older campaign saves do not know about future chapters. Restore only
+  // missing quest records before checking strict current-version invariants.
+  ensureQuestProgress(parsed.state);
   const problems = validateInvariants(parsed.state);
   if (problems.length)
     return { ok: false, error: { key: 'save.err.invalid', params: { detail: problems[0]! } } };
