@@ -14,6 +14,7 @@ import {
 } from '../game/systems/economy';
 import { fmtInt, fmtRate, t } from '../i18n';
 import { Icon } from './icons';
+import { matchDayFor } from '../game/data/matchDays';
 import { cityOf } from '../game/data/cities';
 
 const HUD_RESOURCES: ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
@@ -31,6 +32,7 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
   const flows = useMemo(() => computeFlows(game), [game]);
   const caps = useMemo(() => storageCaps(game, p), [game, p]);
   const cal = calendar(game.tick);
+  const match = matchDayFor(game);
   const pop = totalPopulation(p);
   const housing = housingCapacity(p);
 
@@ -78,6 +80,11 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
       </div>
       <div className="hud-time">
         <span className="chip hud-city" title="Şehir merkezi">{cityOf(game.cityId, game.culture).name}</span>
+        {match && (
+          <span className="chip matchday-chip" title="Gerçek maç takvimi değil; oyun içi kurgusal maç atmosferi">
+            ⚽ Maç günü · {match.teamName}{match.home ? '' : ' (ziyaretçi taraftarı)'} · Şehirde taraftarlar!
+          </span>
+        )}
         <div className={`hud-date season-${cal.season}`} title={t('hud.dateTip')}>
           <b>{t(`season.${cal.season}`)}</b>
           <span data-testid="date">
