@@ -81,6 +81,17 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           {t('tool.demolish')}
         </button>
       </div>
+        <button
+          className={`btn tool ${tool.kind === 'army' ? 'active' : ''}`}
+          aria-pressed={tool.kind === 'army'}
+          disabled={(game.militia ?? 0) === 0}
+          onClick={() => setTool(tool.kind === 'army' ? { kind: 'select' } : { kind: 'army' })}
+          title="Birlik Taşı (G) · Yol üzerinde hedef seç"
+          data-testid="tool-army"
+        >
+          <span className="glyph">⚔</span> Birlik Taşı
+        </button>
+      </div>
       <div className="tool-group">
         {PANELS.filter((x) => !x.campaignOnly || game.mode === 'campaign').map(({ id, key, hint }) => (
           <button
