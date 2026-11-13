@@ -9,13 +9,13 @@ describe('chapter 1 quest chain', () => {
   it('only the first quest is active at the start', () => {
     const s = newCampaign();
     expect(activeQuestId(s)).toBe('q01');
-    expect(Object.values(s.questProgress).filter((q) => q!.status === 'locked')).toHaveLength(7);
+    expect(Object.values(s.questProgress).filter((q) => q!.status === 'locked')).toHaveLength(QUESTS.length - 1);
   });
 
   it('can be completed in order by a scripted playthrough, without softlocks', () => {
     for (const seed of [42, 7, 2024]) {
       const { state, log } = playChapterOne(seed);
-      const ticks = QUESTS.map((q) => state.questProgress[q.id]!.completedTick);
+      const ticks = QUESTS.filter((q) => q.chapter === 1).map((q) => state.questProgress[q.id]!.completedTick);
       expect(
         ticks.every((t) => t !== null),
         `seed ${seed}: ${JSON.stringify(ticks)}\n${log.join('\n')}`,
@@ -26,6 +26,21 @@ describe('chapter 1 quest chain', () => {
       expect(totalPopulation(home(state))).toBeGreaterThanOrEqual(20);
       expect(state.eventLog.filter((e) => e.key === 'event.chapterComplete')).toHaveLength(1);
     }
+  });
+
+  it('opens chapter 2 after the first chapter and restores missing quests in old saves', () => {
+    const { state } = playChapterOne(42);
+    expect(state.completedChapters).toContain(1);
+    expect(activeQuestId(state)).toBe('q09');
+    const oldSave = tweak(state, (d) => {
+      delete d.questProgress.q09;
+      delete d.questProgress.q10;
+      delete d.questProgress.q11;
+      delete d.questProgress.q12;
+      evaluateQuests(d);
+    });
+    expect(activeQuestId(oldSave)).toBe('q09');
+    expect(oldSave.questProgress.q10?.status).toBe('locked');
   });
 
   it('grants each reward exactly once', () => {
