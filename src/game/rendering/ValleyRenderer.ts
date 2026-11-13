@@ -7,6 +7,7 @@ import type { Weather } from './weather';
 
 extensions.add(CullerPlugin);
 import { calendar, clockHour } from '../core/time';
+import { TICK_MS } from '../core/clock';
 import type { Season } from '../core/time';
 import type { ArchitectureStyle, BuildingId, BuildingInstance, BuildingLook, GameState, Province, Tile } from '../core/types';
 import { FOREST_TILE_MAX, HEIGHT_PX, MAX_HEIGHT } from '../data/balance';
@@ -138,6 +139,8 @@ export class ValleyRenderer {
   private dropKind: Weather = 'clear';
   private atlas = new Map<string, { tex: Texture; x: number; y: number }>();
   private night = 0;
+  /** Visual-only sky clock; faster game speed never makes day/night strobe. */
+  private visualHour: number | null = null;
   private tintKey = -1;
   private fpsSamples: number[] = [];
   private lowFpsAt = -1e9;
@@ -457,7 +460,12 @@ export class ValleyRenderer {
       this.lastTiles = p.tiles;
       this.lastSeason = cal.season;
     }
-    this.updateLight(view, clockHour(view.game.tick), dt);
+    // Keep simulation/economy at the selected speed, but cap the *visual* sky
+    // at 1x (one day per 12 real seconds), even while playing at 4x.
+    // A continuous hour also avoids sudden jumps at discrete tick boundaries.
+    if (this.visualHour === null) this.visualHour = clockHour(view.game.tick);
+    if (view.game.speed > 0) this.visualHour = (this.visualHour + dt / TICK_MS) % 24;
+    this.updateLight(view, this.visualHour, dt);
     this.updateWeather(view, cal.day, cal.season, dt, motion);
     this.watchFps(view);
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
@@ -618,7 +626,8 @@ export class ValleyRenderer {
         const body = new Container();
         const g = new Graphics();
         const glow = new Graphics();
-        glow.blendMode = 'add';
+        // The night version is a complete depth-correct building, not an
+        // always-on-top glow pass that leaks through roofs.
         const extra = new Graphics();
         body.addChild(g);
         c.addChild(body, glow, extra);
@@ -716,8 +725,10 @@ export class ValleyRenderer {
       extra.moveTo(cx - 30, topY - 22).lineTo(cx - 30, topY - 4).stroke({ color: 0x3a2a1c, width: 0.8 });
     }
     bv.glow.clear();
-    for (const q of bv.info.lights) bv.glow.poly(q.flat()).fill({ color: 0xffc95a, alpha: 0.95 });
-    bv.glow.alpha = this.night;
+    // The illuminated version paints each window before subsequent roof/occluder
+    // geometry. Alpha blends with the unlit version, preserving all window depth.
+    if (isBuilt(b) && !landmarkSite) drawStyledBuilding(bv.glow, b, pal, detail, seed, true);
+    bv.glow.alpha = Math.min(1, this.night * 1.1);
     bv.glow.visible = this.night > 0.02 && isBuilt(b) && b.connected;
     if (this.opts.cacheBodies && landmarkSite && bv.body.isCachedAsTexture) bv.body.cacheAsTexture(false);
     if (this.opts.cacheBodies && !landmarkSite) {
@@ -842,8 +853,10 @@ export class ValleyRenderer {
     for (const b of this.boats) b.c.tint = tint;
     for (const bv of this.buildingViews.values()) {
       bv.body.tint = tint;
+      bv.glow.tint = tint;
       bv.glow.alpha = Math.min(1, this.night * 1.1);
-      bv.glow.visible = this.night > 0.02;
+      // Do not light unbuilt or road-disconnected buildings.
+      bv.glow.visible = this.night > 0.02 && bv.info.lights.length > 0;
     }
   }
 
