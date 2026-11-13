@@ -22,6 +22,7 @@ import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
 import { Bar, CostList, Row, costText } from './common';
 import { Icon } from './icons';
 import { requestDemolish } from './ValleyCanvas';
+import { ShipyardSection } from './Heritage';
 
 function StatusLine({ b }: { b: BuildingInstance }): ReactElement {
   const spec = specOf(b);
@@ -481,6 +482,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         )}
 
       {b.definitionId === 'town_center' && <TownHall game={game} p={p} />}
+      {b.definitionId === 'shipyard' && isBuilt(b) && <ShipyardSection game={game} />}
 
       {isBuilt(b) && (
         <section className="section">

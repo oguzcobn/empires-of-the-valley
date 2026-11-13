@@ -5,6 +5,8 @@
  */
 import { trArch } from './tr-arch';
 import { trTerrain } from './tr-terrain';
+import { trTourism } from './tr-tourism';
+import { trAtlas } from './tr-atlas';
 
 export const tr = {
   // ------------------------------------------------------------ genel
@@ -95,7 +97,6 @@ export const tr = {
   'category.production': 'Üretim',
   'category.storage': 'Depolama',
   'category.education': 'Eğitim',
-  'category.governance': 'Yönetim',
 
   // ------------------------------------------------------------ teknoloji
   'tech.basic_agriculture.name': 'Temel Tarım',
@@ -601,6 +602,8 @@ export const tr = {
   'chapterEnd.continue': 'Vadide kalmaya devam et',
   ...trArch,
   ...trTerrain,
+  ...trTourism,
+  ...trAtlas,
 } as const;
 
 export type TKey = keyof typeof tr;

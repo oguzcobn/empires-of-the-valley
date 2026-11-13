@@ -13,13 +13,13 @@ import { FOREST_TILE_MAX, HEIGHT_PX, MAX_HEIGHT } from '../data/balance';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { validatePlacement } from '../systems/commands';
 import { homeProvince, isBuilt, isOperating, totalPopulation } from '../systems/economy';
-import { buildingById, footprintTiles, tileAt, tilesInRange } from '../systems/grid';
+import { NEIGHBORS4, buildingById, footprintTiles, tileAt, tilesInRange } from '../systems/grid';
 import { checkRoadSite } from '../systems/placement';
 import { requiredTicks } from '../systems/tick';
 import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
 import { COLORS, SEASON_PALETTE, VILLAGER_COLORS } from './palette';
 import type { SeasonPalette } from './palette';
-import { drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
+import { drawBoat, drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
 import { drawStyledBuilding, drawStyledConstruction } from './arch/buildings';
 import type { SpriteInfo } from './arch/buildings';
 import { CULTURES } from '../data/architecture';
@@ -148,6 +148,7 @@ export class ValleyRenderer {
   private propViews = new Map<number, PropView>();
   private walkers: Walker[] = [];
   private particles: Particle[] = [];
+  private boats: { c: Container; kind: 'fishing' | 'cargo' | 'yacht'; x: number; y: number; tx: number; ty: number; t: number }[] = [];
   private lastTiles: Tile[] | null = null;
   private lastSeason: Season | null = null;
   private waterTiles: [number, number][] = [];
@@ -461,6 +462,7 @@ export class ValleyRenderer {
     this.watchFps(view);
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
     this.updateWalkers(view, p, dt, motion);
+    this.updateBoats(view, p, dt, motion);
     this.updateParticles(dt);
     this.drawOverlays(view, p, pal);
 
@@ -837,6 +839,7 @@ export class ValleyRenderer {
     this.waterFx.tint = tint;
     for (const pv of this.propViews.values()) pv.c.tint = tint;
     for (const w of this.walkers) w.c.tint = tint;
+    for (const b of this.boats) b.c.tint = tint;
     for (const bv of this.buildingViews.values()) {
       bv.body.tint = tint;
       bv.glow.alpha = Math.min(1, this.night * 1.1);
@@ -928,6 +931,53 @@ export class ValleyRenderer {
       side: (Math.random() - 0.5) * 9,
       cart,
     };
+  }
+
+  /** The city's fleet sails the lake and river (visual only, one sprite per vessel up to 9). */
+  private updateBoats(view: RendererView, p: Province, dt: number, motion: boolean): void {
+    const want: ('fishing' | 'cargo' | 'yacht')[] = [];
+    for (const kind of ['fishing', 'cargo', 'yacht'] as const)
+      for (let i = 0; i < Math.min(3, view.game.shipyard.fleet[kind]); i++) want.push(kind);
+    const sig = want.join(',');
+    if (sig !== this.boats.map((b) => b.kind).join(',')) {
+      for (const b of this.boats) b.c.destroy({ children: true });
+      this.boats = [];
+      const lake = this.waterTiles.filter(([x, y]) => tileAt(p, x, y)?.terrain === 'lake');
+      const pool = lake.length ? lake : this.waterTiles;
+      want.forEach((kind, i) => {
+        const at = pool[(i * 7) % Math.max(1, pool.length)];
+        if (!at) return;
+        const c = new Container();
+        const g = new Graphics();
+        drawBoat(g, kind);
+        c.addChild(g);
+        c.cullable = true;
+        this.objects.addChild(c);
+        this.boats.push({ c, kind, x: at[0], y: at[1], tx: at[0], ty: at[1], t: 1 });
+      });
+    }
+    const step = motion ? (dt / 1000) * 0.35 * (SPEED_FACTOR[view.game.speed] ?? 0) : 0;
+    const isWater = (x: number, y: number): boolean => {
+      const t = tileAt(p, x, y);
+      return !!t && (t.terrain === 'lake' || t.terrain === 'water') && !t.road;
+    };
+    for (const b of this.boats) {
+      b.t += step;
+      if (b.t >= 1) {
+        b.x = b.tx;
+        b.y = b.ty;
+        const options = NEIGHBORS4.map(([dx, dy]) => [b.x + dx, b.y + dy] as [number, number]).filter(([x, y]) => isWater(x, y));
+        const next = options.length ? options[Math.floor(Math.random() * options.length)]! : [b.x, b.y];
+        b.tx = next[0];
+        b.ty = next[1];
+        b.t = 0;
+      }
+      const fx = b.x + (b.tx - b.x) * b.t + 0.5;
+      const fy = b.y + (b.ty - b.y) * b.t + 0.5;
+      b.c.position.set(isoX(fx, fy), isoY(fx, fy) + Math.sin(this.time / 500 + b.x) * 0.8);
+      b.c.zIndex = fx + fy;
+      b.c.scale.x = b.tx - b.x - (b.ty - b.y) < 0 ? -1 : 1;
+    }
   }
 
   /** Visual-only villagers and carts wandering the road network. The economy never reads them. */

@@ -2,8 +2,8 @@ import { u } from '../core/fixed';
 import type { Cost, ResourceMap, RoadType, TaxRate, TradeOffer } from '../core/types';
 
 /** Phase 1 balance sheet. Values are provisional and exercised by src/tests/balance.test.ts. */
-export const SCHEMA_VERSION = 3;
-export const GAME_VERSION = '0.3.0';
+export const SCHEMA_VERSION = 4;
+export const GAME_VERSION = '0.4.0';
 
 /** The valley (core) is 24x24; since the terrain update it sits inside a 32x32 map ringed by
  * highlands at the back and a lake shore at the front. */

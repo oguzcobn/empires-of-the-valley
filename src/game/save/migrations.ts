@@ -76,8 +76,17 @@ function v2ToV3(data: Record<string, unknown>): Record<string, unknown> {
   return { ...data, provinces: nextProvinces, eventLog };
 }
 
+/** v3 -> v4 (tourism update): empty tourism record and shipyard; nothing else changes. */
+function v3ToV4(data: Record<string, unknown>): Record<string, unknown> {
+  return {
+    tourism: { culture: 0, satisfaction: 50, visitorsYesterday: 0, demandYesterday: 0, incomeYesterday: 0, totalVisitors: 0 },
+    shipyard: { queue: [], fleet: { fishing: 0, cargo: 0, yacht: 0 }, nextOrderId: 1, yachtsSold: 0 },
+    ...data,
+  };
+}
+
 /** Registry of format upgrades, keyed by source version. Chains run in order (1 -> 2 -> ...). */
-export const MIGRATIONS: Record<number, Migration> = { 1: v1ToV2, 2: v2ToV3 };
+export const MIGRATIONS: Record<number, Migration> = { 1: v1ToV2, 2: v2ToV3, 3: v3ToV4 };
 
 export type MigrationResult =
   | { ok: true; data: Record<string, unknown> }

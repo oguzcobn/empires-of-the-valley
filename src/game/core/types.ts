@@ -9,7 +9,8 @@ export type LandmarkId =
   | 'scott_monument'
   | 'sumela_monastery'
   | 'galata_tower'
-  | 'selimiye_mosque';
+  | 'selimiye_mosque'
+  | 'trabzon_stadium';
 
 export type BuildingId =
   | 'town_center'
@@ -21,7 +22,13 @@ export type BuildingId =
   | 'granary'
   | 'school'
   | 'terrace_farm'
+  | 'market'
+  | 'inn'
+  | 'watchtower'
+  | 'shipyard'
   | LandmarkId;
+
+export type VesselKind = 'fishing' | 'cargo' | 'yacht';
 
 /**
  * Terrain. `water` is a river (bridgeable), `lake` is still water (not bridgeable); `hill`,
@@ -144,7 +151,8 @@ export type BuildingCategory =
   'housing' | 'production' | 'storage' | 'education' | 'governance' | 'landmark';
 
 /** Special terrain rule of a landmark, checked for real by placement (see systems/placement.ts). */
-export type SiteRule = 'crag' | 'castleHill' | 'cityGarden' | 'mountainside' | 'hilltopWater' | 'grandPlain';
+export type SiteRule =
+  'crag' | 'castleHill' | 'cityGarden' | 'mountainside' | 'hilltopWater' | 'grandPlain' | 'coastalPlain';
 
 export interface LandmarkStage {
   cost: Cost;
@@ -189,6 +197,16 @@ export interface BuildingDefinition {
   levels: readonly LevelSpec[];
   /** Footprint may span tiles of different heights (landmarks that terrace into slopes). */
   allowSlope?: boolean;
+  /** Must stand next to river or lake water (shipyards). */
+  needsWater?: boolean;
+  /** Tourism and city services (data-driven; see systems/tourism.ts). */
+  services?: {
+    beds?: number;
+    attraction?: number;
+    marketGold?: number;
+    safety?: number;
+    safetyRadius?: number;
+  };
   landmark?: LandmarkSpec;
 }
 
@@ -323,6 +341,31 @@ export interface GameEvent {
   at?: { x: number; y: number };
 }
 
+export interface TourismState {
+  /** Accumulated culture points (milli-units). */
+  culture: number;
+  /** Visitor satisfaction 0..100 (smoothed, also the city's reputation). */
+  satisfaction: number;
+  visitorsYesterday: number;
+  demandYesterday: number;
+  incomeYesterday: number;
+  totalVisitors: number;
+}
+
+export interface VesselOrder {
+  id: number;
+  kind: VesselKind;
+  /** Shipwright-hours invested. */
+  progress: number;
+}
+
+export interface ShipyardState {
+  queue: VesselOrder[];
+  fleet: Record<VesselKind, number>;
+  nextOrderId: number;
+  yachtsSold: number;
+}
+
 export interface GameSettings {
   autoPauseOnMilestone: boolean;
 }
@@ -352,6 +395,8 @@ export interface GameState {
   nextEventId: number;
   nextBuildingId: number;
   settings: GameSettings;
+  tourism: TourismState;
+  shipyard: ShipyardState;
 }
 
 export interface MessageRef {

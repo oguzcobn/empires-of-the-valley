@@ -206,9 +206,12 @@ export function surroundValley(seed: number, core: readonly Tile[]): Tile[] {
     set(x, 8, x === 3 ? 'hill' : 'forest', 1);
     set(x, 9, 'forest', 1);
   }
-  // Galata-type hill overlooking the lake
-  const gx = lakeX + (lakeX > N / 2 ? -6 : 4);
+  // Galata-type hill overlooking the lake, on one side of it
+  const gx = lakeX + 4 <= N - 3 ? lakeX + 4 : lakeX - 11;
   for (let y = E; y <= E + 2; y++) for (let x = gx; x <= gx + 2; x++) if (at(x, y)?.terrain !== 'lake') set(x, y, 'hill', 1);
+  // reclaimed shore for a stadium: flat land touching the lake on the other side
+  for (let y = E; y < N; y++)
+    for (let x = lakeX - 7; x <= lakeX - 4; x++) if (at(x, y) && at(x, y)!.terrain !== 'lake') set(x, y, 'sand', 0);
   return out;
 }
 

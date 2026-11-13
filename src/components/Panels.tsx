@@ -27,6 +27,7 @@ import { GRAPHICS_SETTINGS, effectiveQuality } from '../app/settings';
 import { Icon } from './icons';
 import { ObjectiveList, rewardLabel } from './QuestTracker';
 import { WorkshopPanel } from './Workshop';
+import { AtlasPanel, TourismPanel } from './Heritage';
 
 const RESOURCES: ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
 
@@ -812,6 +813,18 @@ export function PanelHost({ game }: { game: GameState | null }): ReactElement | 
       return (
         <Modal title={t('panel.log')} onClose={close}>
           <LogPanel game={game} />
+        </Modal>
+      );
+    case 'tourism':
+      return (
+        <Modal title={t('panel.tourism')} onClose={close} wide>
+          <TourismPanel game={game} />
+        </Modal>
+      );
+    case 'atlas':
+      return (
+        <Modal title={t('panel.atlas')} onClose={close} wide>
+          <AtlasPanel game={game} />
         </Modal>
       );
     case 'workshop':

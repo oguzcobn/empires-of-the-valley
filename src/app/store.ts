@@ -39,7 +39,9 @@ export type PanelId =
   | 'log'
   | 'help'
   | 'credits'
-  | 'workshop';
+  | 'workshop'
+  | 'tourism'
+  | 'atlas';
 
 export interface Toast {
   id: number;

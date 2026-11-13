@@ -258,3 +258,25 @@ export function drawCart(g: Graphics, load: number): void {
   g.circle(-4, -2, 2.6).fill(0x3a2a1c);
   g.circle(4, -2, 2.6).fill(0x3a2a1c);
 }
+
+/** Small vessels for the lake and river: fishing boat, cargo ship or yacht. */
+export function drawBoat(g: Graphics, kind: 'fishing' | 'cargo' | 'yacht'): void {
+  g.ellipse(0, 1, 9, 3).fill({ color: 0x1b3a55, alpha: 0.25 });
+  if (kind === 'yacht') {
+    g.poly([-9, -2, 9, -2, 6, 2, -7, 2]).fill(0xf6f6f4);
+    g.rect(-3, -5, 6, 3).fill(0xe0e6ea);
+    g.moveTo(0, -5).lineTo(0, -20).stroke({ color: 0x8a8f94, width: 1 });
+    g.poly([1, -19, 1, -6, 9, -6]).fill(0xffffff);
+    return;
+  }
+  if (kind === 'cargo') {
+    g.poly([-11, -3, 11, -3, 8, 2, -9, 2]).fill(0x7b1e3a);
+    g.rect(-7, -7, 5, 4).fill(0xc98b3a);
+    g.rect(-1, -7, 5, 4).fill(0x3d7fb5);
+    g.rect(5, -9, 3, 6).fill(0xe8e4dc);
+    return;
+  }
+  g.poly([-7, -2, 7, -2, 5, 2, -5, 2]).fill(0x8a5a36);
+  g.moveTo(-1, -2).lineTo(-1, -13).stroke({ color: 0x5a3b22, width: 1 });
+  g.poly([0, -12, 0, -3, 6, -3]).fill(0xe8dcc0);
+}

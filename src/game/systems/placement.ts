@@ -69,6 +69,15 @@ export function siteRuleError(g: GridLike, def: BuildingDefinition, x: number, y
       });
       return water > 0 ? null : fail;
     }
+    case 'coastalPlain': {
+      // built on land reclaimed from the water: flat valley floor touching the shore
+      if (top !== 0 || low !== 0) return fail;
+      const shore = perimeterPairs(def, x, y).filter(([px, py]) => {
+        const t = tileAt(g, px, py);
+        return !!t && (t.terrain === 'lake' || t.terrain === 'water');
+      }).length;
+      return shore >= 2 ? null : fail;
+    }
     case 'grandPlain': {
       const tc = townCenter(g);
       if (top - low > 1 || !tc || chebyshev(x, y, tc.x, tc.y) > 10) return fail;
@@ -104,6 +113,13 @@ export function terrainSiteError(g: GridLike, def: BuildingDefinition, x: number
     top = Math.max(top, t.height);
   }
   if (!def.allowSlope && top !== low) return { key: 'err.uneven' };
+  if (def.needsWater) {
+    const shore = perimeterPairs(def, x, y).some(([px, py]) => {
+      const t = tileAt(g, px, py);
+      return !!t && (t.terrain === 'lake' || t.terrain === 'water');
+    });
+    if (!shore) return { key: 'err.needWater' };
+  }
   if (def.landmark) return siteRuleError(g, def, x, y, def.landmark.site);
   return null;
 }

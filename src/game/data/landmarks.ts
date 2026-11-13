@@ -47,7 +47,7 @@ function landmark(
 
 const stage = (days: number, cost: Cost): { days: number; cost: Cost } => ({ days, cost });
 
-export const LANDMARKS: Record<LandmarkId, BuildingDefinition> = {
+export const LANDMARKS = {
   edinburgh_castle: landmark('edinburgh_castle', [3, 3], ['rocky'], {
     culture: 'scottish',
     site: 'crag',
@@ -159,7 +159,26 @@ export const LANDMARKS: Record<LandmarkId, BuildingDefinition> = {
     museumGold: u(0.25),
     researchPerDay: 0,
   }),
-};
+} as Record<LandmarkId, BuildingDefinition>;
+
+// modern-era addition: a football stadium on reclaimed coastal land (inspired by Trabzon's)
+LANDMARKS.trabzon_stadium = landmark('trabzon_stadium', [4, 4], ['grass', 'sand'], {
+  culture: 'turkish',
+  site: 'coastalPlain',
+  builders: 8,
+  requires: { townCenterLevel: 2, population: 55, techId: 'architecture' },
+  stages: [
+    stage(8, { stone: u(120), wood: u(40), gold: u(40), research: u(15) }),
+    stage(8, { stone: u(120), wood: u(60), gold: u(45) }),
+    stage(8, { stone: u(80), wood: u(80), gold: u(50), tools: u(20) }),
+  ],
+  attraction: 18,
+  culturePerDay: u(2),
+  safety: 0,
+  happiness: 6,
+  museumGold: u(0.45),
+  researchPerDay: 0,
+});
 
 export const LANDMARK_IDS = Object.keys(LANDMARKS) as LandmarkId[];
 export const isLandmarkId = (id: string): id is LandmarkId => id in LANDMARKS;

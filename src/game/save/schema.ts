@@ -127,6 +127,26 @@ export const gameStateSchema = z
     nextEventId: nat,
     nextBuildingId: nat,
     settings: z.object({ autoPauseOnMilestone: z.boolean() }).strict(),
+    tourism: z
+      .object({
+        culture: nat,
+        satisfaction: int.min(0).max(100),
+        visitorsYesterday: nat,
+        demandYesterday: nat,
+        incomeYesterday: nat,
+        totalVisitors: nat,
+      })
+      .strict(),
+    shipyard: z
+      .object({
+        queue: z
+          .array(z.object({ id: nat, kind: z.enum(['fishing', 'cargo', 'yacht']), progress: nat }).strict())
+          .max(8),
+        fleet: z.object({ fishing: nat.max(20), cargo: nat.max(20), yacht: nat.max(20) }).strict(),
+        nextOrderId: nat,
+        yachtsSold: nat,
+      })
+      .strict(),
   })
   .strict();
 

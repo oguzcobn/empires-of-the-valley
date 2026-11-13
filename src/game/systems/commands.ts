@@ -14,6 +14,7 @@ import type {
   Province,
   ResourceId,
   RoadType,
+  VesselKind,
   TaxRate,
   TechId,
 } from '../core/types';
@@ -27,6 +28,8 @@ import { buildingById, footprintTiles, idx, refreshConnectivity, tileAt, townCen
 import { checkRoadSite, checkSite, roadTypeFor } from './placement';
 import { investedCost, levelCost, repairCost, restyleCost, sameLook } from './architecture';
 import { lookSchema } from '../save/lookSchema';
+import { MAX_ORDERS, VESSELS } from '../data/shipyard';
+import { fleetCount } from './tourism';
 import { evaluateQuests } from './quests';
 
 export type Command =
@@ -43,6 +46,9 @@ export type Command =
   | { type: 'setBuildingStyle'; instanceId: string; style: ArchitectureStyle; look: BuildingLook | null }
   | { type: 'restoreBuilding'; instanceId: string }
   | { type: 'setCulture'; style: ArchitectureStyle }
+  | { type: 'orderVessel'; kind: VesselKind }
+  | { type: 'cancelVessel'; orderId: number }
+  | { type: 'sellYacht' }
   | { type: 'placeRoad'; x: number; y: number }
   | { type: 'buildTerrace'; x: number; y: number }
   | { type: 'removeRoad'; x: number; y: number }
@@ -171,6 +177,18 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
     }
     case 'setCulture':
       return isPlayableStyle(cmd.style) ? null : { key: 'err.styleUnavailable' };
+    case 'orderVessel': {
+      const spec = VESSELS[cmd.kind];
+      if (!spec) return { key: 'err.invalid' };
+      if (!p.buildings.some((b) => b.definitionId === 'shipyard' && isBuilt(b))) return { key: 'err.needShipyard' };
+      if (s.shipyard.queue.length >= MAX_ORDERS) return { key: 'err.queueFull', params: { n: MAX_ORDERS } };
+      if (fleetCount(s, cmd.kind) >= spec.cap) return { key: 'err.fleetCap', params: { n: spec.cap } };
+      return missingFor(p, spec.cost);
+    }
+    case 'cancelVessel':
+      return s.shipyard.queue.some((o) => o.id === cmd.orderId) ? null : { key: 'err.invalid' };
+    case 'sellYacht':
+      return s.shipyard.fleet.yacht > 0 ? null : { key: 'err.noYacht' };
     case 'placeRoad': {
       const quote = roadQuote(s, cmd.x, cmd.y);
       return 'error' in quote ? quote.error : missingFor(p, quote.cost);
@@ -361,6 +379,24 @@ function applyCommand(s: GameState, cmd: Command): void {
     }
     case 'setCulture':
       s.culture = cmd.style;
+      break;
+    case 'orderVessel':
+      pay(p, VESSELS[cmd.kind].cost);
+      s.shipyard.queue.push({ id: s.shipyard.nextOrderId++, kind: cmd.kind, progress: 0 });
+      break;
+    case 'cancelVessel': {
+      const i = s.shipyard.queue.findIndex((o) => o.id === cmd.orderId);
+      const order = s.shipyard.queue[i]!;
+      // untouched orders are refunded in full, started hulls return half of their materials
+      refund(s, p, VESSELS[order.kind].cost, order.progress > 0 ? 500 : 1000);
+      s.shipyard.queue.splice(i, 1);
+      break;
+    }
+    case 'sellYacht':
+      s.shipyard.fleet.yacht -= 1;
+      s.shipyard.yachtsSold += 1;
+      p.stocks.gold += VESSELS.yacht.salePrice ?? 0;
+      logEvent(s, 'success', 'event.yachtSold', { gold: (VESSELS.yacht.salePrice ?? 0) / 1000 });
       break;
     case 'setTaxRate':
       p.taxRate = cmd.taxRate;

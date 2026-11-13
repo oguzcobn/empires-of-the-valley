@@ -15,6 +15,7 @@ import { logEvent } from '../systems/events';
 import { refreshConnectivity } from '../systems/grid';
 import { initialQuestProgress } from '../systems/quests';
 import { generateValley } from '../systems/terrain';
+import { emptyShipyard, emptyTourism } from '../systems/tourism';
 
 export interface NewGameOptions {
   seed: number;
@@ -77,6 +78,8 @@ export function createNewGame({ seed, mode, culture = LEGACY_STYLE }: NewGameOpt
     nextEventId: 1,
     nextBuildingId: valley.buildings.length + 1,
     settings: { autoPauseOnMilestone: true },
+    tourism: emptyTourism(),
+    shipyard: emptyShipyard(),
   };
   refreshConnectivity(state.provinces[HOME_PROVINCE_ID]!);
   logEvent(state, 'info', mode === 'campaign' ? 'event.welcome' : 'event.welcomeSandbox');

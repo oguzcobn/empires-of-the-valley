@@ -276,6 +276,22 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
       look({ wall: 'granite', roofMaterial: 'slate', roof: 'gable', facade: 'grey' }),
       look({ wall: 'granite', roofMaterial: 'slate', roof: 'gable', chimney: 'gable', facade: 'grey' }),
     ],
+    market: [
+      look({ floors: 1, wall: 'sandstone', roofMaterial: 'slate', roof: 'gable', windows: 'arched', door: 'arched', facade: 'honey' }),
+      look({ floors: 2, wall: 'sandstone', roofMaterial: 'slate', roof: 'gable', windows: 'arched', door: 'arched', decor: 'banners', facade: 'honey' }),
+    ],
+    inn: [
+      look({ floors: 2, wall: 'harl', roofMaterial: 'slate', roof: 'gable', windows: 'sash', door: 'plank', chimney: 'twin', decor: 'lanterns', facade: 'white' }),
+      look({ floors: 3, wall: 'harl', roofMaterial: 'slate', roof: 'crow_step', windows: 'sash', door: 'fanlight', chimney: 'twin', decor: 'lanterns', facade: 'cream' }),
+    ],
+    watchtower: [
+      look({ floors: 3, wall: 'granite', roofMaterial: 'slate', roof: 'pyramid', windows: 'small', facade: 'grey' }),
+      look({ floors: 4, wall: 'granite', roofMaterial: 'slate', roof: 'pyramid', windows: 'small', tower: 'turret', facade: 'grey' }),
+    ],
+    shipyard: [
+      look({ wall: 'wood', roofMaterial: 'slate', roof: 'gable', door: 'double', facade: 'umber' }),
+      look({ floors: 2, wall: 'granite', roofMaterial: 'slate', roof: 'gable', door: 'double', facade: 'grey' }),
+    ],
   },
   turkish: {
     // Anatolian village house -> Black Sea timber house -> Safranbolu mansion
@@ -355,6 +371,22 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
     quarry: [
       look({ wall: 'sandstone', roofMaterial: 'clay', roof: 'hip', facade: 'honey' }),
       look({ wall: 'sandstone', roofMaterial: 'clay', roof: 'hip', chimney: 'central', facade: 'honey' }),
+    ],
+    market: [
+      look({ floors: 1, wall: 'sandstone', roofMaterial: 'lead', roof: 'dome', windows: 'arched', door: 'arched', facade: 'honey' }),
+      look({ floors: 1, wall: 'sandstone', roofMaterial: 'lead', roof: 'dome', windows: 'arched', door: 'arched', decor: 'lanterns', facade: 'honey' }),
+    ],
+    inn: [
+      look({ floors: 1, wall: 'sandstone', roofMaterial: 'lead', roof: 'flat', windows: 'small', door: 'arched', courtyard: 'avlu', facade: 'honey' }),
+      look({ floors: 2, wall: 'sandstone', roofMaterial: 'lead', roof: 'flat', windows: 'arched', door: 'arched', courtyard: 'avlu', decor: 'lanterns', facade: 'honey' }),
+    ],
+    watchtower: [
+      look({ floors: 3, wall: 'sandstone', roofMaterial: 'lead', roof: 'pyramid', windows: 'arched', facade: 'honey' }),
+      look({ floors: 4, wall: 'sandstone', roofMaterial: 'lead', roof: 'pyramid', windows: 'arched', decor: 'banners', facade: 'honey' }),
+    ],
+    shipyard: [
+      look({ wall: 'wood', roofMaterial: 'shingle', roof: 'hip', door: 'double', facade: 'umber' }),
+      look({ floors: 2, wall: 'stone_timber', roofMaterial: 'clay', roof: 'hip', door: 'double', facade: 'umber' }),
     ],
   },
 };

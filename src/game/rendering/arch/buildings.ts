@@ -618,6 +618,138 @@ function terraceFarm(ctx: DrawCtx, look: BuildingLook, level: number, pal: Seaso
   mass(ctx, look, 1.5, 0.1, 1.92, 0.5, { z0: 11, floors: 1, door: 'L', windows: 'small', spacing: 0.5, axis: 'v', balcony: false, chimneys: level >= 2 });
 }
 
+function awning(ctx: DrawCtx, u0: number, u1: number, v: number, z: number, a: number, b: number): void {
+  const n = 6;
+  for (let i = 0; i < n; i++) {
+    const t0 = u0 + ((u1 - u0) * i) / n;
+    const t1 = u0 + ((u1 - u0) * (i + 1)) / n;
+    poly(ctx, [P(t0, v, z), P(t1, v, z), P(t1, v + 0.16, z - 4), P(t0, v + 0.16, z - 4)], i % 2 ? a : b);
+  }
+}
+
+function stall(ctx: DrawCtx, u: number, v: number, color: number, goods: number[]): void {
+  box(ctx, u, v, u + 0.3, v + 0.2, 0, 4, COLORS.plank);
+  goods.forEach((c, i) => box(ctx, u + 0.03 + i * 0.09, v + 0.04, u + 0.1 + i * 0.09, v + 0.16, 4, 6, c));
+  for (const du of [0.02, 0.28]) line(ctx, P(u + du, v + 0.2, 0), P(u + du, v + 0.2, 10), STONE.timber, 1);
+  poly(ctx, [P(u - 0.03, v - 0.02, 11), P(u + 0.33, v - 0.02, 11), P(u + 0.33, v + 0.24, 9), P(u - 0.03, v + 0.24, 9)], color);
+}
+
+function market(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level: number, pal: SeasonPalette): void {
+  groundPad(ctx, 2, 2, style === 'turkish' ? 0xdcc9a0 : 0xb9b4a6, 0.9);
+  if (style === 'turkish') {
+    // arasta: a vaulted row of shops with domes, and a striped awning over the stalls
+    shadowFor(ctx, 0.15, 0.15, 1.85, 0.85, 22);
+    mass(ctx, look, 0.15, 0.15, 1.85, 0.85, { floors: 1, door: 'L', doorT: 1.0, windows: 'arched', spacing: 0.24, chimneys: false, balcony: false });
+    awning(ctx, 0.15, 1.85, 0.85, 10, 0xc0392b, 0xf3ead8);
+    if (level >= 2) mass(ctx, look, 1.3, 0.85, 1.85, 1.6, { floors: 1, door: 'L', windows: 'arched', spacing: 0.3, chimneys: false, balcony: false });
+    stall(ctx, 0.3, 1.25, 0xd9852a, [0xd23a32, 0xe8b23a, 0x6fae4a]);
+    stall(ctx, 0.75, 1.5, 0x3d7fb5, [0x8a5a36, 0xe0d2b4, 0xc94f8e]);
+  } else {
+    // covered market hall at the back, a mercat cross and stalls in the square
+    shadowFor(ctx, 0.15, 0.2, 1.85, 0.9, 26);
+    mass(ctx, look, 0.15, 0.2, 1.85, 0.9, { door: 'L', doorT: 1.0, windows: 'arched', spacing: 0.3, axis: 'u', balcony: false });
+    const cu = 1.4;
+    const cv = 1.35;
+    box(ctx, cu - 0.12, cv - 0.12, cu + 0.12, cv + 0.12, 0, 2.5, STONE.granite);
+    box(ctx, cu - 0.025, cv - 0.025, cu + 0.025, cv + 0.025, 2.5, 20, STONE.sandstone);
+    const c = P(cu, cv, 22);
+    ctx.g.circle(c[0], c[1], 2).fill(0xe7e2d6);
+    stall(ctx, 0.3, 1.2, 0x2f5fa7, [0xe8b23a, 0x6fae4a, 0xd23a32]);
+    stall(ctx, 0.55, 1.6, 0xf3ead8, [0x8a5a36, 0xd9852a, 0x3d7fb5]);
+  }
+  void pal;
+}
+
+function inn(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level: number, pal: SeasonPalette): void {
+  if (style === 'turkish') {
+    // kervansaray: walled courtyard with rooms behind a tall carved portal
+    groundPad(ctx, 2, 2, 0xdcc9a0, 0.7);
+    shadowFor(ctx, 0.1, 0.1, 1.9, 1.9, 24);
+    const walls = level >= 2 ? 2 : 1;
+    mass(ctx, look, 0.1, 0.1, 1.9, 0.6, { floors: walls, door: null, windows: 'small', spacing: 0.3, chimneys: false, balcony: false });
+    mass(ctx, look, 1.4, 0.6, 1.9, 1.9, { floors: walls, door: null, windows: 'small', spacing: 0.3, chimneys: false, balcony: false });
+    for (const [u, v] of [
+      [0.5, 0.35],
+      [1.0, 0.35],
+      [1.65, 1.0],
+    ] as const)
+      drawDome(ctx, u, v, walls * FLOOR_H + 2, 0.12);
+    poly(ctx, [P(0.15, 0.65), P(1.35, 0.65), P(1.35, 1.85), P(0.15, 1.85)], 0xe8dcbf, 0.95);
+    const c = P(0.75, 1.2, 0);
+    ctx.g.ellipse(c[0], c[1], 9, 4.5).fill(shade(STONE.sandstone, 0.95));
+    ctx.g.ellipse(c[0], c[1] - 1, 7, 3.5).fill(pal.snow ? 0xcfe7f2 : 0x4fa9d6);
+    const L = faceL(0.1, 1.4, 1.9);
+    paintWall(ctx, L, 0, 9, 'sandstone', look.facade);
+    const P0 = faceL(0.5, 1.0, 1.92);
+    paintWall(ctx, P0, 0, walls * FLOOR_H + 10, 'sandstone', look.facade);
+    drawDoor(ctx, P0, 0.75, 0, 'arched', look);
+    if (ctx.detail >= 1) for (let k = 0; k < 3; k++) quad(ctx, P0, 0.6 + k * 0.012, 0.9 - k * 0.012, 12 + k * 3, 13 + k * 3, shade(STONE.sandMortar, 0.85));
+    poly(ctx, [P(0.5, 1.7, walls * FLOOR_H + 10), P(1.0, 1.7, walls * FLOOR_H + 10), P(1.0, 1.92, walls * FLOOR_H + 10), P(0.5, 1.92, walls * FLOOR_H + 10)], shade(STONE.sandstone, 1.1));
+    return;
+  }
+  // coaching inn with a stable block and a hanging sign
+  groundPad(ctx, 2, 2, 0xb9b4a6, 0.6);
+  shadowFor(ctx, 0.2, 0.25, 1.4, 1.6, 36);
+  mass(ctx, look, 0.2, 0.3, 1.4, 1.55, { axis: 'u', door: 'L', doorT: 0.8, spacing: 0.26 });
+  mass(ctx, { ...look, floors: 1, wall: 'granite', chimney: 'none', decor: 'none', tower: 'none' }, 1.5, 0.3, 1.9, 1.55, { door: 'L', windows: 'small', spacing: 0.4, axis: 'v', balcony: false });
+  const sign = P(0.45, 1.6, 15);
+  line(ctx, sign, [sign[0] - 6, sign[1] + 3], STONE.timber, 1.2);
+  ctx.g.rect(sign[0] - 9, sign[1] + 3, 7, 6).fill(0x7a2f2f);
+  ctx.g.rect(sign[0] - 8, sign[1] + 4, 5, 4).fill(0xd9b84a);
+}
+
+function watchtower(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle): void {
+  const h = look.floors * FLOOR_H + 6;
+  shadowFor(ctx, 0.25, 0.25, 0.75, 0.75, h);
+  const L = faceL(0.25, 0.75, 0.75);
+  const R = faceR(0.25, 0.75, 0.75);
+  paintWall(ctx, L, 0, h, look.wall, look.facade);
+  paintWall(ctx, R, 0, h, look.wall, look.facade);
+  drawDoor(ctx, L, 0.5, 0, 'arched', look);
+  for (let z = 14; z < h - 6; z += FLOOR_H) {
+    drawWindow(ctx, L, 0.5, z, look.windows);
+    drawWindow(ctx, R, 0.5, z, look.windows);
+  }
+  const wallColor = wallBase(look.wall, look.facade);
+  // corbelled battlements
+  box(ctx, 0.2, 0.2, 0.8, 0.8, h, h + 2, shade(wallColor, 1.05));
+  for (const f of [faceL(0.2, 0.8, 0.8), faceR(0.2, 0.8, 0.8)])
+    for (let i = 0; i < 5; i += 2) quad(ctx, f, f.a + (0.6 * i) / 5, f.a + (0.6 * (i + 1)) / 5, h + 2, h + 5, shade(wallColor, f.light));
+  if (style === 'scottish') {
+    drawRoof(ctx, { u0: 0.3, v0: 0.3, u1: 0.7, v1: 0.7, z: h + 2 }, 'pyramid', 'slate', wallColor, { pitch: 40, overhang: 0 });
+    if (look.tower === 'turret') drawTurret(ctx, 0.78, 0.78, h - 6, h + 6, 0.07, wallColor, ROOF_HEX.slate);
+  } else {
+    drawRoof(ctx, { u0: 0.3, v0: 0.3, u1: 0.7, v1: 0.7, z: h + 2 }, 'pyramid', 'lead', wallColor, { pitch: 46, overhang: 0 });
+  }
+  drawFlagPole(ctx, P(0.5, 0.5, h + 16), CULTURES[style].flag, 2);
+}
+
+function shipyard(ctx: DrawCtx, look: BuildingLook, level: number): void {
+  // timber slipway sloping to the water, a ship on the stocks, a crane and the shipwrights' shed
+  poly(ctx, [P(0.05, 0.05), P(1.95, 0.05), P(1.95, 1.95), P(0.05, 1.95)], 0xcbb38a, 0.9);
+  for (let v = 0.9; v <= 1.95; v += 0.12) poly(ctx, [P(0.35, v), P(1.95, v), P(1.95, v + 0.05), P(0.35, v + 0.05)], shade(COLORS.plank, 0.85));
+  shadowFor(ctx, 0.1, 0.1, 0.95, 0.8, 24);
+  mass(ctx, look, 0.1, 0.1, 0.95, 0.8, { door: 'L', windows: 'small', spacing: 0.4, axis: 'u', balcony: false });
+  box(ctx, 1.1, 0.2, 1.5, 0.45, 0, 5, COLORS.trunk);
+  box(ctx, 1.1, 0.48, 1.5, 0.7, 0, 4, COLORS.plank);
+  // hull on the stocks
+  const hull = 0x7a4a2a;
+  const keel: Pt[] = [P(0.55, 1.42, 4), P(1.85, 1.42, 4), P(1.95, 1.42, 12), P(0.45, 1.42, 12)];
+  poly(ctx, keel, shade(hull, 0.9));
+  poly(ctx, [P(0.45, 1.42, 12), P(1.95, 1.42, 12), P(1.85, 1.2, 14), P(0.55, 1.2, 14)], shade(hull, 1.15));
+  for (let u = 0.6; u < 1.85; u += 0.18) line(ctx, P(u, 1.42, 4), P(u, 1.42, 12), shade(hull, 0.7), 0.7);
+  if (level >= 2) {
+    box(ctx, 1.05, 1.25, 1.35, 1.4, 14, 20, 0xeee2c4);
+    line(ctx, P(1.2, 1.32, 20), P(1.2, 1.32, 44), STONE.timber, 1.4);
+  }
+  for (const u of [0.6, 1.0, 1.4, 1.8]) line(ctx, P(u, 1.6, 0), P(u, 1.45, 6), STONE.timber, 1.2);
+  // crane
+  line(ctx, P(1.75, 0.6, 0), P(1.75, 0.6, 40), COLORS.woodDark, 2.5);
+  line(ctx, P(1.75, 0.6, 40), P(1.2, 1.25, 34), COLORS.woodDark, 2);
+  line(ctx, P(1.2, 1.25, 34), P(1.2, 1.25, 18), 0x3a2a1c, 0.8);
+  if (P(1.75, 0.6, 40)[1] < ctx.topY) ctx.topY = P(1.75, 0.6, 40)[1];
+}
+
 // ------------------------------------------------------------------ entry point
 
 export const FOOTPRINT_PX_TOP = 0;
@@ -663,6 +795,18 @@ export function drawStyledBuilding(
       break;
     case 'terrace_farm':
       terraceFarm(ctx, look, b.level, pal);
+      break;
+    case 'market':
+      market(ctx, look, b.style, b.level, pal);
+      break;
+    case 'inn':
+      inn(ctx, look, b.style, b.level, pal);
+      break;
+    case 'watchtower':
+      watchtower(ctx, look, b.style);
+      break;
+    case 'shipyard':
+      shipyard(ctx, look, b.level);
       break;
     default:
       drawLandmark(ctx, b.definitionId, pal);

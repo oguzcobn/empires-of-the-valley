@@ -1507,3 +1507,49 @@ fieldset.field.plain legend {
 .landmark-facts .ok {
   color: #2e7d3a;
 }
+/* ---------------------------------------------------------------- atlas, tourism, shipyard */
+.atlas-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.6fr) minmax(260px, 1.4fr);
+  gap: 14px;
+  margin-top: 10px;
+}
+@media (max-width: 760px) {
+  .atlas-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.atlas-list,
+.atlas-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.atlas-list h4 {
+  margin: 8px 0 4px;
+}
+.atlas-img {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: contain;
+  background: linear-gradient(#cfe9f5, #eef6e4);
+  border-radius: 14px;
+}
+.atlas-entry h3 {
+  margin: 8px 0 4px;
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0 16px;
+}
+.vessel {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 6px 8px;
+  margin: 6px 0;
+  background: #fffaf0;
+}

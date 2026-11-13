@@ -11,6 +11,8 @@ const PANELS: { id: PanelId; key: TKey; hint?: string; campaignOnly?: boolean }[
   { id: 'population', key: 'panel.population' },
   { id: 'research', key: 'panel.research' },
   { id: 'workshop', key: 'panel.workshop' },
+  { id: 'tourism', key: 'panel.tourism' },
+  { id: 'atlas', key: 'panel.atlas' },
   { id: 'journal', key: 'panel.journal', campaignOnly: true },
   { id: 'world', key: 'panel.world', hint: 'M' },
   { id: 'log', key: 'panel.log' },

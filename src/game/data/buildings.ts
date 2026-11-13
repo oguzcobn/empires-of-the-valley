@@ -227,6 +227,112 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
       }),
     ],
   },
+  market: {
+    id: 'market',
+    category: 'governance',
+    era: 1,
+    footprint: [2, 2],
+    validTerrains: LAND,
+    seasonal: false,
+    usesTools: false,
+    buildable: true,
+    demolishable: true,
+    services: { attraction: 3, marketGold: u(1.5) },
+    levels: [
+      level({
+        cost: { wood: u(40), stone: u(30), gold: u(10) },
+        buildTicks: 4 * DAY,
+        workerSlots: 2,
+        upkeepGold: u(0.2),
+        requires: { population: 18 },
+      }),
+      level({
+        cost: { wood: u(60), stone: u(50), gold: u(20) },
+        buildTicks: 4 * DAY,
+        workerSlots: 3,
+        upkeepGold: u(0.3),
+        requires: { townCenterLevel: 2 },
+      }),
+    ],
+  },
+  inn: {
+    id: 'inn',
+    category: 'housing',
+    era: 1,
+    footprint: [2, 2],
+    validTerrains: LAND_AND_HILLS,
+    seasonal: false,
+    usesTools: false,
+    buildable: true,
+    demolishable: true,
+    services: { beds: 8 },
+    levels: [
+      level({
+        cost: { wood: u(50), stone: u(40), gold: u(15) },
+        buildTicks: 5 * DAY,
+        workerSlots: 2,
+        upkeepGold: u(0.5),
+        requires: { population: 20 },
+      }),
+      level({
+        cost: { wood: u(70), stone: u(60), gold: u(25) },
+        buildTicks: 5 * DAY,
+        workerSlots: 3,
+        upkeepGold: u(0.7),
+        requires: { townCenterLevel: 2 },
+      }),
+    ],
+  },
+  watchtower: {
+    id: 'watchtower',
+    category: 'governance',
+    era: 1,
+    footprint: [1, 1],
+    validTerrains: ['grass', 'fertile', 'sand', 'hill', 'terrace', 'rocky'],
+    seasonal: false,
+    usesTools: false,
+    buildable: true,
+    demolishable: true,
+    services: { safety: 12, safetyRadius: 4 },
+    levels: [
+      level({ cost: { wood: u(15), stone: u(25) }, buildTicks: 3 * DAY, workerSlots: 1, upkeepGold: u(0.2) }),
+      level({
+        cost: { wood: u(20), stone: u(40) },
+        buildTicks: 3 * DAY,
+        workerSlots: 1,
+        upkeepGold: u(0.25),
+        requires: { techId: 'masonry' },
+      }),
+    ],
+  },
+  shipyard: {
+    id: 'shipyard',
+    category: 'production',
+    era: 1,
+    footprint: [2, 2],
+    validTerrains: ['grass', 'sand'],
+    needsWater: true,
+    seasonal: false,
+    usesTools: true,
+    buildable: true,
+    demolishable: true,
+    levels: [
+      level({
+        cost: { wood: u(70), stone: u(30), tools: u(10) },
+        buildTicks: 6 * DAY,
+        workerSlots: 4,
+        upkeepGold: u(0.4),
+        requires: { population: 25 },
+      }),
+      level({
+        cost: { wood: u(90), stone: u(60), tools: u(15), gold: u(30) },
+        buildTicks: 6 * DAY,
+        workerSlots: 6,
+        upkeepGold: u(0.6),
+        requires: { townCenterLevel: 2 },
+      }),
+    ],
+  },
   terrace_farm: {
     id: 'terrace_farm',
     category: 'production',
@@ -258,6 +364,7 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
 };
 
 export const BUILDINGS: Record<BuildingId, BuildingDefinition> = { ...CORE, ...LANDMARKS };
+
 
 export const BUILDING_IDS = Object.keys(BUILDINGS) as BuildingId[];
 export const BUILDABLE_IDS = BUILDING_IDS.filter((id) => BUILDINGS[id].buildable);

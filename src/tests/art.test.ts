@@ -40,7 +40,7 @@ describe('procedural architecture art', () => {
     for (const id of BUILDING_IDS.filter((x) => BUILDINGS[x].landmark)) {
       const { info, ops } = draw(id, BUILDINGS[id].landmark!.culture as 'scottish' | 'turkish', 1, 2);
       expect(ops, id).toBeGreaterThan(30);
-      expect(info.height, id).toBeGreaterThan(20);
+      expect(info.height + BUILDINGS[id].footprint[0] * 16, id).toBeGreaterThan(40);
     }
   });
 

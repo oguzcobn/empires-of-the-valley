@@ -405,6 +405,76 @@ function selimiye(ctx: DrawCtx): void {
   minaret(ctx, 3.65, 2.65, 0, 120, stone);
 }
 
+function stadium(ctx: DrawCtx, pal: SeasonPalette): void {
+  // an oval bowl: outer facade, claret-and-blue stands, a green pitch and a white roof ring
+  const c = P(2, 2, 0);
+  const R = 1.85;
+  const ring = (r: number, z: number, n = 40): Pt[] => {
+    const out: Pt[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = (Math.PI * 2 * i) / n;
+      const p = P(2 + r * Math.cos(a), 2 + r * Math.sin(a), z);
+      out.push(p);
+    }
+    return out;
+  };
+  void c;
+  const facadeH = 22;
+  const outerTop = ring(R, facadeH);
+  const outerBase = ring(R, 0);
+  // facade: only the half facing the viewer is visible
+  for (let i = 0; i < 40; i++) {
+    const j = (i + 1) % 40;
+    const a = (Math.PI * 2 * (i + 0.5)) / 40;
+    const facing = Math.cos(a) + Math.sin(a) > -0.2;
+    if (!facing) continue;
+    const light = 0.85 + 0.15 * Math.cos(a - Math.PI * 0.75 + Math.PI);
+    poly(ctx, [outerBase[i]!, outerBase[j]!, outerTop[j]!, outerTop[i]!], shade(0xe8e4dc, light));
+    if (ctx.detail >= 1 && i % 2 === 0) line(ctx, outerBase[i]!, outerTop[i]!, shade(0xb9b4aa, light), 0.8, 0.8);
+  }
+  const claret = 0x7b1e3a;
+  const blue = 0x5aa7d8;
+  const inner = ring(1.1, 4);
+  const seatsTop = ring(1.75, facadeH - 1);
+  for (let i = 0; i < 40; i++) {
+    const j = (i + 1) % 40;
+    const sector = Math.floor(i / 5) % 2 === 0;
+    poly(ctx, [inner[i]!, inner[j]!, seatsTop[j]!, seatsTop[i]!], sector ? claret : blue);
+    if (ctx.detail >= 2) {
+      const mid = [lerpPt(inner[i]!, seatsTop[i]!, 0.5), lerpPt(inner[j]!, seatsTop[j]!, 0.5)] as const;
+      line(ctx, mid[0], mid[1], shade(sector ? claret : blue, 1.3), 0.5, 0.6);
+    }
+  }
+  // pitch
+  const pitch: Pt[] = [P(1.3, 1.5, 4), P(2.7, 1.5, 4), P(2.7, 2.5, 4), P(1.3, 2.5, 4)];
+  poly(ctx, pitch, pal.snow ? 0xdfe8e4 : 0x3f9a4a);
+  for (let k = 1; k < 6; k++) poly(ctx, [P(1.3 + k * 0.233, 1.5, 4), P(1.3 + k * 0.233 + 0.117, 1.5, 4), P(1.3 + k * 0.233 + 0.117, 2.5, 4), P(1.3 + k * 0.233, 2.5, 4)], 0x4aa956, pal.snow ? 0 : 0.6);
+  const w = 0xffffff;
+  line(ctx, P(2, 1.5, 4), P(2, 2.5, 4), w, 1);
+  line(ctx, P(1.3, 1.5, 4), P(2.7, 1.5, 4), w, 1);
+  line(ctx, P(1.3, 2.5, 4), P(2.7, 2.5, 4), w, 1);
+  line(ctx, P(1.3, 1.5, 4), P(1.3, 2.5, 4), w, 1);
+  line(ctx, P(2.7, 1.5, 4), P(2.7, 2.5, 4), w, 1);
+  const mid = P(2, 2, 4);
+  ctx.g.ellipse(mid[0], mid[1], 9, 4.5).stroke({ color: w, width: 1 });
+  // roof ring over the stands
+  const roofOut = ring(R + 0.05, facadeH + 6);
+  const roofIn = ring(1.45, facadeH + 4);
+  for (let i = 0; i < 40; i++) {
+    const j = (i + 1) % 40;
+    poly(ctx, [roofIn[i]!, roofIn[j]!, roofOut[j]!, roofOut[i]!], 0xf4f4f2, 0.92);
+  }
+  for (let i = 0; i < 40; i += 4) line(ctx, roofIn[i]!, roofOut[i]!, 0xc9ccd0, 0.8);
+  // floodlight glow at night along the roof edge
+  for (let i = 0; i < 40; i += 5) {
+    const p = roofIn[i]!;
+    ctx.lights.push([[p[0] - 2, p[1] - 1], [p[0] + 2, p[1] - 1], [p[0] + 2, p[1] + 1], [p[0] - 2, p[1] + 1]]);
+  }
+  for (const p of roofOut) if (p[1] < ctx.topY) ctx.topY = p[1];
+}
+
+const lerpPt = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+
 export function drawLandmark(ctx: DrawCtx, id: LandmarkId, pal: SeasonPalette): void {
   switch (id) {
     case 'edinburgh_castle':
@@ -419,5 +489,7 @@ export function drawLandmark(ctx: DrawCtx, id: LandmarkId, pal: SeasonPalette): 
       return galata(ctx);
     case 'selimiye_mosque':
       return selimiye(ctx);
+    case 'trabzon_stadium':
+      return stadium(ctx, pal);
   }
 }

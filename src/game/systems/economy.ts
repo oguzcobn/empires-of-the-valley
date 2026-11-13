@@ -18,6 +18,8 @@ import { defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { tilesInRange } from './grid';
 import { bonusesOf, conditionPermille } from './architecture';
+import { tourismReport } from './tourism';
+import { VESSELS, VESSEL_KINDS } from '../data/shipyard';
 
 export const UNCAPPED = Number.MAX_SAFE_INTEGER;
 
@@ -148,6 +150,19 @@ export function computeFlows(s: GameState): Record<ResourceId, Flow> {
   add('gold', 'sources', '@building.town_center.name', dailyTownIncome(p));
   add('gold', 'sources', '@flow.taxes', dailyTaxIncome(p));
   add('food', 'consumers', '@flow.citizens', dailyFoodNeed(p));
+  // tourism, markets and the fleet settle once a day (systems/tourism.ts); forecast for today
+  const tr = tourismReport(s);
+  add('gold', 'sources', '@flow.tourism', tr.income);
+  add('gold', 'sources', '@flow.market', tr.marketGold);
+  add('food', 'consumers', '@flow.tourists', tr.food);
+  const hasMarket = tr.marketGold > 0;
+  for (const kind of VESSEL_KINDS) {
+    const n = s.shipyard.fleet[kind];
+    const v = VESSELS[kind];
+    add('gold', 'consumers', '@flow.fleet', n * v.upkeepGold);
+    if (v.foodPerDay) add('food', 'sources', '@flow.fleet', n * v.foodPerDay);
+    if (v.goldPerDay && hasMarket) add('gold', 'sources', '@flow.fleet', n * v.goldPerDay);
+  }
   for (const id of Object.keys(flows) as ResourceId[]) {
     const f = flows[id];
     f.net = f.sources.reduce((a, l) => a + l.amount, 0) - f.consumers.reduce((a, l) => a + l.amount, 0);

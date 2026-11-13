@@ -21,6 +21,7 @@ import { logEvent } from './events';
 import { refreshConnectivity, tilesInRange } from './grid';
 import { populationDayEnd } from './population';
 import { decayPerDay } from './architecture';
+import { shipyardTick, tourismDayEnd } from './tourism';
 import { evaluateQuests, questOnDayEnd, questOnProduced } from './quests';
 
 /** Ticks needed to finish the building's current job (first construction or upgrade). */
@@ -188,7 +189,10 @@ function economyStep(s: GameState, p: Province, hour: number): void {
     }
   }
 
-  // 5. citizens eat
+  // 5. shipwrights work on the first vessel order
+  shipyardTick(s, p);
+
+  // 6. citizens eat
   const need = portion(dailyFoodNeed(p), hour);
   const eaten = spend(p, 'food', need);
   p.population.shortfallToday += need - eaten;
@@ -198,6 +202,7 @@ function dayEnd(s: GameState, p: Province): void {
   const cal = calendar(s.tick);
   questOnDayEnd(s, p);
   populationDayEnd(s, p, cal.day);
+  tourismDayEnd(s, p);
 
   // buildings weather: stone lasts, timber and thatch need care (see data/architecture.ts)
   for (const b of p.buildings) {

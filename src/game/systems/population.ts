@@ -13,9 +13,10 @@ import {
 } from '../data/balance';
 import { assignedWorkers, housingCapacity, idleWorkers, isOperating, totalPopulation } from './economy';
 import { logEvent } from './events';
+import { heritageHappiness } from './tourism';
 
 export interface HappinessFactor {
-  id: 'base' | 'food' | 'housing' | 'employment' | 'education' | 'tax' | 'tools' | 'maintenance';
+  id: 'base' | 'food' | 'housing' | 'employment' | 'education' | 'tax' | 'tools' | 'maintenance' | 'heritage';
   value: number;
 }
 
@@ -45,6 +46,7 @@ export function happinessFactors(p: Province): HappinessFactor[] {
     { id: 'tax', value: TAX_HAPPINESS[p.taxRate] },
     { id: 'tools', value: p.stocks.tools <= 0 ? -3 : 0 },
     { id: 'maintenance', value: averageCondition(p) < 5000 ? -4 : 0 },
+    { id: 'heritage', value: heritageHappiness(p) },
   ];
 }
 

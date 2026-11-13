@@ -6,6 +6,7 @@ import { TECHNOLOGIES } from '../data/technologies';
 import { assignedWorkers, storageCaps } from './economy';
 import { CONDITION_MAX, DESIGNABLE, isPlayableStyle } from '../data/architecture';
 import { MAX_HEIGHT } from '../data/balance';
+import { VESSELS } from '../data/shipyard';
 import { footprintTiles, idx, inBounds } from './grid';
 
 /**
@@ -95,6 +96,12 @@ export function validateInvariants(s: GameState): string[] {
   if (s.researchQueue.some((id) => s.researchedTechIds.includes(id)))
     errors.push('researched tech still queued');
   if (s.researchProgress < 0) errors.push('research progress negative');
+  for (const kind of ['fishing', 'cargo', 'yacht'] as const) {
+    const n = s.shipyard.fleet[kind] + s.shipyard.queue.filter((o) => o.kind === kind).length;
+    if (s.shipyard.fleet[kind] < 0 || n > VESSELS[kind].cap) errors.push(`fleet ${kind} out of range`);
+  }
+  if (s.shipyard.queue.some((o) => o.progress < 0 || o.progress > VESSELS[o.kind].work)) errors.push('vessel progress invalid');
+  if (s.tourism.satisfaction < 0 || s.tourism.satisfaction > 100) errors.push('satisfaction out of range');
 
   if (s.mode === 'campaign') {
     for (const q of QUESTS) {
