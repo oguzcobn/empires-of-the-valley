@@ -60,7 +60,10 @@ describe('legacy saves (schema v1)', () => {
       expect(after.buildings.every((b) => b.connected === (before.buildings.find((o) => o.id === b.id) as { connected: boolean }).connected)).toBe(true);
       expect(after.stocks).toEqual(before.stocks);
       expect(s.tick).toBe(raw.state.tick);
-      expect(s.questProgress).toEqual(raw.state.questProgress);
+      for (const [id, progress] of Object.entries(raw.state.questProgress as Record<string, unknown>)) {
+        expect(s.questProgress[id as keyof typeof s.questProgress]).toEqual(progress);
+      }
+      expect(s.questProgress.q09).toBeDefined();
       expectValid(applyTicks(s, 24 * 20));
     });
   }
