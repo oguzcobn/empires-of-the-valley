@@ -1655,3 +1655,6 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
   .toolbar .tool-group { border-radius: .5rem; padding: .12rem; }
   .toolbar .btn { padding: .16rem .3rem; }
 }
+
+/* Paving and road painting use a brush cursor, not camera-drag cursor. */
+.tool-pave .valley-canvas { cursor: crosshair; }
