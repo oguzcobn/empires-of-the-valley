@@ -97,7 +97,7 @@ export interface BuildingLook {
   decor: DecorType;
 }
 export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy' | 'architecture';
-export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08';
+export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08' | 'q09' | 'q10' | 'q11' | 'q12';
 export type ProvinceId = string;
 export type FactionId = string;
 export type GameSpeed = 0 | 1 | 2 | 4;
