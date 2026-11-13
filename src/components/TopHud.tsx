@@ -14,6 +14,7 @@ import {
 } from '../game/systems/economy';
 import { fmtInt, fmtRate, t } from '../i18n';
 import { Icon } from './icons';
+import { cityOf } from '../game/data/cities';
 
 const HUD_RESOURCES: ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
 const SPEEDS: { speed: GameSpeed; label: string; key: string }[] = [
@@ -76,6 +77,7 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
         </button>
       </div>
       <div className="hud-time">
+        <span className="chip hud-city" title="Şehir merkezi">{cityOf(game.cityId, game.culture).name}</span>
         <div className={`hud-date season-${cal.season}`} title={t('hud.dateTip')}>
           <b>{t(`season.${cal.season}`)}</b>
           <span data-testid="date">
