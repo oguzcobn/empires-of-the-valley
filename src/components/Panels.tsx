@@ -8,6 +8,7 @@ import { GAME_VERSION } from '../game/data/balance';
 import { QUESTS } from '../game/data/quests';
 import { TECHNOLOGIES, TECH_IDS } from '../game/data/technologies';
 import { WORLD_PROVINCES } from '../game/data/worldMap';
+import { cityOf, districtName } from '../game/data/cities';
 import type { WorldProvince } from '../game/data/worldMap';
 import { validateCommand } from '../game/systems/commands';
 import {
@@ -299,6 +300,8 @@ const BIOME_COLOR: Record<WorldProvince['biome'], string> = {
 };
 
 function WorldPanel({ game }: { game: GameState }): ReactElement {
+  const dispatch = useApp((s) => s.dispatch);
+  const city = cityOf(game.cityId, game.culture);
   const [picked, setPicked] = useState<string>(game.homeProvinceId);
   const R = 46;
   const W = Math.sqrt(3) * R;
@@ -306,72 +309,108 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
     60 + p.col * W + (p.row % 2 === 1 ? W / 2 : 0),
     60 + p.row * R * 1.5,
   ];
-  const pickedProvince = WORLD_PROVINCES.find((p) => p.id === picked)!;
-  const known = (id: string): boolean => game.revealedProvinceIds.includes(id);
+  const pickedProvince = WORLD_PROVINCES.find((p) => p.id === picked) ?? WORLD_PROVINCES[0]!;
+  const owned = [game.homeProvinceId, ...(game.claimedDistricts ?? [])];
+  const claimed = owned.includes(picked);
+  const adjacent = pickedProvince.neighbors.some((id) => owned.includes(id));
+  const cost = 20 + (game.claimedDistricts?.length ?? 0) * 10;
+  const available = validateCommand(game, { type: 'claimDistrict', provinceId: picked }) === null;
+  const label = (p: WorldProvince): string => p.id === game.homeProvinceId
+    ? city.name
+    : districtName(game.cityId, game.culture, WORLD_PROVINCES.indexOf(p));
+
   return (
     <>
-      <p className="notice">{t('world.preview')}</p>
+      <p className="notice">
+        <strong>{city.name}</strong> · {city.leaderTitle}: {city.leader}. İlçeleri komşuluk sırasıyla
+        yönetimine kat; her yeni bölge günlük altın ve yiyecek getirir.
+      </p>
       <div className="world">
         <svg viewBox="0 0 560 330" role="group" aria-label={t('panel.world')}>
           {WORLD_PROVINCES.map((p) => {
             const [cx, cy] = center(p);
             const home = p.id === game.homeProvinceId;
-            const seen = known(p.id);
+            const secured = owned.includes(p.id);
+            const name = label(p);
             return (
-              <g
-                key={p.id}
+              <g key={p.id}
                 className={`hex ${picked === p.id ? 'picked' : ''}`}
                 onClick={() => setPicked(p.id)}
-                tabIndex={0}
-                role="button"
-                aria-label={seen ? p.name : t('world.unknown')}
+                tabIndex={0} role="button" aria-label={name}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setPicked(p.id)}
                 data-testid={`province-${p.id}`}
-                data-known={seen}
+                data-known={game.revealedProvinceIds.includes(p.id)}
               >
-                <polygon
-                  points={hexPoints(cx, cy, R - 2)}
-                  fill={seen ? BIOME_COLOR[p.biome] : '#b9c2c9'}
-                  opacity={seen ? 1 : 0.55}
-                />
-                {home && (
-                  <polygon points={hexPoints(cx, cy, R - 8)} fill="none" stroke="#7a3b1c" strokeWidth="3" />
-                )}
-                <text x={cx} y={cy + (seen ? -2 : 6)} textAnchor="middle" className="hex-label">
-                  {seen ? p.name.split(' ')[0] : '?'}
+                <polygon points={hexPoints(cx, cy, R - 2)}
+                  fill={secured ? BIOME_COLOR[p.biome] : '#aebdcb'}
+                  stroke={adjacent ? '#c8823b' : '#8ca1ac'} strokeWidth={adjacent ? 2.5 : 1}
+                  opacity={secured ? 1 : 0.78} />
+                {home && <polygon points={hexPoints(cx, cy, R - 8)} fill="none" stroke="#7a3b1c" strokeWidth="3" />}
+                <text x={cx} y={cy - 2} textAnchor="middle" className="hex-label"
+                  style={{fontSize: name.length > 11 ? '9px' : '11px'}}>
+                  {name.length > 15 ? name.slice(0, 14) + '…' : name}
                 </text>
-                {seen && (
-                  <text x={cx} y={cy + 13} textAnchor="middle" className="hex-sub">
-                    {p.name.split(' ').slice(1).join(' ') || (home ? '★' : '')}
-                  </text>
-                )}
+                <text x={cx} y={cy + 13} textAnchor="middle" className="hex-sub">
+                  {home ? '★ Başkent' : secured ? '✓' : adjacent ? '◎ Komşu' : '·'}
+                </text>
               </g>
             );
           })}
         </svg>
         <aside className="world-info">
-          {known(picked) ? (
+          <h4>{label(pickedProvince)}</h4>
+          <Row label="Durum">{claimed ? 'Yönetiminde' : adjacent ? 'Genişlemeye uygun komşu' : 'Önce komşuları al'}</Row>
+          <Row label="Arazi">{t(`biome.${pickedProvince.biome}`)}</Row>
+          <Row label="Bağlantılar">{pickedProvince.neighbors.length}</Row>
+          <Row label="Kontrol edilen bölge">{owned.length} / {WORLD_PROVINCES.length}</Row>
+          {!claimed && (
             <>
-              <h4>{pickedProvince.name}</h4>
-              <Row label={t('world.biome')}>{t(`biome.${pickedProvince.biome}`)}</Row>
-              <Row label={t('world.status')}>
-                {picked === game.homeProvinceId ? t('world.home') : t('world.revealed')}
-              </Row>
-              <Row label={t('world.neighbors')}>{pickedProvince.neighbors.length}</Row>
-              <p className="hint">{t(`biome.${pickedProvince.biome}.bonus`)}</p>
-            </>
-          ) : (
-            <>
-              <h4>{t('world.unknown')}</h4>
-              <p className="hint">{t('world.unknownHint')}</p>
+              <p className="hint">Genişleme: {cost} altın · en az 20 nüfus · 1. bölüm tamamlanmış olmalı.</p>
+              <button className="btn primary" disabled={!available}
+                onClick={() => dispatch({ type: 'claimDistrict', provinceId: picked })}
+                data-testid="claim-district">
+                İlçeyi Yönetimine Kat
+              </button>
+              {!available && <p className="hint">Yeterli altın, nüfus ve komşu toprak şartlarını kontrol et.</p>}
             </>
           )}
-          <p className="hint">
-            {t('world.legend', { known: game.revealedProvinceIds.length, total: WORLD_PROVINCES.length })}
-          </p>
+          <p className="hint">Bölgeler stratejik haritada genişler. Ayrı ilçelerde bina inşası sonraki geliştirme aşamasıdır.</p>
         </aside>
       </div>
     </>
+  );
+}
+
+function ArmyPanel({ game }: { game: GameState }): ReactElement {
+  const dispatch = useApp((s) => s.dispatch);
+  const p = homeProvince(game);
+  const ready = validateCommand(game, { type: 'recruitMilitia', amount: 5 }) === null;
+  const towers = p.buildings.filter((b) => b.definitionId === 'watchtower' && b.state === 'active').length;
+  const force = game.militia ?? 0;
+  const order = game.armyOrder ?? 'defend';
+  return (
+    <div className="grid-2">
+      <section>
+        <h4>Şehir Savunma Birliği</h4>
+        <Row label="Eğitimli milis">{force} asker</Row>
+        <Row label="Gözetleme kulesi">{towers}</Row>
+        <Row label="Güvenli ilçeler">{game.claimedDistricts?.length ?? 0}</Row>
+        <p className="hint">5 milis eğitmek için 10 altın, 5 yiyecek ve çalışan bir gözetleme kulesi gerekir.</p>
+        <button className="btn primary" disabled={!ready} onClick={() => dispatch({ type: 'recruitMilitia', amount: 5 })}>
+          +5 Milis Eğit
+        </button>
+      </section>
+      <section>
+        <h4>Birlik Emirleri</h4>
+        <div className="actions">
+          <button className={`btn ${order === 'defend' ? 'primary' : ''}`}
+            onClick={() => dispatch({ type: 'setArmyOrder', order: 'defend' })}>Şehri Savun</button>
+          <button className={`btn ${order === 'patrol' ? 'primary' : ''}`}
+            onClick={() => dispatch({ type: 'setArmyOrder', order: 'patrol' })}>Sınır Devriyesi</button>
+        </div>
+        <p className="hint">Milislerin günlük bakım maliyeti vardır. Sınır devriyesi saldırılarda savunma puanı kazandırır. Bu aşamada muharebeler stratejik olarak çözülür; gerçek zamanlı birlik hareketi henüz yoktur.</p>
+      </section>
+    </div>
   );
 }
 
@@ -801,6 +840,12 @@ export function PanelHost({ game }: { game: GameState | null }): ReactElement | 
       return (
         <Modal title={t('panel.journal')} onClose={close}>
           <JournalPanel game={game} />
+        </Modal>
+      );
+    case 'army':
+      return (
+        <Modal title={t('panel.army')} onClose={close} wide>
+          <ArmyPanel game={game} />
         </Modal>
       );
     case 'world':
