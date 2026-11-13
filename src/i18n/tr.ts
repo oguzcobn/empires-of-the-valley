@@ -118,6 +118,19 @@ export const tr = {
 
   // ------------------------------------------------------------ görevler
   'chapter.1.title': '1. Bölüm — İlk Ateş',
+  'chapter.2.title': '2. Bölüm — Vadinin Efendisi',
+  'quest.q09.title': 'Vadinin Pazarı',
+  'quest.q09.desc': 'Ticaretin başlaması için bir pazar inşa et.',
+  'quest.q09.hint': 'İnşa menüsünden Pazar seç ve yol bağlantısı olan uygun bir alana kur.',
+  'quest.q10.title': 'Sınır Gözetimi',
+  'quest.q10.desc': 'Haydut tehdidine karşı bir gözetleme kulesi inşa et.',
+  'quest.q10.hint': 'İnşa menüsünden Gözetleme Kulesi seç ve yerleşimin sınırını koru.',
+  'quest.q11.title': 'Büyüyen Yerleşim',
+  'quest.q11.desc': 'Bir taş ocağı kur ve nüfusu 30 kişiye ulaştır.',
+  'quest.q11.hint': 'Taş Ocağı inşa et; konut ve yiyecek sağlayarak nüfusu artır.',
+  'quest.q12.title': 'Çınar Ormanı Yolu',
+  'quest.q12.desc': '7 gün boyunca mutluluğu en az 75 tutarak sınırdaki yerleşimi güçlendir.',
+  'quest.q12.hint': 'Yiyecek, konut, istihdam ve vergi dengesini koru. Sonunda Çınar Ormanı açılır.',
   'quest.tracker': 'Görev takibi',
   'quest.toggle': 'Görev kartını aç/kapat',
   'quest.reward': 'Ödül',
@@ -598,7 +611,7 @@ export const tr = {
   'chapterEnd.next':
     'Bir pazar kurulacak, milisler eğitilecek, haydutlara karşı durulacak ve Çınar Ormanı’na ilk adım atılacak.',
   'chapterEnd.note':
-    '2. bölüm henüz oynanamaz; sonraki aşamalarda eklenecek. O zamana dek vadini büyütmeye devam edebilirsin.',
+    '2. bölüm açıldı! Görev panelinden pazar kurarak Vadinin Efendisi yolculuğuna başlayabilirsin.',
   'chapterEnd.continue': 'Vadide kalmaya devam et',
   ...trArch,
   ...trTerrain,
