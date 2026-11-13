@@ -9,6 +9,7 @@ import { QUESTS } from '../game/data/quests';
 import { TECHNOLOGIES, TECH_IDS } from '../game/data/technologies';
 import { WORLD_PROVINCES } from '../game/data/worldMap';
 import { cityOf, districtName } from '../game/data/cities';
+import { citizens } from '../game/data/citizens';
 import type { WorldProvince } from '../game/data/worldMap';
 import { validateCommand } from '../game/systems/commands';
 import {
@@ -153,6 +154,18 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
           </Row>
         ))}
         <p className="hint">{t('population.services')}</p>
+      </section>
+      <section className="citizen-roster">
+        <h4>Şehrin Sakinleri</h4>
+        <p className="hint">İsme sahip örnek vatandaşlar; isimler kaydedilen şehir ve harita tohumuyla aynı kalır.</p>
+        <div className="citizens-list">
+          {citizens(game, 18).map((person) => (
+            <div key={person.id} className="citizen-row" title={person.occupation}>
+              <span aria-hidden="true">◉</span>
+              <span><strong>{person.name}</strong><small>{person.age} yaş · {person.occupation}</small></span>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );
