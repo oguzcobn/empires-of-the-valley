@@ -62,8 +62,8 @@ describe('clock', () => {
       return ticks;
     };
     expect(run(16, 1)).toBe(run(50, 1));
-    expect(run(20, 1)).toBe(10_000 / TICK_MS);
-    expect(run(20, 4)).toBe((10_000 / TICK_MS) * 4);
+    expect(run(20, 1)).toBe(Math.floor(10_000 / TICK_MS));
+    expect(run(20, 4)).toBe(Math.floor((10_000 / TICK_MS) * 4));
   });
   it('does not catch up after a long background gap', () => {
     expect(advanceClock(0, 60_000, 4).ticks).toBeLessThanOrEqual(2);
