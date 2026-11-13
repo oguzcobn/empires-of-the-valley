@@ -25,7 +25,7 @@ export function matchDayFor(game: Pick<GameState, 'tick' | 'cityId' | 'culture'>
   if (day < 3 || day % 7 !== 3) return null;
   const isEdinburgh = (game.cityId ?? (game.culture === 'scottish' ? 'edinburgh' : 'trabzon')) === 'edinburgh';
   const team: FootballTeam = isEdinburgh
-    ? (['hearts', 'celtic', 'rangers'] as const)[Math.floor(day / 7) % 3]
+    ? ((['hearts', 'celtic', 'rangers'] as const)[Math.floor(day / 7) % 3] ?? 'hearts')
     : 'trabzonspor';
   return { ...CLUBS[team], home: !isEdinburgh || team === 'hearts', day };
 }
