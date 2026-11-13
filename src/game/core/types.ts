@@ -98,7 +98,7 @@ export interface BuildingLook {
   decor: DecorType;
 }
 export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy' | 'architecture';
-export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08' | 'q09' | 'q10' | 'q11' | 'q12';
+export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08' | 'q09' | 'q10' | 'q11' | 'q12' | 'q13' | 'q14' | 'q15' | 'q16';
 export type ProvinceId = string;
 export type FactionId = string;
 export type GameSpeed = 0 | 1 | 2 | 4;
@@ -231,6 +231,8 @@ export type Objective =
   | { type: 'resourceGathered'; resourceId: ResourceId; amount: number }
   | { type: 'foodBalanceStreak'; days: number }
   | { type: 'population'; count: number }
+  | { type: 'districtCount'; count: number }
+  | { type: 'militiaCount'; count: number }
   | { type: 'techResearched'; techId: TechId }
   | { type: 'prosperityStreak'; happiness: number; days: number };
 
