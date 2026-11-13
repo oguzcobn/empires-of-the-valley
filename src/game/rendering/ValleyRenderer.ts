@@ -7,7 +7,7 @@ import type { Weather } from './weather';
 
 extensions.add(CullerPlugin);
 import { calendar, clockHour } from '../core/time';
-import { TICK_MS } from '../core/clock';
+import { advanceVisualHour } from './visualClock';
 import type { Season } from '../core/time';
 import type { ArchitectureStyle, BuildingId, BuildingInstance, BuildingLook, GameState, Province, Tile } from '../core/types';
 import { FOREST_TILE_MAX, HEIGHT_PX, MAX_HEIGHT } from '../data/balance';
@@ -463,8 +463,7 @@ export class ValleyRenderer {
     // Keep simulation/economy at the selected speed, but cap the *visual* sky
     // at 1x (one day per 12 real seconds), even while playing at 4x.
     // A continuous hour also avoids sudden jumps at discrete tick boundaries.
-    if (this.visualHour === null) this.visualHour = clockHour(view.game.tick);
-    if (view.game.speed > 0) this.visualHour = (this.visualHour + dt / TICK_MS) % 24;
+    this.visualHour = advanceVisualHour(this.visualHour, clockHour(view.game.tick), dt, view.game.speed);
     this.updateLight(view, this.visualHour, dt);
     this.updateWeather(view, cal.day, cal.season, dt, motion);
     this.watchFps(view);
