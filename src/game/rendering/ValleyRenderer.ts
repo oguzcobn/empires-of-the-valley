@@ -32,6 +32,7 @@ export type Tool =
   | { kind: 'select' }
   | { kind: 'build'; buildingId: BuildingId; style?: ArchitectureStyle; look?: BuildingLook | null }
   | { kind: 'road' }
+  | { kind: 'pave' }
   | { kind: 'terrace' }
   | { kind: 'demolish' }
   | { kind: 'army' };
@@ -375,7 +376,7 @@ export class ValleyRenderer {
         return;
       }
       const view = this.cb.getView();
-      const isPaint = view?.tool.kind === 'road' && e.button === 0;
+      const isPaint = (view?.tool.kind === 'road' || view?.tool.kind === 'pave') && e.button === 0;
       this.drag = { lastX: e.clientX, lastY: e.clientY, total: 0, button: e.button, paint: isPaint };
       this.lastPaint = '';
       if (isPaint) paint(e);
@@ -1243,6 +1244,11 @@ export class ValleyRenderer {
           this.ghost.position.set(isoX(hover.x, hover.y), isoY(hover.x, hover.y) - this.hz(p, hover.x, hover.y));
           this.ghost.alpha = ok ? 0.7 : 0.35;
         }
+      } else if (tool.kind === 'pave') {
+        const t = tileAt(p, hover.x, hover.y);
+        const canPave = !!t?.road && t.roadType === 'dirt' && !t.paved;
+        this.tileFill(g, hover.x, hover.y, canPave ? COLORS.ok : COLORS.bad, 0.44);
+        this.outline(g, hover.x, hover.y, 1, 1, canPave ? COLORS.ok : COLORS.bad, 2, 0.92);
       } else if (tool.kind === 'terrace') {
         const t = tileAt(p, hover.x, hover.y);
         const ok = !!t && t.terrain === 'hill' && !t.road && !t.buildingId;
