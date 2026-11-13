@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cityOf, districtName } from '../game/data/cities';
+import { findRoadPath } from '../game/rendering/armyPath';
 import { WORLD_BY_ID, WORLD_PROVINCES } from '../game/data/worldMap';
 import { createSaveFile, loadSaveFile } from '../game/save/serialize';
 import { citizenAt } from '../game/data/citizens';
@@ -17,6 +18,23 @@ describe('two-city long campaign', () => {
     expect(home(sc).name).toBe('Edinburgh');
     expect(cityOf(sc.cityId, sc.culture).landmark).toBe('scott_monument');
     expect(districtName(tr.cityId, tr.culture, 1)).toBe('Akçaabat');
+  });
+
+  it('finds road-only militia paths and stores a manual movement order', () => {
+    const s = newCampaign(42);
+    const p = home(s);
+    const all = p.tiles.map((tile, i) =>
+      tile.road ? [i % p.width, Math.floor(i / p.width)] as [number, number] : null
+    ).filter((x): x is [number, number] => x !== null);
+    const start = all[0]!;
+    expect(findRoadPath(p, start, start)).toEqual([start]);
+    const staffed = tweak(s, (d) => { d.militia = 5; });
+    const move = must(staffed, { type: 'moveMilitia', x: start[0], y: start[1] });
+    expect(move.armyTarget).toEqual({ x: start[0], y: start[1] });
+    expect(move.armyOrder).toBe('patrol');
+    const nonRoad = p.tiles.findIndex((tile) => !tile.road);
+    expect(validateCommand(move, { type: 'moveMilitia',
+      x: nonRoad % p.width, y: Math.floor(nonRoad / p.width) })).not.toBeNull();
   });
 
   it('names citizens repeatably based on city and seed', () => {
