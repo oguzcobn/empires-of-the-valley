@@ -1,7 +1,7 @@
 import type { GameSpeed } from './types';
 
-/** Real milliseconds per simulation tick at 1x (one in-game day = 12 s). */
-export const TICK_MS = 500;
+/** One game day is 96 seconds at 1x and 24 seconds at 4x. */
+export const TICK_MS = 4000;
 /** A single frame never contributes more than this, so a backgrounded tab cannot "catch up". */
 export const MAX_FRAME_MS = 250;
 export const MAX_TICKS_PER_FRAME = 8;
