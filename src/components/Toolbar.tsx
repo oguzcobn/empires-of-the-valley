@@ -62,6 +62,16 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           {t('tool.road')}
         </button>
         <button
+          className={`btn tool ${tool.kind === 'pave' ? 'active' : ''}`}
+          aria-pressed={tool.kind === 'pave'}
+          onClick={() => setTool(tool.kind === 'pave' ? { kind: 'select' } : { kind: 'pave' })}
+          title="Asfaltla (P): toprak yola tıkla veya sürükle. Her karo 2 taş + 1 altın."
+          data-testid="tool-pave"
+        >
+          <span className="glyph">▥</span>
+          Asfaltla
+        </button>
+        <button
           className={`btn tool ${tool.kind === 'terrace' ? 'active' : ''}`}
           aria-pressed={tool.kind === 'terrace'}
           onClick={() => setTool(tool.kind === 'terrace' ? { kind: 'select' } : { kind: 'terrace' })}
