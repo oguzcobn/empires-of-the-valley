@@ -392,6 +392,8 @@ export interface GameState {
   /** Trained guards who can hold or patrol newly secured districts. */
   militia?: number;
   armyOrder?: 'defend' | 'patrol';
+  /** Last commanded road position of the local militia. */
+  armyTarget?: { x: number; y: number };
   homeProvinceId: ProvinceId;
   provinces: Record<ProvinceId, Province>;
   revealedProvinceIds: ProvinceId[];
