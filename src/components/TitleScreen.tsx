@@ -4,7 +4,9 @@ import { useApp } from '../app/store';
 import type { GameMode } from '../game/core/types';
 import { PLAYABLE_STYLES } from '../game/data/architecture';
 import type { PlayableStyle } from '../game/data/architecture';
-import { CulturePreview } from './CulturePreview';
+import { MonumentPreview } from './MonumentPreview';
+import { CITIES } from '../game/data/cities';
+import type { CityId } from '../game/data/cities';
 import { GAME_VERSION } from '../game/data/balance';
 import { t } from '../i18n';
 import { Modal } from './common';
@@ -40,28 +42,24 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
       </label>
       <p className={`hint ${valid ? '' : 'warn'}`}>{t(valid ? 'newGame.seedHint' : 'newGame.seedInvalid')}</p>
       <fieldset className="field plain">
-        <legend>{t('arch.pickCulture')}</legend>
-        <p className="hint">{t('arch.pickCultureHint')}</p>
-        <div className="culture-pick" role="group" aria-label={t('newGame.culture')}>
-          {PLAYABLE_STYLES.map((st) => (
-            <button
-              key={st}
-              type="button"
-              className="culture-card"
-              aria-pressed={culture === st}
-              onClick={() => setCulture(st)}
-              data-testid={`culture-${st}`}
-            >
-              <CulturePreview style={st} />
-              <h4>{t(`style.${st}.long`)}</h4>
-              <span className="muted">{t(`style.${st}.desc`)}</span>
-              <ul>
-                <li>{t(`style.${st}.bonus1`)}</li>
-                <li>{t(`style.${st}.bonus2`)}</li>
-                <li>{t(`style.${st}.bonus3`)}</li>
-              </ul>
-            </button>
-          ))}
+        <legend>{t('city.selectTitle')}</legend>
+        <p className="hint">{t('city.startNote')}</p>
+        <div className="culture-pick city-pick" role="group" aria-label={t('city.selectTitle')}>
+          {(['trabzon','edinburgh'] as CityId[]).map((id) => {
+            const city = CITIES[id];
+            return (
+              <button key={id} type="button" className={`culture-card city-card city-${id}`}
+                aria-pressed={culture === city.culture}
+                onClick={() => setCulture(city.culture)}
+                data-testid={`culture-${city.culture}`}>
+                <MonumentPreview cityId={id} />
+                <h4>{city.name}</h4>
+                <span className="muted">{city.leaderTitle}</span>
+                <strong>{city.leader}</strong>
+                <small>{id === 'trabzon' ? 'Sümela Manastırı · Akçaabat · Maçka · Araklı' : 'Scott Monument · Leith · Portobello · Morningside'}</small>
+              </button>
+            );
+          })}
         </div>
       </fieldset>
       <div className="actions">
