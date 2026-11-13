@@ -533,6 +533,7 @@ export class ValleyRenderer {
           },
           t.roadType,
           detail,
+          t.paved ?? false,
         );
         if (t.terrain === 'water' || t.terrain === 'lake') this.waterTiles.push([x, y]);
         if (t.road) this.roadTiles.push([x, y]);
