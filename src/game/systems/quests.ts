@@ -63,6 +63,10 @@ export function objectiveProgress(
       return { current: counter, target: objective.days };
     case 'population':
       return { current: totalPopulation(p), target: objective.count };
+    case 'districtCount':
+      return { current: s.claimedDistricts?.length ?? 0, target: objective.count };
+    case 'militiaCount':
+      return { current: s.militia ?? 0, target: objective.count };
     case 'techResearched':
       return { current: s.researchedTechIds.includes(objective.techId) ? 1 : 0, target: 1 };
     case 'prosperityStreak':
