@@ -4,6 +4,17 @@ import type { ArchitectureStyle, BuildingId, EventKind, GameMode, GameState, Mes
 import type { Tool } from '../game/rendering/ValleyRenderer';
 import { SLOT_IDS, deleteSlot, listBackups, listSlots, readSlot, writeBackup, writeSlot } from '../game/save/db';
 import type { BackupRecord } from '../game/save/db';
+import {
+  deleteDesign,
+  exportDesigns as designsToJson,
+  importDesigns,
+  listDesigns,
+  parseDesignFile,
+  putDesign,
+} from '../game/save/designs';
+import type { DesignRecord } from '../game/save/designs';
+import type { PlayableStyle } from '../game/data/architecture';
+import type { BuildingLook } from '../game/core/types';
 import { SCHEMA_VERSION } from '../game/data/balance';
 import type { SlotId } from '../game/save/db';
 import { createSaveFile, loadSaveFile, parseSaveText, MAX_IMPORT_BYTES } from '../game/save/serialize';
@@ -27,7 +38,8 @@ export type PanelId =
   | 'settings'
   | 'log'
   | 'help'
-  | 'credits';
+  | 'credits'
+  | 'workshop';
 
 export interface Toast {
   id: number;
@@ -71,6 +83,22 @@ interface AppStore {
 
   startNewGame(mode: GameMode, seed: number, culture?: ArchitectureStyle): void;
   backups: BackupRecord[];
+  /** Style chosen in the build catalog (null = the city's culture). */
+  buildStyle: PlayableStyle | null;
+  /** Workshop design chosen in the build catalog for its building type. */
+  buildDesign: DesignRecord | null;
+  setBuildStyle(style: PlayableStyle | null): void;
+  setBuildDesign(design: DesignRecord | null): void;
+  /** What the workshop edits: a building type, optionally an existing building to apply to. */
+  workshop: { buildingId: BuildingId; instanceId: string | null; style: PlayableStyle; look: BuildingLook | null } | null;
+  openWorkshop(target?: { buildingId: BuildingId; instanceId?: string | null; style?: PlayableStyle; look?: BuildingLook | null }): void;
+  designs: DesignRecord[];
+  refreshDesigns(): Promise<void>;
+  saveDesign(d: DesignRecord): Promise<boolean>;
+  removeDesign(id: string): Promise<void>;
+  exportAllDesigns(): void;
+  importDesignFile(file: File): Promise<boolean>;
+  placeDesign(buildingId: BuildingId, style: PlayableStyle, look: BuildingLook | null): void;
   refreshBackups(): Promise<void>;
   downloadBackup(id: string): void;
   dispatch(cmd: Command, quiet?: boolean): boolean;
@@ -198,6 +226,90 @@ export const useApp = create<AppStore>((set, get) => {
     focus: null,
 
     backups: [],
+    buildStyle: null,
+    buildDesign: null,
+    setBuildStyle(style) {
+      set({ buildStyle: style });
+      const tool = get().tool;
+      if (tool.kind === 'build') get().startBuild(tool.buildingId);
+    },
+    setBuildDesign(design) {
+      set({ buildDesign: design, buildStyle: design ? design.style : get().buildStyle });
+      if (design) get().startBuild(design.buildingId);
+    },
+    workshop: null,
+    openWorkshop(target) {
+      const game = get().game;
+      const fallback = (game?.culture === 'scottish' ? 'scottish' : 'turkish') as PlayableStyle;
+      set({
+        workshop: {
+          buildingId: target?.buildingId ?? 'hut',
+          instanceId: target?.instanceId ?? null,
+          style: target?.style ?? fallback,
+          look: target?.look ?? null,
+        },
+        panel: 'workshop',
+      });
+    },
+    designs: [],
+    async refreshDesigns() {
+      try {
+        set({ designs: await listDesigns() });
+      } catch (e) {
+        set({ designs: [] });
+        get().toast('error', t('workshop.storageFailed', { detail: errorText(e) }));
+      }
+    },
+    async saveDesign(d) {
+      try {
+        await putDesign(d);
+        await get().refreshDesigns();
+        get().toast('success', t('workshop.saved', { name: d.name }));
+        return true;
+      } catch (e) {
+        get().toast('error', t('workshop.storageFailed', { detail: errorText(e) }));
+        return false;
+      }
+    },
+    async removeDesign(id) {
+      try {
+        await deleteDesign(id);
+        if (get().buildDesign?.id === id) set({ buildDesign: null });
+      } catch (e) {
+        get().toast('error', t('workshop.storageFailed', { detail: errorText(e) }));
+      }
+      await get().refreshDesigns();
+    },
+    exportAllDesigns() {
+      const designs = get().designs;
+      if (!designs.length) return;
+      const blob = new Blob([designsToJson(designs)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'empires-of-the-valley-tasarimlar.json';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    },
+    async importDesignFile(file) {
+      const parsed = parseDesignFile(await file.text());
+      if (!parsed.ok) {
+        get().toast('error', t('workshop.importFailed', { reason: parsed.reason }));
+        return false;
+      }
+      try {
+        const n = await importDesigns(parsed.designs);
+        await get().refreshDesigns();
+        get().toast('success', t('workshop.imported', { n }));
+        return true;
+      } catch (e) {
+        get().toast('error', t('workshop.storageFailed', { detail: errorText(e) }));
+        return false;
+      }
+    },
+    placeDesign(buildingId, style, look) {
+      set({ panel: null, buildOpen: false, buildStyle: style, tool: { kind: 'build', buildingId, style, look }, selectedBuildingId: null });
+    },
     async refreshBackups() {
       try {
         set({ backups: await listBackups() });
@@ -270,7 +382,12 @@ export const useApp = create<AppStore>((set, get) => {
       set({ tool, selectedBuildingId: tool.kind === 'select' ? get().selectedBuildingId : null });
     },
     startBuild(id) {
-      set({ tool: { kind: 'build', buildingId: id }, selectedBuildingId: null });
+      const st = get();
+      const design = st.buildDesign?.buildingId === id ? st.buildDesign : null;
+      set({
+        tool: { kind: 'build', buildingId: id, style: st.buildStyle ?? st.game?.culture, look: design?.look ?? null },
+        selectedBuildingId: null,
+      });
     },
     select(id) {
       set({ selectedBuildingId: id });

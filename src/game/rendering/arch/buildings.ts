@@ -1,6 +1,7 @@
 import type { Graphics } from 'pixi.js';
 import type { ArchitectureStyle, BuildingId, BuildingLook, RoofType, WindowType } from '../../core/types';
-import { CULTURES, defaultLook } from '../../data/architecture';
+import { CULTURES } from '../../data/architecture';
+import { renderLook } from '../../systems/architecture';
 import { P, shade } from '../iso';
 import type { Pt } from '../iso';
 import type { SeasonPalette } from '../palette';
@@ -611,7 +612,7 @@ export function drawStyledBuilding(
 ): SpriteInfo {
   const wear = b.condition >= 5000 ? 0 : b.condition >= 2500 ? 1 : 2;
   const ctx = newCtx(g, detail, seed, pal.snow, wear);
-  const look = b.look ?? defaultLook(b.style, b.definitionId, b.level);
+  const look = renderLook(b);
   switch (b.definitionId) {
     case 'hut':
       house(ctx, look, b.style, pal);

@@ -1,55 +1,47 @@
+import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
-import type { ArchitectureStyle } from '../game/core/types';
+import { Graphics } from 'pixi.js';
+import type { BuildingId } from '../game/core/types';
+import type { PlayableStyle } from '../game/data/architecture';
+import { drawStyledBuilding } from '../game/rendering/arch/buildings';
+import { P, isoX, isoY } from '../game/rendering/iso';
+import { SEASON_PALETTE } from '../game/rendering/palette';
+import { renderToDataUrl } from '../game/rendering/preview';
 import { t } from '../i18n';
 
-/** Small illustrated preview of a culture's houses (replaced by rendered sprites when available). */
-export function CulturePreview({ style }: { style: ArchitectureStyle }): ReactElement {
-  if (style === 'scottish')
-    return (
-      <svg viewBox="0 0 200 110" role="img" aria-label={t('style.scottish.long')} className="culture-svg">
-        <path d="M0 95 200 95 200 110 0 110z" fill="#7fb56a" />
-        <g>
-          <path d="M30 60h70v35H30z" fill="#a9aca8" />
-          <path d="M30 60 65 34 100 60z" fill="#4e5d6c" />
-          <path d="M24 60h8v-10h-4v-6h4v-6h4v22z" fill="#9a9d98" />
-          <rect x="92" y="38" width="8" height="18" fill="#8d908b" />
-          <rect x="44" y="70" width="10" height="13" fill="#e8eef2" stroke="#fff" />
-          <rect x="76" y="70" width="10" height="13" fill="#e8eef2" stroke="#fff" />
-          <rect x="60" y="76" width="10" height="19" fill="#3f4b57" />
-        </g>
-        <g>
-          <path d="M120 40h46v55h-46z" fill="#f3efe6" />
-          <path d="M116 40 143 18 170 40z" fill="#4e5d6c" />
-          <path d="M166 50a7 7 0 0 1 14 0v45h-14z" fill="#f3efe6" />
-          <path d="M164 52 173 30 182 52z" fill="#4e5d6c" />
-          <rect x="128" y="50" width="8" height="12" fill="#9ec4dc" />
-          <rect x="150" y="50" width="8" height="12" fill="#9ec4dc" />
-          <rect x="128" y="70" width="8" height="12" fill="#9ec4dc" />
-          <rect x="139" y="78" width="9" height="17" fill="#2f5fa7" />
-        </g>
-      </svg>
-    );
-  return (
-    <svg viewBox="0 0 200 110" role="img" aria-label={t('style.turkish.long')} className="culture-svg">
-      <path d="M0 95 200 95 200 110 0 110z" fill="#7fb56a" />
-      <g>
-        <path d="M28 70h60v25H28z" fill="#c9b48e" />
-        <path d="M22 44h72v26H22z" fill="#f6f1e6" />
-        <path d="M22 44h72M22 57h72M34 44v26M58 44v26M82 44v26M22 70l12-26M58 70l12-26" stroke="#5a3b22" strokeWidth="2" />
-        <path d="M56 50h26v18H56z" fill="#f6f1e6" stroke="#5a3b22" strokeWidth="2" />
-        <path d="M10 44 58 24 106 44z" fill="#c0503a" />
-        <rect x="62" y="53" width="6" height="10" fill="#7b5236" />
-        <rect x="71" y="53" width="6" height="10" fill="#7b5236" />
-        <path d="M50 95V80a6 6 0 0 1 12 0v15z" fill="#5a3b22" />
-      </g>
-      <g>
-        <path d="M122 52h56v43h-56z" fill="#e2c07c" />
-        <path d="M134 52a16 16 0 0 1 32 0z" fill="#8d97a1" />
-        <path d="M150 34v3" stroke="#c9a23a" strokeWidth="2" />
-        <path d="M130 95V75a6 6 0 0 1 12 0v20zM158 95V75a6 6 0 0 1 12 0v20z" fill="#7b5236" />
-        <rect x="184" y="20" width="5" height="75" fill="#efe6d2" />
-        <path d="M182 20 186.5 6 191 20z" fill="#8d97a1" />
-      </g>
-    </svg>
+/** A small rendered street scene of a culture: the same sprites the game draws. */
+const SCENE: [BuildingId, number, number, number][] = [
+  ['town_center', 1, 0, 0],
+  ['hut', 3, 2.3, 0.2],
+  ['hut', 2, 2.3, 1.3],
+  ['hut', 1, 0.2, 2.3],
+  ['school', 1, 1.4, 2.4],
+];
+
+export function CulturePreview({ style }: { style: PlayableStyle }): ReactElement {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    renderToDataUrl(`culture|${style}`, (ground, root) => {
+      const pal = SEASON_PALETTE.summer;
+      ground.poly([P(-0.2, -0.2), P(3.6, -0.2), P(3.6, 4.6), P(-0.2, 4.6)].flat()).fill(pal.grass[0]!);
+      const sorted = [...SCENE].sort((a, b) => a[2] + a[3] - (b[2] + b[3]));
+      for (const [id, level, u, v] of sorted) {
+        const g = new Graphics();
+        drawStyledBuilding(g, { definitionId: id, style, look: null, level, condition: 10000 }, pal, 2, 11 + level);
+        g.position.set(isoX(u, v), isoY(u, v));
+        root.addChild(g);
+      }
+    })
+      .then((u) => live && setUrl(u))
+      .catch(() => live && setUrl(null));
+    return () => {
+      live = false;
+    };
+  }, [style]);
+  return url ? (
+    <img src={url} alt={t(`style.${style}.long`)} className="culture-img" />
+  ) : (
+    <span className="culture-img placeholder" aria-hidden="true" />
   );
 }

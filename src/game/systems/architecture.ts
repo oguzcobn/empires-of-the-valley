@@ -120,3 +120,15 @@ export function restyleCost(definitionId: BuildingId, style: ArchitectureStyle, 
 
 export const sameLook = (a: BuildingLook | null, b: BuildingLook | null): boolean =>
   JSON.stringify(a) === JSON.stringify(b);
+
+/** Highest number of floors a custom design shows at a given level (taller looks need upgrades). */
+export function maxFloors(definitionId: BuildingId, level: number): BuildingLook['floors'] {
+  const cap = definitionId === 'hut' ? level + 1 : level + 1;
+  return Math.max(1, Math.min(4, definitionId === 'hut' ? cap : Math.min(3, cap))) as BuildingLook['floors'];
+}
+
+/** Look used for drawing: custom designs are capped by the level; defaults are already level-specific. */
+export function renderLook(b: StyledRef): BuildingLook {
+  if (!b.look) return defaultLook(b.style, b.definitionId, b.level);
+  return { ...b.look, floors: Math.min(b.look.floors, maxFloors(b.definitionId, b.level)) as BuildingLook['floors'] };
+}

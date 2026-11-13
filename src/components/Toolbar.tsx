@@ -10,6 +10,7 @@ const PANELS: { id: PanelId; key: TKey; hint?: string; campaignOnly?: boolean }[
   { id: 'economy', key: 'panel.economy' },
   { id: 'population', key: 'panel.population' },
   { id: 'research', key: 'panel.research' },
+  { id: 'workshop', key: 'panel.workshop' },
   { id: 'journal', key: 'panel.journal', campaignOnly: true },
   { id: 'world', key: 'panel.world', hint: 'M' },
   { id: 'log', key: 'panel.log' },
@@ -72,7 +73,9 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           <button
             key={id}
             className={`btn tool small ${panel === id ? 'active' : ''}`}
-            onClick={() => openPanel(panel === id ? null : id)}
+            onClick={() =>
+              panel === id ? openPanel(null) : id === 'workshop' ? useApp.getState().openWorkshop() : openPanel(id)
+            }
             title={hint ? `${t(key)} (${hint})` : t(key)}
             data-testid={`panel-${id}`}
           >

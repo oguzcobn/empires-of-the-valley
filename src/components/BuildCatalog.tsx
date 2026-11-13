@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import type { BuildingCategory, GameState } from '../game/core/types';
 import { BUILDABLE_IDS, BUILDINGS } from '../game/data/buildings';
 import { missingFor } from '../game/systems/commands';
 import { levelCost } from '../game/systems/architecture';
+import { PLAYABLE_STYLES } from '../game/data/architecture';
 import { homeProvince } from '../game/systems/economy';
 import { t } from '../i18n';
 import { CostList } from './common';
@@ -14,7 +15,14 @@ const CATEGORIES: ('all' | BuildingCategory)[] = ['all', 'housing', 'production'
 
 export function BuildCatalog({ game }: { game: GameState }): ReactElement {
   const tool = useApp((s) => s.tool);
-  const { startBuild, toggleBuild } = useApp.getState();
+  const buildStyle = useApp((s) => s.buildStyle);
+  const buildDesign = useApp((s) => s.buildDesign);
+  const designs = useApp((s) => s.designs);
+  const { startBuild, toggleBuild, setBuildStyle, setBuildDesign, refreshDesigns, dispatch } = useApp.getState();
+  useEffect(() => {
+    void refreshDesigns();
+  }, [refreshDesigns]);
+  const style = buildStyle ?? (game.culture === 'scottish' ? 'scottish' : 'turkish');
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('all');
   const [query, setQuery] = useState('');
   const p = homeProvince(game);
@@ -31,6 +39,53 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
           ✕
         </button>
       </header>
+      <div className="catalog-style" data-testid="catalog-style">
+        <div className="spread">
+          <span className="muted">{t('catalog.style')}</span>
+          <div className="segmented" role="group" aria-label={t('catalog.style')}>
+            {PLAYABLE_STYLES.map((st) => (
+              <button
+                key={st}
+                className={`btn ${style === st ? 'active' : ''}`}
+                aria-pressed={style === st}
+                onClick={() => {
+                  setBuildDesign(null);
+                  setBuildStyle(st);
+                }}
+                data-testid={`catalog-style-${st}`}
+              >
+                {t(`style.${st}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+        {designs.length > 0 && (
+          <label className="field inline">
+            <span className="muted">{t('catalog.design')}</span>
+            <select
+              className="input"
+              value={buildDesign?.id ?? ''}
+              onChange={(e) => setBuildDesign(designs.find((d) => d.id === e.target.value) ?? null)}
+              data-testid="catalog-design"
+            >
+              <option value="">{t('catalog.designNone')}</option>
+              {designs.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} · {t(`building.${d.buildingId}.name`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <div className="spread">
+          <span className="hint">{t('catalog.cityDefault', { style: `@style.${game.culture}` })}</span>
+          {style !== game.culture && (
+            <button className="btn" onClick={() => dispatch({ type: 'setCulture', style })} data-testid="catalog-make-default">
+              {t('catalog.makeDefault')}
+            </button>
+          )}
+        </div>
+      </div>
       <div className="tabs" role="tablist">
         {CATEGORIES.map((c) => (
           <button
@@ -57,7 +112,8 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
         {items.map((id) => {
           const def = BUILDINGS[id];
           const spec = def.levels[0]!;
-          const cost = levelCost(id, 0, game.culture);
+          const design = buildDesign?.buildingId === id ? buildDesign : null;
+          const cost = levelCost(id, 0, style, design?.look ?? null);
           const affordable = missingFor(p, cost) === null;
           const active = tool.kind === 'build' && tool.buildingId === id;
           return (

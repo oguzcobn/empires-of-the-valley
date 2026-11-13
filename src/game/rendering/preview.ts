@@ -24,18 +24,16 @@ function renderer(): Promise<Renderer> {
   return rendererPromise;
 }
 
-/** Renders `draw` (local sprite space) centred into a PNG data URL. Cached by key. */
-export function renderToDataUrl(key: string, draw: (g: Graphics) => void, padding = 8): Promise<string> {
+/** Renders `draw` (local sprite space) into a PNG data URL cropped to its bounds. Cached by key. */
+export function renderToDataUrl(key: string, draw: (g: Graphics, root: Container) => void): Promise<string> {
   const hit = cache.get(key);
   if (hit) return hit;
   const job = (async () => {
     const r = await renderer();
     const root = new Container();
     const g = new Graphics();
-    draw(g);
     root.addChild(g);
-    const bounds = g.getLocalBounds();
-    g.position.set(-bounds.x + padding, -bounds.y + padding);
+    draw(g, root);
     const url = await r.extract.base64({
       target: root,
       frame: undefined,

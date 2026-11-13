@@ -175,7 +175,7 @@ export class ValleyRenderer {
       preference: 'webgl',
     });
     if (r.destroyed) {
-      r.app.destroy(true, { children: true });
+      r.app.destroy({ removeView: true }, { children: true });
       return r;
     }
     r.ready = true;
@@ -200,7 +200,9 @@ export class ValleyRenderer {
       this.app.ticker.remove(this.frame);
       for (const a of this.atlas.values()) a.tex.destroy(true);
       this.atlas.clear();
-      this.app.destroy(true, { children: true, texture: true });
+      // Never pass `true` as the first argument: it releases Pixi's global resources and breaks the
+      // other live renderers (workshop preview, offscreen thumbnails).
+      this.app.destroy({ removeView: true }, { children: true, texture: true });
     }
   }
 

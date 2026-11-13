@@ -26,6 +26,7 @@ import { Bar, Modal, Row } from './common';
 import { GRAPHICS_SETTINGS, effectiveQuality } from '../app/settings';
 import { Icon } from './icons';
 import { ObjectiveList, rewardLabel } from './QuestTracker';
+import { WorkshopPanel } from './Workshop';
 
 const RESOURCES: ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
 
@@ -813,5 +814,12 @@ export function PanelHost({ game }: { game: GameState | null }): ReactElement | 
           <LogPanel game={game} />
         </Modal>
       );
+    case 'workshop':
+      return (
+        <Modal title={t('panel.workshop')} onClose={close} wide>
+          <WorkshopPanel game={game} />
+        </Modal>
+      );
   }
+  return null;
 }

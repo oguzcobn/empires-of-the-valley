@@ -26,7 +26,7 @@ export function ArtGallery(): ReactElement {
     void app
       .init({ resizeTo: ref.current!, background: 0xcfe5d0, antialias: true, resolution: 2, autoDensity: true, preference: 'webgl' })
       .then(() => {
-        if (dead) return app.destroy(true);
+        if (dead) return app.destroy({ removeView: true });
         ref.current!.appendChild(app.canvas);
         const root = new Container();
         app.stage.addChild(root);
@@ -70,7 +70,7 @@ export function ArtGallery(): ReactElement {
     return () => {
       dead = true;
       try {
-        app.destroy(true, { children: true });
+        app.destroy({ removeView: true }, { children: true });
       } catch {
         /* not initialised */
       }

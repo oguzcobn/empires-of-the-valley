@@ -16,7 +16,7 @@ import {
 } from '../game/systems/economy';
 import { buildingById } from '../game/systems/grid';
 import { requiredTicks } from '../game/systems/tick';
-import { PLAYABLE_STYLES } from '../game/data/architecture';
+import { DESIGNABLE, PLAYABLE_STYLES } from '../game/data/architecture';
 import { conditionBand, decayPerDay, levelCost, repairCost, restyleCost } from '../game/systems/architecture';
 import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
 import { Bar, CostList, Row } from './common';
@@ -87,6 +87,22 @@ function ArchitectureSection({ game, b }: { game: GameState; b: BuildingInstance
             </div>
           )}
         </>
+      )}
+      {b.state === 'active' && DESIGNABLE.includes(b.definitionId) && (
+        <button
+          className="btn block"
+          onClick={() =>
+            useApp.getState().openWorkshop({
+              buildingId: b.definitionId,
+              instanceId: b.id,
+              style: b.style === 'scottish' ? 'scottish' : 'turkish',
+              look: b.look,
+            })
+          }
+          data-testid="open-workshop"
+        >
+          {t('workshop.open')}
+        </button>
       )}
       {b.state === 'active' && others.length > 0 && (
         <div className="restyle">

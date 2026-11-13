@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   base: './',
   plugins: [react()],
-  build: { target: 'es2022', sourcemap: false, chunkSizeWarningLimit: 900 },
+  build: { target: 'es2022', sourcemap: true, chunkSizeWarningLimit: 900 },
   test: {
     environment: 'node',
     include: ['src/tests/**/*.test.ts'],
