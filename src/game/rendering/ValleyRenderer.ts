@@ -26,6 +26,9 @@ import type { SpriteInfo } from './arch/buildings';
 import { CULTURES } from '../data/architecture';
 import { conditionBand } from '../systems/architecture';
 import { findRoadPath } from './armyPath';
+import { matchDayFor } from '../data/matchDays';
+import type { MatchDay } from '../data/matchDays';
+import { drawCityCar, drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
 import type { GridPoint } from './armyPath';
 
 export type Tool =
@@ -115,6 +118,16 @@ interface Walker {
   phase: number;
   side: number;
   cart: boolean;
+  fan?: boolean;
+  flare?: Graphics;
+}
+interface TrafficCar {
+  c: Container;
+  from: [number, number];
+  to: [number, number];
+  prev: [number, number];
+  t: number;
+  speed: number;
 }
 interface Particle {
   g: Graphics;
@@ -155,6 +168,10 @@ export class ValleyRenderer {
   private buildingViews = new Map<string, BuildingView>();
   private propViews = new Map<number, PropView>();
   private walkers: Walker[] = [];
+  private matchFans: Walker[] = [];
+  private activeFanMatch = '';
+  private trafficCars: TrafficCar[] = [];
+  private pavedRoadTiles: [number, number][] = [];
   private militiaSprites: Container[] = [];
   private militiaPos: GridPoint | null = null;
   private militiaRoute: GridPoint[] = [];
@@ -491,6 +508,7 @@ export class ValleyRenderer {
     this.watchFps(view);
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
     this.updateWalkers(view, p, dt, motion);
+    this.updateTraffic(view, p, dt, motion);
     this.updateMilitia(view, p, dt);
     this.updateBoats(view, p, dt, motion);
     this.updateParticles(dt);
@@ -513,6 +531,7 @@ export class ValleyRenderer {
     g.clear();
     this.waterTiles = [];
     this.roadTiles = [];
+    this.pavedRoadTiles = [];
     // painter's order along diagonals so raised tiles and their cliffs overlap correctly
     const detail = this.cb.getView()?.detail ?? 2;
     for (let sum = 0; sum <= p.width + p.height - 2; sum++)
@@ -538,6 +557,7 @@ export class ValleyRenderer {
         );
         if (t.terrain === 'water' || t.terrain === 'lake') this.waterTiles.push([x, y]);
         if (t.road) this.roadTiles.push([x, y]);
+        if (t.road && t.paved && t.roadType === 'dirt') this.pavedRoadTiles.push([x, y]);
       }
     this.drawWater(pal);
   }
@@ -963,14 +983,18 @@ export class ValleyRenderer {
     }
   }
 
-  private spawnWalker(cart: boolean): Walker | null {
-    if (this.roadTiles.length === 0) return null;
-    const start = this.roadTiles[Math.floor(Math.random() * this.roadTiles.length)]!;
+  private spawnWalker(cart: boolean, fanMatch?: MatchDay, index = 0): Walker | null {
+    const starts = fanMatch && this.pavedRoadTiles.length ? this.pavedRoadTiles : this.roadTiles;
+    if (!starts.length) return null;
+    const start = starts[Math.floor(Math.random() * starts.length)]!;
     const c = new Container();
     const g = new Graphics();
-    if (cart) drawCart(g, [0xb98a5a, 0xe2bb45, 0x9aa0a6][Math.floor(Math.random() * 3)]!);
+    if (fanMatch) drawFootballSupporter(g, fanMatch, index);
+    else if (cart) drawCart(g, [0xb98a5a, 0xe2bb45, 0x9aa0a6][Math.floor(Math.random() * 3)]!);
     else drawVillager(g, VILLAGER_COLORS[Math.floor(Math.random() * VILLAGER_COLORS.length)]!, Math.floor(Math.random() * 8));
     c.addChild(g);
+    const flare = fanMatch && index % 3 === 0 ? new Graphics() : undefined;
+    if (flare) c.addChild(flare);
     c.cullable = true;
     this.objects.addChild(c);
     this.tintKey = -1;
@@ -980,10 +1004,12 @@ export class ValleyRenderer {
       to: [start[0], start[1]],
       prev: [start[0], start[1]],
       t: 1,
-      speed: cart ? 0.55 : 0.7 + Math.random() * 0.4,
+      speed: fanMatch ? 0.48 + Math.random() * 0.26 : cart ? 0.55 : 0.7 + Math.random() * 0.4,
       phase: Math.random() * 6,
-      side: (Math.random() - 0.5) * 9,
+      side: (Math.random() < 0.5 ? -1 : 1) * (2.5 + Math.random() * 2),
       cart,
+      fan: !!fanMatch,
+      flare,
     };
   }
 
