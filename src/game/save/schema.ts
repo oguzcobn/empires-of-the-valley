@@ -24,6 +24,7 @@ const tile = z
     deposit: nat,
     road: z.boolean(),
     roadType: z.enum(['dirt', 'bridge', 'stairs', 'mountain', 'tunnel']),
+    paved: z.boolean().optional(),
     buildingId: shortText.nullable(),
     variant: nat.max(3),
     height: nat.max(MAX_HEIGHT),
