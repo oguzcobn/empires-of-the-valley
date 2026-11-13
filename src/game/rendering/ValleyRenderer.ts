@@ -120,7 +120,7 @@ interface Particle {
   life: number;
 }
 
-const MIN_ZOOM = 0.45;
+const MIN_ZOOM = 0.24;
 const MAX_ZOOM = 2.6;
 const SPEED_FACTOR: Record<number, number> = { 0: 0, 1: 1, 2: 1.6, 4: 2.4 };
 
@@ -148,6 +148,7 @@ export class ValleyRenderer {
   private fpsSamples: number[] = [];
   private lowFpsAt = -1e9;
   private size = 32;
+  private cameraViewport = { width: 0, height: 0 };
   private prov: Province | null = null;
   private opts: RendererOptions = { resolution: 2, antialias: true, cacheBodies: false };
   private buildingViews = new Map<string, BuildingView>();
@@ -240,8 +241,15 @@ export class ValleyRenderer {
 
   resetCamera(): void {
     const { width, height } = this.app.screen;
-    const scale = Math.max(0.5, Math.min(1.25, Math.min(width / 1500, height / 840)));
+    // Fit the complete isometric diamond, including mountains, into the
+    // available iframe/viewport. Keep room for the top HUD and bottom tools.
+    const usableWidth = Math.max(160, width - 48);
+    const usableHeight = Math.max(160, height - 146);
+    const boundsWidth = this.size * TW;
+    const boundsHeight = this.size * TH + MAX_HEIGHT * HEIGHT_PX;
+    const scale = Math.max(MIN_ZOOM, Math.min(1.2, usableWidth / boundsWidth, usableHeight / boundsHeight));
     this.world.scale.set(scale);
+    this.cameraViewport = { width, height };
     this.centerOnTile(this.size / 2, this.size / 2 + 0.5);
   }
 
@@ -453,6 +461,10 @@ export class ValleyRenderer {
     this.time += dt;
     const p = homeProvince(view.game);
     this.prov = p;
+    // Respond to parent-iframe resizing; do not reset the user's zoom on
+    // every simulation tick or React state update.
+    if (this.app.screen.width !== this.cameraViewport.width ||
+        this.app.screen.height !== this.cameraViewport.height) this.resetCamera();
     if (p.width !== this.size) {
       this.size = p.width;
       this.resetCamera();
@@ -469,8 +481,8 @@ export class ValleyRenderer {
       this.lastTiles = p.tiles;
       this.lastSeason = cal.season;
     }
-    // Keep simulation/economy at the selected speed, but cap the *visual* sky
-    // at 1x (one day per 12 real seconds), even while playing at 4x.
+    // Keep the visual sky on its own slow clock; changing speed never
+    // causes rapid flashing or affects the real game calendar.
     // A continuous hour also avoids sudden jumps at discrete tick boundaries.
     this.visualHour = advanceVisualHour(this.visualHour, clockHour(view.game.tick), dt, view.game.speed);
     this.updateLight(view, this.visualHour, dt);
