@@ -25,6 +25,7 @@ import type { SpriteInfo } from './arch/buildings';
 import { CULTURES } from '../data/architecture';
 import { conditionBand } from '../systems/architecture';
 import { findRoadPath } from './armyPath';
+import { getPavedLinks } from './roadGeometry';
 import { matchDayFor } from '../data/matchDays';
 import type { MatchDay } from '../data/matchDays';
 import { drawCityCar, drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
@@ -550,6 +551,7 @@ export class ValleyRenderer {
           t.roadType,
           detail,
           t.paved ?? false,
+          getPavedLinks(p, x, y),
         );
         if (t.terrain === 'water' || t.terrain === 'lake') this.waterTiles.push([x, y]);
         if (t.road) this.roadTiles.push([x, y]);
