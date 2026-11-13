@@ -81,6 +81,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           {t('tool.demolish')}
         </button>
       </div>
+      <div className="tool-group">
         <button
           className={`btn tool ${tool.kind === 'army' ? 'active' : ''}`}
           aria-pressed={tool.kind === 'army'}
