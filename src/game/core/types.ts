@@ -1,4 +1,5 @@
 import type { TKey } from '../../i18n/tr';
+import type { CityId } from '../data/cities';
 
 export type ResourceId = 'wood' | 'stone' | 'food' | 'gold' | 'tools' | 'research';
 export const RESOURCE_IDS: readonly ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
@@ -382,6 +383,10 @@ export interface GameState {
   playerFactionId: FactionId;
   /** Default culture for new buildings. Each building also stores its own style. */
   culture: ArchitectureStyle;
+  /** Starting city, unchanged when a building is restyled. Optional for legacy saves. */
+  cityId?: CityId;
+  /** Strategically secured surrounding districts, as world province IDs. */
+  claimedDistricts?: ProvinceId[];
   homeProvinceId: ProvinceId;
   provinces: Record<ProvinceId, Province>;
   revealedProvinceIds: ProvinceId[];
