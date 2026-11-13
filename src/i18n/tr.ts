@@ -117,6 +117,13 @@ export const tr = {
   'branch.governance': 'Yönetim',
 
   // ------------------------------------------------------------ görevler
+  'panel.army': 'Ordu',
+  'event.districtClaimed': '{n}. ilçe yönetiminize katıldı.',
+  'event.militiaRecruited': 'Milis sayısı {n} kişiye yükseldi.',
+  'event.raidDefended': 'Sınırda silahlı saldırı püskürtüldü! Savunma {defenders} / tehdit {attackers}.',
+  'event.raidDamage': 'Sınır saldırısında {gold} altın kaybedildi. Gözetleme kulesi ve milislerini güçlendir.',
+  'city.selectTitle': 'Başlangıç Şehrini Seç',
+  'city.startNote': 'Şehrini seç. Tarihî simgeler ve ilçeler seçimine göre değişir.',
   'chapter.1.title': '1. Bölüm — İlk Ateş',
   'chapter.2.title': '2. Bölüm — Vadinin Efendisi',
   'quest.q09.title': 'Vadinin Pazarı',
