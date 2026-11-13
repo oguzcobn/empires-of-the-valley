@@ -7,20 +7,20 @@ describe('visual-only day/night clock', () => {
   it('does not accelerate the sky at simulation speed 4x', () => {
     const start = 6;
     // At 4x the simulation would complete one full day in three seconds.
-    // The sky should progress by only six hours in the same real time.
-    expect(advanceVisualHour(start, 6, 3000, 4)).toBe(12);
-    expect(advanceVisualHour(start, 6, 3000, 1)).toBe(12);
+    // The sky should progress by only 45 minutes in three real seconds.
+    expect(advanceVisualHour(start, 6, 3000, 4)).toBe(6.75);
+    expect(advanceVisualHour(start, 6, 3000, 1)).toBe(6.75);
   });
 
   it('preserves its phase when simulation speed changes, and freezes when paused', () => {
     const duringFast = advanceVisualHour(18, 4, 500, 4);
-    expect(duringFast).toBe(19);
-    expect(advanceVisualHour(duringFast, 5, 1000, 0)).toBe(19);
-    expect(advanceVisualHour(duringFast, 5, 500, 1)).toBe(20);
+    expect(duringFast).toBe(18.125);
+    expect(advanceVisualHour(duringFast, 5, 1000, 0)).toBe(18.125);
+    expect(advanceVisualHour(duringFast, 5, 500, 1)).toBe(18.25);
   });
 
   it('initializes from the saved game hour and wraps midnight', () => {
-    expect(advanceVisualHour(null, 23, 500, 1)).toBe(0);
+    expect(advanceVisualHour(null, 23, 4000, 1)).toBe(0);
   });
 });
 
