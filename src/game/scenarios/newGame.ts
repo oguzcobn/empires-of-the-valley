@@ -1,6 +1,7 @@
 import { seedToState } from '../core/rng';
 import type { ArchitectureStyle, GameMode, GameState } from '../core/types';
 import { LEGACY_STYLE, isPlayableStyle } from '../data/architecture';
+import { cityForCulture, CITIES } from '../data/cities';
 import {
   GAME_VERSION,
   MAP_SIZE,
@@ -40,11 +41,13 @@ export function createNewGame({ seed, mode, culture = LEGACY_STYLE }: NewGameOpt
     speed: 0,
     playerFactionId: 'player',
     culture,
+    cityId: cityForCulture(culture),
+    claimedDistricts: [],
     homeProvinceId: HOME_PROVINCE_ID,
     provinces: {
       [HOME_PROVINCE_ID]: {
         id: HOME_PROVINCE_ID,
-        name: world.name,
+        name: CITIES[cityForCulture(culture)].name,
         biome: 'fertile_plain',
         neighbors: [...world.neighbors],
         ownerFactionId: 'player',
