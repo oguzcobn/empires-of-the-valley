@@ -1,4 +1,3 @@
-import { TICK_MS } from '../core/clock';
 import type { GameSpeed } from '../core/types';
 
 /**
@@ -15,5 +14,5 @@ export function advanceVisualHour(
   const current = previous ?? gameHour;
   if (speed === 0 || dtMs <= 0) return current;
   // One visual day lasts 96 seconds, independent of 1x/2x/4x simulation speed.
-  return (current + dtMs / (TICK_MS * 8)) % 24;
+  return (current + dtMs / 4000) % 24;
 }
