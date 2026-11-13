@@ -63,6 +63,7 @@ function useShortcuts(): void {
       else if (key === 't') s.setTool(s.tool.kind === 'terrace' ? { kind: 'select' } : { kind: 'terrace' });
       else if (key === 'x') s.setTool(s.tool.kind === 'demolish' ? { kind: 'select' } : { kind: 'demolish' });
       else if (key === 'm') s.openPanel('world');
+      else if (key === 'g') s.setTool(s.tool.kind === 'army' ? { kind: 'select' } : { kind: 'army' });
       else if (key === '+' || key === '=') getRenderer()?.zoomBy(1.2);
       else if (key === '-' || key === '_') getRenderer()?.zoomBy(1 / 1.2);
       else if (key === 'home') getRenderer()?.resetCamera();
