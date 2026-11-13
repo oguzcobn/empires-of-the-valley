@@ -178,7 +178,7 @@ export function IntroDialog({ game }: { game: GameState }): ReactElement | null 
     <Modal title={campaign ? t('intro.title') : t('intro.sandboxTitle')} onClose={closeIntro}>
       {campaign ? (
         <>
-          <p className="story">{t('intro.story')}</p>
+          <p className="story">{t(game.cityId === 'edinburgh' || game.culture === 'scottish' ? 'intro.edinburgh' : 'intro.trabzon')}</p>
           <div className="mira">
             <span className="mira-face" aria-hidden="true">
               M
@@ -212,17 +212,25 @@ export function ChapterDialog({ game }: { game: GameState }): ReactElement | nul
   const p = homeProvince(game);
   const cal = calendar(game.tick);
   return (
-    <Modal title={t('chapterEnd.title')} onClose={close}>
-      <p className="story">{t('chapterEnd.story')}</p>
+    <Modal title={game.completedChapters.includes(3) ? '3. Bölüm tamamlandı — Bölgesel Güç' : game.completedChapters.includes(2) ? '2. Bölüm tamamlandı — Vadinin Efendisi' : t('chapterEnd.title')} onClose={close}>
+      <p className="story">{game.completedChapters.includes(3)
+        ? 'Şehrin güçlü bir bölgesel merkez haline geldi. Üretime, ticarete ve yeni ilçelere yatırım yapmaya devam edebilirsin.'
+        : game.completedChapters.includes(2)
+          ? 'Şehir artık pazarı, güvenlik altyapısı ve büyüyen nüfusuyla kendi ayakları üzerinde. Bölgesel güç olma yolculuğun başlıyor.'
+          : t('chapterEnd.story')}</p>
       <ul className="tips">
         <li>{t('chapterEnd.stat.days', { n: cal.day })}</li>
         <li>{t('chapterEnd.stat.pop', { n: totalPopulation(p) })}</li>
         <li>{t('chapterEnd.stat.buildings', { n: p.buildings.length })}</li>
         <li>{t('chapterEnd.stat.tech', { n: game.researchedTechIds.length })}</li>
       </ul>
-      <h4>{t('chapterEnd.nextTitle')}</h4>
-      <p>{t('chapterEnd.next')}</p>
-      <p className="hint">{t('chapterEnd.note')}</p>
+      <h4>{game.completedChapters.includes(3) ? 'Şehrin Geleceği' : game.completedChapters.includes(2) ? t('chapter.3.title') : t('chapterEnd.nextTitle')}</h4>
+      <p>{game.completedChapters.includes(3) ? 'Dilediğin kadar yeni ilçe alabilir, nüfusunu artırabilir ve şehir savunmasını güçlendirebilirsin.'
+        : game.completedChapters.includes(2) ? 'Bölge Haritası’nda komşu ilçelere genişle ve Ordu panelinde milislerini yönet.'
+        : t('chapterEnd.next')}</p>
+      <p className="hint">{game.completedChapters.includes(3) ? 'Yeni büyük bölümler sonraki sürümlerde eklenecek.'
+        : game.completedChapters.includes(2) ? 'Yeni görev zinciri otomatik olarak açıldı.'
+        : t('chapterEnd.note')}</p>
       <div className="actions">
         <button className="btn primary" onClick={close} data-testid="chapter-continue">
           {t('chapterEnd.continue')}
