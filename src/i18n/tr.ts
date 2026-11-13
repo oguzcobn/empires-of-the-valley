@@ -609,7 +609,7 @@ export const tr = {
   'chapterEnd.stat.tech': 'Tamamlanan araştırma: {n}',
   'chapterEnd.nextTitle': 'Sırada: 2. Bölüm — Vadinin Efendisi',
   'chapterEnd.next':
-    'Bir pazar kurulacak, milisler eğitilecek, haydutlara karşı durulacak ve Çınar Ormanı’na ilk adım atılacak.',
+    'Pazar kur, sınır güvenliğini güçlendir, nüfusu büyüt ve Çınar Ormanı yolunu aç.',
   'chapterEnd.note':
     '2. bölüm açıldı! Görev panelinden pazar kurarak Vadinin Efendisi yolculuğuna başlayabilirsin.',
   'chapterEnd.continue': 'Vadide kalmaya devam et',
