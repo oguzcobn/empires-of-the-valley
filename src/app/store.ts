@@ -34,6 +34,7 @@ export type PanelId =
   | 'research'
   | 'journal'
   | 'world'
+  | 'army'
   | 'saves'
   | 'settings'
   | 'log'
