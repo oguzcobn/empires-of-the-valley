@@ -116,6 +116,8 @@ export interface Tile {
   road: boolean;
   /** Structure of the road on this tile (meaningful when `road`). */
   roadType: RoadType;
+  /** Optional paved overlay; old saves remain valid as unpaved roads. */
+  paved?: boolean;
   buildingId: string | null;
   /** Visual variation only (0..3). */
   variant: number;
