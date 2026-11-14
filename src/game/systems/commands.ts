@@ -7,6 +7,7 @@ import type {
   BuildingInstance,
   CommandResult,
   Cost,
+  DiplomacyPact,
   GameSpeed,
   GameState,
   LevelSpec,
@@ -68,10 +69,12 @@ export type Command =
   | { type: 'setAutoPause'; enabled: boolean }
   | { type: 'claimDistrict'; provinceId: string }
   | { type: 'attackDistrict'; provinceId: string }
+  | { type: 'signPact'; provinceId: string; pact: DiplomacyPact }
   | { type: 'recruitMilitia'; amount: number }
   | { type: 'setArmyOrder'; order: 'defend' | 'patrol' }
   | { type: 'moveMilitia'; x: number; y: number };
 
+export const PACT_PRICES: Record<DiplomacyPact, number> = { trade: 10000, non_aggression: 5000, alliance: 15000 };
 const COST_KEYS = (cost: Cost): ResourceId[] => Object.keys(cost) as ResourceId[];
 
 export function missingFor(p: Province, cost: Cost): MessageRef | null {
@@ -294,9 +297,20 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
       if (totalPopulation(p) < 20) return { key: 'err.needPopulation', params: { n: 20 } };
       return missingFor(p, { gold: 20000 + (s.claimedDistricts?.length ?? 0) * 10000 });
     }
+    case 'signPact': {
+      const region = WORLD_BY_ID[cmd.provinceId];
+      if (!region || region.id === s.homeProvinceId || s.claimedDistricts?.includes(region.id) || s.treaties?.[region.id])
+        return { key: 'err.invalid' };
+      const owned = [s.homeProvinceId, ...(s.claimedDistricts ?? [])];
+      if (!region.neighbors.some((id) => owned.includes(id))) return { key: 'err.invalid' };
+      const price = PACT_PRICES[cmd.pact];
+      if (!Number.isInteger(price)) return { key: 'err.invalid' };
+      return missingFor(p, { gold: price });
+    }
     case 'attackDistrict': {
       const region = WORLD_BY_ID[cmd.provinceId];
       if (!region || region.id === s.homeProvinceId || s.claimedDistricts?.includes(region.id)) return { key: 'err.invalid' };
+      if (s.treaties?.[region.id] === 'non_aggression') return { key: 'err.truceActive' };
       const owned = [s.homeProvinceId, ...(s.claimedDistricts ?? [])];
       if (!region.neighbors.some((id) => owned.includes(id))) return { key: 'err.invalid' };
       if (s.mode === 'campaign' && !s.completedChapters.includes(1)) return { key: 'err.invalid' };
@@ -482,8 +496,16 @@ function applyCommand(s: GameState, cmd: Command): void {
       const cost = 20000 + (s.claimedDistricts?.length ?? 0) * 10000;
       pay(p, { gold: cost });
       (s.claimedDistricts ??= []).push(cmd.provinceId);
+      if (s.treaties) delete s.treaties[cmd.provinceId];
       if (!s.revealedProvinceIds.includes(cmd.provinceId)) s.revealedProvinceIds.push(cmd.provinceId);
       logEvent(s, 'success', 'event.districtClaimed', { n: s.claimedDistricts.length });
+      break;
+    }
+    case 'signPact': {
+      pay(p, { gold: PACT_PRICES[cmd.pact] });
+      (s.treaties ??= {})[cmd.provinceId] = cmd.pact;
+      if (!s.revealedProvinceIds.includes(cmd.provinceId)) s.revealedProvinceIds.push(cmd.provinceId);
+      logEvent(s, 'success', 'event.pactSigned', { pact: cmd.pact });
       break;
     }
     case 'attackDistrict': {
@@ -492,6 +514,7 @@ function applyCommand(s: GameState, cmd: Command): void {
       s.militia = Math.max(0, (s.militia ?? 0) - battle.casualties);
       if (battle.victory) {
         (s.claimedDistricts ??= []).push(cmd.provinceId);
+        if (s.treaties) delete s.treaties[cmd.provinceId];
         if (!s.revealedProvinceIds.includes(cmd.provinceId)) s.revealedProvinceIds.push(cmd.provinceId);
         logEvent(s, 'success', 'event.battleWon', { losses: battle.casualties });
       } else {
