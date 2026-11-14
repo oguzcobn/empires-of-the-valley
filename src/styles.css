@@ -1984,3 +1984,62 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
   .game-screen .road-plan-controls,
   .game-screen .mobile-placement-pad { bottom: var(--tools-top); }
 }
+
+.city-news {
+  border: 1px solid #a88550;
+  border-radius: .4rem;
+  background: linear-gradient(135deg, #26342c, #111b18);
+  color: #f6e9cd;
+  box-shadow: 0 .28rem 1rem #141b17a0;
+  padding: .45rem;
+  font-size: .8rem;
+}
+.city-news-heading,
+.city-news-links { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
+.city-news-heading { justify-content: space-between; color: #ebcf97; }
+.city-news .btn {
+  background: #202d25;
+  color: #f6e9cd;
+  border-color: #896d43;
+  padding: .22rem .32rem;
+}
+.city-news .btn:hover:not(:disabled) { background: #414c39; }
+.city-news-story { padding: .42rem .15rem; }
+.city-news-story .btn { margin-inline-start: .3rem; }
+.city-news-links { margin-top: .2rem; }
+.unit-roster { grid-column: 1 / -1; }
+.unit-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .5rem; }
+.unit-card {
+  overflow: hidden;
+  border-radius: .35rem;
+  background: #202b24;
+  border: 1px solid #9a7948;
+  color: #f7e7c4;
+}
+.unit-portrait {
+  height: clamp(5rem, 13vw, 10rem);
+  background-color: #25372c;
+  background-image: url('./assets/modern-units.webp');
+  background-size: 500% auto;
+  background-repeat: no-repeat;
+  background-position-y: 40%;
+}
+.unit-card-body { display: grid; gap: .25rem; padding: .45rem; }
+.unit-card-body span, .unit-card-body small { font-size: .75rem; }
+.unit-card-body .btn { margin-top: .22rem; }
+@media (max-width: 550px) and (orientation: portrait) {
+  .city-news-story, .city-news-links { display: none; }
+}
+.city-news-story small { display: block; color: #d4bd90; }
+.game-screen .top-hud .chip {
+  background: linear-gradient(#2a382f, #1a2520);
+  color: #fcf1d8;
+  border-color: #8a744d;
+}
+.game-screen .top-hud .chip-cap,
+.game-screen .top-hud .chip-rate { color: #d1c2a5; }
+.game-screen .top-hud .chip-rate.pos { color: #b6de9b; }
+.game-screen .top-hud .chip-rate.neg { color: #ffb096; }
+.game-screen .top-hud .chip.warn { border-color: #fda384; }
+.game-screen .top-hud .chip.full { border-color: #d8b369; }
+.game-screen .top-hud .chip:hover { background: #3c4939; }

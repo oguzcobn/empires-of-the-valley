@@ -1,3 +1,4 @@
+import { specialistCount } from '../data/units';
 import { z } from 'zod';
 import type { GameState } from '../core/types';
 import { BUILDING_IDS } from '../data/buildings';
@@ -123,6 +124,7 @@ export const gameStateSchema = z
     claimedDistricts: z.array(shortText).max(24).optional(),
     treaties: z.record(z.enum(['trade', 'non_aggression', 'alliance'])).optional(),
     militia: nat.max(200).optional(),
+    specialists: z.object({ infantry: nat.max(100).optional(), scout: nat.max(100).optional(), medic: nat.max(100).optional(), signals: nat.max(100).optional(), engineer: nat.max(100).optional() }).strict().optional(),
     armyOrder: z.enum(['defend', 'patrol']).optional(),
     armyTarget: z.object({ x: nat, y: nat }).strict().optional(),
     homeProvinceId: shortText,
@@ -171,5 +173,8 @@ export function parseGameState(
       issues: result.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}: ${i.message}`),
     };
   }
-  return { ok: true, state: result.data as unknown as GameState };
+  const state = result.data as unknown as GameState;
+  if (specialistCount(state.specialists) > (state.militia ?? 0))
+    return { ok: false, issues: ['specialists: exceeds total militia'] };
+  return { ok: true, state };
 }

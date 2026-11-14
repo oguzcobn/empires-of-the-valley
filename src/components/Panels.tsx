@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { SLOT_IDS, useApp } from '../app/store';
 import type { SlotId } from '../app/store';
+import { UNIT_IDS, UNITS, specialistCount } from '../game/data/units';
 import { calendar } from '../game/core/time';
 import type { GameState, ResourceId, TechId } from '../game/core/types';
 import { GAME_VERSION } from '../game/data/balance';
@@ -473,6 +474,31 @@ function ArmyPanel({ game }: { game: GameState }): ReactElement {
           openPanel(null);
         }}>⚔ Haritada Birlikleri Taşı (G)</button>
         <p className="hint">Birlik Taşı aracını seçip yol karelerine tıkla. Muhafızlar kesişen yollar üzerinden hedefe yürür; savaşların sonucu şimdilik stratejik savunma puanlarıyla hesaplanır.</p>
+      </section>
+      <section className="unit-roster">
+        <h4>Modern Birlikler</h4>
+        <p className="hint">2. seviye kışlada mevcut milisleri uzmanlaştır. Uzmanlaşmamış milis: {force - specialistCount(game.specialists)}.</p>
+        <div className="unit-cards">
+          {UNIT_IDS.map((id, index) => {
+            const unit = UNITS[id];
+            const cmd = { type: 'trainSpecialist', unit: id } as const;
+            const error = validateCommand(game, cmd);
+            return (
+              <article className="unit-card" key={id}>
+                <div className="unit-portrait" role="img" aria-label={`${unit.name} temsili çizimi`}
+                  style={{ backgroundPositionX: `${index * 25}%` }} />
+                <div className="unit-card-body">
+                  <strong>{unit.name} · {game.specialists?.[id] ?? 0}</strong>
+                  <span>{unit.detail}</span>
+                  <button type="button" className="btn primary" disabled={!!error} onClick={() => dispatch(cmd)}>
+                    Eğit · {unit.gold} altın
+                  </button>
+                  {error && <small>{tm(error)}</small>}
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </section>
     </div>
   );

@@ -18,6 +18,7 @@ import {
 import { PanelHost } from './Panels';
 import { QuestTracker } from './QuestTracker';
 import { Toolbar } from './Toolbar';
+import { CityNews } from './CityNews';
 import { TopHud } from './TopHud';
 import { MobileLandscapePrompt } from './MobileLandscapePrompt';
 import { ValleyCanvas, getRenderer } from './ValleyCanvas';
@@ -96,7 +97,10 @@ export function GameScreen({ game }: { game: GameState }): ReactElement {
       <TopHud game={game} />
       <MobileLandscapePrompt />
       <div className="left-column">
-        {buildOpen ? <BuildCatalog game={game} /> : <QuestTracker game={game} />}
+        {buildOpen ? <BuildCatalog game={game} /> : <>
+          <CityNews game={game} />
+          <QuestTracker game={game} />
+        </>}
       </div>
       <div className="right-column">
         <Inspector game={game} />

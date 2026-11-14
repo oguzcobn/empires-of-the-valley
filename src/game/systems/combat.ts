@@ -1,3 +1,4 @@
+import { UNITS, UNIT_IDS } from '../data/units';
 import type { GameState } from '../core/types';
 import { WORLD_BY_ID } from '../data/worldMap';
 
@@ -22,7 +23,7 @@ const BIOME_DEFENSE: Record<string, number> = {
 };
 
 /** Army quality and defensive terrain determine the result before the order is issued. */
-export function forecastBattle(game: Pick<GameState, 'seed' | 'tick' | 'militia' | 'claimedDistricts' | 'treaties'>, provinceId: string): BattleForecast | null {
+export function forecastBattle(game: Pick<GameState, 'seed' | 'tick' | 'militia' | 'claimedDistricts' | 'treaties' | 'specialists'>, provinceId: string): BattleForecast | null {
   const province = WORLD_BY_ID[provinceId];
   if (!province) return null;
   const attackers = Math.max(0, Math.trunc(game.militia ?? 0));
@@ -31,9 +32,10 @@ export function forecastBattle(game: Pick<GameState, 'seed' | 'tick' | 'militia'
   for (const char of provinceId) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) | 0;
   const modifier = ((hash >>> 0) % 21) - 10;
   const allies = Object.values(game.treaties ?? {}).filter((v) => v === 'alliance').length;
-  const attackPower = attackers * 11 + modifier + allies * 20;
+  const bonus = UNIT_IDS.reduce((sum, id) => sum + (game.specialists?.[id] ?? 0) * UNITS[id].bonus, 0);
+  const attackPower = attackers * 11 + modifier + allies * 20 + bonus;
   const defensePower = (BIOME_DEFENSE[province.biome] ?? 60) + (game.claimedDistricts?.length ?? 0) * 5;
   const victory = attackers >= 5 && attackPower >= defensePower;
-  const casualties = attackers === 0 ? 0 : Math.min(attackers, Math.max(1, Math.ceil(defensePower / (victory ? 45 : 25))));
+  const casualties = attackers === 0 ? 0 : Math.min(attackers, Math.max(1, Math.ceil(defensePower / (victory ? 45 : 25)) - (game.specialists?.medic ?? 0)));
   return { attackers, attackPower, defensePower, casualties, victory };
 }

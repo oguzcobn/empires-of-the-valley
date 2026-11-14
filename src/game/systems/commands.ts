@@ -35,6 +35,8 @@ import { fleetCount } from './tourism';
 import { evaluateQuests } from './quests';
 import { findRoadPath } from '../rendering/armyPath';
 import { WORLD_BY_ID } from '../data/worldMap';
+import { UNIT_IDS, UNITS, specialistCount } from '../data/units';
+import type { UnitId } from '../data/units';
 import { forecastBattle } from './combat';
 
 export type Command =
@@ -73,6 +75,7 @@ export type Command =
   | { type: 'claimDistrict'; provinceId: string }
   | { type: 'attackDistrict'; provinceId: string }
   | { type: 'signPact'; provinceId: string; pact: DiplomacyPact }
+  | { type: 'trainSpecialist'; unit: UnitId }
   | { type: 'recruitMilitia'; amount: number }
   | { type: 'setArmyOrder'; order: 'defend' | 'patrol' }
   | { type: 'moveMilitia'; x: number; y: number };
@@ -400,6 +403,12 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       if ((s.militia ?? 0) < 5) return { key: 'err.needMilitia' };
       return missingFor(p, { gold: 5000, food: 3000 });
     }
+    case 'trainSpecialist':
+      if (!UNIT_IDS.includes(cmd.unit)) return { key: 'err.invalid' };
+      if (!p.buildings.some((b) => b.definitionId === 'barracks' && b.level >= 2 && b.state === 'active' && b.workers > 0 && !b.unpaid))
+        return { key: 'err.specialistBarracks' };
+      if (specialistCount(s.specialists) >= (s.militia ?? 0)) return { key: 'err.specialistMilitia' };
+      return missingFor(p, { gold: UNITS[cmd.unit].gold * 1000 });
     case 'recruitMilitia':
       if (cmd.amount !== 5 || (s.militia ?? 0) + cmd.amount > 100) return { key: 'err.invalid' };
       if (!p.buildings.some((b) => (b.definitionId === 'watchtower' || b.definitionId === 'barracks') && isBuilt(b))) return { key: 'err.invalid' };
@@ -612,6 +621,14 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
       const battle = forecastBattle(s, cmd.provinceId)!;
       pay(p, { gold: 5000, food: 3000 });
       s.militia = Math.max(0, (s.militia ?? 0) - battle.casualties);
+      let excess = specialistCount(s.specialists) - s.militia;
+      for (const id of UNIT_IDS) {
+        const count = s.specialists?.[id] ?? 0;
+        if (excess <= 0 || count === 0) continue;
+        const lost = Math.min(excess, count);
+        s.specialists![id] = count - lost;
+        excess -= lost;
+      }
       if (battle.victory) {
         (s.claimedDistricts ??= []).push(cmd.provinceId);
         if (s.treaties) delete s.treaties[cmd.provinceId];
@@ -620,6 +637,13 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
       } else {
         logEvent(s, 'warning', 'event.battleLost', { losses: battle.casualties });
       }
+      break;
+    }
+    case 'trainSpecialist': {
+      pay(p, { gold: UNITS[cmd.unit].gold * 1000 });
+      const specialists = s.specialists ??= {};
+      specialists[cmd.unit] = (specialists[cmd.unit] ?? 0) + 1;
+      logEvent(s, 'success', 'event.specialistTrained', { unit: UNITS[cmd.unit].name });
       break;
     }
     case 'recruitMilitia':

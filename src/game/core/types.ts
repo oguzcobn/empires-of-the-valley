@@ -1,3 +1,4 @@
+import type { UnitId } from '../data/units';
 import type { TKey } from '../../i18n/tr';
 import type { CityId } from '../data/cities';
 
@@ -411,6 +412,7 @@ export interface GameState {
   treaties?: Record<ProvinceId, DiplomacyPact>;
   /** Trained guards who can hold or patrol newly secured districts. */
   militia?: number;
+  specialists?: Partial<Record<UnitId, number>>;
   armyOrder?: 'defend' | 'patrol';
   /** Last commanded road position of the local militia. */
   armyTarget?: { x: number; y: number };
