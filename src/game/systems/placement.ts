@@ -9,7 +9,6 @@ import {
   perimeterPairs,
   tileAt,
   tilesInRange,
-  touchesRoads,
   townCenter,
 } from './grid';
 import type { GridLike } from './grid';
@@ -86,14 +85,6 @@ export function siteRuleError(g: GridLike, def: BuildingDefinition, x: number, y
   }
 }
 
-/** Road-related site requirements that only make sense once the city exists (city garden). */
-function siteRoadError(g: GridLike, def: BuildingDefinition, x: number, y: number): MessageRef | null {
-  if (def.landmark?.site !== 'cityGarden') return null;
-  const [w, h] = def.footprint;
-  const roads = countInRadius(g, x, y, x + w - 1, y + h - 1, 3, (tx, ty) => tileAt(g, tx, ty)!.road);
-  return roads >= 6 ? null : { key: 'err.site.cityGarden' };
-}
-
 /** Terrain-only part of the site check (bounds, collisions, terrain types, flatness, site rule). */
 export function terrainSiteError(g: GridLike, def: BuildingDefinition, x: number, y: number): MessageRef | null {
   let first: number | null = null;
@@ -137,9 +128,9 @@ export function checkSite(
   if (def.harvests && !tilesInRange(g, def, x, y).some((i) => g.tiles[i]!.deposit > 0)) {
     return { key: def.harvests.terrain === 'forest' ? 'err.needForest' : 'err.needStone' };
   }
-  const roadRule = siteRoadError(g, def, x, y);
-  if (roadRule) return roadRule;
-  if (!touchesRoads(g, def, x, y, roads)) return { key: 'err.noRoad' };
+  // Roads are optional for buildings; terrain, collisions and resources still constrain placement.
+  // Kept road-related arguments for compatibility with route-planning callers.
+  void roads;
   return null;
 }
 

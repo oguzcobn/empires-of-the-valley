@@ -27,7 +27,7 @@ describe('placement', () => {
     expectValid(s);
   });
 
-  it('refuses water, occupied tiles, missing roads and missing resources without mutating', () => {
+  it('refuses water, occupied tiles and missing resources without mutating', () => {
     const s = newCampaign();
     const p = home(s);
     const water = p.tiles.findIndex((t) => t.terrain === 'water');
@@ -40,7 +40,6 @@ describe('placement', () => {
     refuse(15, 15, 'err.occupied'); // town center
     refuse(12, 17, 'err.onRoad');
     refuse(-1, 3, 'err.outOfBounds');
-    refuse(11, 14, 'err.noRoad'); // clear grass, but not touching a road
     const poor = tweak(s, (d) => void (d.provinces[d.homeProvinceId]!.stocks.wood = 5000));
     refuse(14, 18, 'err.cost', poor);
     const before = JSON.stringify(s);
@@ -75,25 +74,24 @@ describe('roads and connectivity', () => {
     expect(home(next).stocks.wood).toBe(160000 - 2000);
   });
 
-  it('cutting the road disconnects buildings and stops their housing', () => {
+  it('cutting a road does not disable off-road homes', () => {
     let s = newCampaign();
-    expect(housingCapacity(home(s))).toBe(20);
+    const initialHousing = housingCapacity(home(s));
     s = must(s, { type: 'removeRoad', x: 14, y: 17 });
-    const p = home(s);
-    expect(p.buildings.filter((b) => b.definitionId === 'hut' && !b.connected)).toHaveLength(2);
-    expect(housingCapacity(p)).toBe(10);
-    s = must(s, { type: 'placeRoad', x: 14, y: 17 });
-    expect(housingCapacity(home(s))).toBe(20);
+    expect(home(s).buildings.every((b) => b.connected)).toBe(true);
+    expect(housingCapacity(home(s))).toBe(initialHousing);
     expectValid(s);
   });
 
-  it('a disconnected construction site makes no progress', () => {
-    let s = newCampaign();
-    s = must(s, { type: 'placeBuilding', buildingId: 'hut', x: 11, y: 18 });
-    s = must(s, { type: 'removeRoad', x: 11, y: 17 });
-    s = days(s, 5);
-    expect(home(s).buildings.at(-1)).toMatchObject({ state: 'construction', progressTicks: 0 });
+  it('a roadless construction site can finish normally', () => {
+    const s = newCampaign();
+    const result = executeCommand(s, { type: 'placeBuilding', buildingId: 'hut', x: 11, y: 14 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const later = days(result.state, 5);
+    expect(home(later).buildings.at(-1)).toMatchObject({ state: 'active', connected: true });
   });
+
 });
 
 describe('construction lifecycle', () => {

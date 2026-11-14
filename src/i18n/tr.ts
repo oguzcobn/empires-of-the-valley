@@ -98,6 +98,12 @@ export const tr = {
   'category.storage': 'Depolama',
   'category.education': 'Eğitim',
 
+  'building.barracks.name': 'Kışla',
+  'building.barracks.desc': 'Muhafızların eğitildiği ve yetiştirildiği askeri tesis.',
+  'building.barracks.effect': 'Görevli her eğitmen her gün 1 asker yetiştirir. Asker başına 2 altın ve 1 yiyecek harcanır.',
+  'building.barracks.rule': 'Düz ve uygun arazide, yol bağlantısı zorunlu olmadan kurulabilir.',
+  'building.barracks.upgrade': '2. seviye: 3 eğitmenle günde 3 asker yetiştirir.',
+
   // ------------------------------------------------------------ teknoloji
   'tech.basic_agriculture.name': 'Temel Tarım',
   'tech.basic_agriculture.desc': 'Nöbetleşe ekim ve sulama arkları. Çiftlik üretimi %25 artar.',

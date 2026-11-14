@@ -305,6 +305,21 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
       }),
     ],
   },
+  barracks: {
+    id: 'barracks',
+    category: 'governance',
+    era: 1,
+    footprint: [2, 2],
+    validTerrains: LAND_AND_HILLS,
+    seasonal: false,
+    usesTools: false,
+    buildable: true,
+    demolishable: true,
+    levels: [
+      level({ cost: { wood: u(50), stone: u(35), gold: u(15) }, buildTicks: 4 * DAY, workerSlots: 2, upkeepGold: u(0.4), requires: { population: 16 } }),
+      level({ cost: { wood: u(60), stone: u(50), gold: u(25) }, buildTicks: 4 * DAY, workerSlots: 3, upkeepGold: u(0.6), requires: { townCenterLevel: 2 } }),
+    ],
+  },
   shipyard: {
     id: 'shipyard',
     category: 'production',

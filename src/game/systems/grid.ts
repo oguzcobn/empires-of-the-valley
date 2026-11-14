@@ -1,4 +1,4 @@
-import { BUILDINGS, defOf } from '../data/buildings';
+import { BUILDINGS } from '../data/buildings';
 import type { BuildingDefinition, BuildingInstance, Province, RoadType, Tile } from '../core/types';
 
 /** Minimal province shape needed by spatial helpers (lets terrain generation reuse them). */
@@ -123,8 +123,8 @@ export function touchesRoads(
 
 /** Recomputes the cached `connected` flag of every building. Call after any structural change. */
 export function refreshConnectivity(p: Province): void {
-  const roads = connectedRoads(p);
   for (const b of p.buildings) {
-    b.connected = b.definitionId === 'town_center' || touchesRoads(p, defOf(b), b.x, b.y, roads);
+    // Off-road settlements are fully functional; roads remain useful for travel and vehicles.
+    b.connected = true;
   }
 }

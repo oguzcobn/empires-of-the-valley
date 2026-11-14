@@ -1,7 +1,6 @@
 import type { GameState, Province } from '../core/types';
 import { logEvent } from './events';
-import { storageCaps } from './economy';
-import { isBuilt } from './economy';
+import { isBuilt, isOperating, storageCaps } from './economy';
 
 /**
  * Strategic region economy and abstract territorial defense.
@@ -10,6 +9,27 @@ import { isBuilt } from './economy';
  */
 export function securityDayEnd(s: GameState, p: Province): void {
   const districts = s.claimedDistricts?.length ?? 0;
+  // Each employed barracks instructor trains one militia member per day.
+  // Recruitment consumes real stocks, and its cap prevents save overflow.
+  const instructors = p.buildings
+    .filter((b) => b.definitionId === 'barracks' && isOperating(b))
+    .reduce((sum, b) => sum + b.workers, 0);
+  const recruits = Math.max(0, Math.min(
+    instructors,
+    100 - (s.militia ?? 0),
+    Math.floor(p.stocks.gold / 2000),
+    Math.floor(p.stocks.food / 1000),
+  ));
+  if (recruits > 0) {
+    const goldCost = recruits * 2000;
+    const foodCost = recruits * 1000;
+    p.stocks.gold -= goldCost;
+    p.stocks.food -= foodCost;
+    p.today.consumed.gold += goldCost;
+    p.today.consumed.food += foodCost;
+    s.militia = (s.militia ?? 0) + recruits;
+    logEvent(s, 'success', 'event.militiaRecruited', { n: s.militia });
+  }
   const guard = s.militia ?? 0;
   const caps = storageCaps(s, p);
   if (districts > 0) {

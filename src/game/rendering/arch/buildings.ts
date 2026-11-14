@@ -698,6 +698,15 @@ function inn(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level: 
   ctx.g.rect(sign[0] - 8, sign[1] + 4, 5, 4).fill(0xd9b84a);
 }
 
+/** Compact two-wing guard barracks with a central training yard and banner. */
+function barracks(ctx: DrawCtx, look: BuildingLook, level: number): void {
+  groundPad(ctx, 2, 2, 0x9b9c8c, 0.75);
+  shadowFor(ctx, 0.12, 0.12, 1.86, 0.82, 28);
+  mass(ctx, { ...look, floors: level > 1 ? 2 : 1 }, 0.12, 0.12, 1.88, 0.82, { door: 'L', doorT: 0.98, chimneys: false, balcony: false });
+  mass(ctx, { ...look, floors: 1 }, 1.25, 0.85, 1.88, 1.78, { door: 'L', chimneys: false, balcony: false });
+  drawFlagPole(ctx, P(0.4, 1.45, 1), 31, 0x972e29);
+}
+
 function watchtower(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle): void {
   const h = look.floors * FLOOR_H + 6;
   shadowFor(ctx, 0.25, 0.25, 0.75, 0.75, h);
@@ -805,6 +814,9 @@ export function drawStyledBuilding(
       break;
     case 'watchtower':
       watchtower(ctx, look, b.style);
+      break;
+    case 'barracks':
+      barracks(ctx, look, b.level);
       break;
     case 'shipyard':
       shipyard(ctx, look, b.level);
