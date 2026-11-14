@@ -28,7 +28,11 @@ describe('future cities remain safely locked until content is complete', () => {
 
   it('preserves existing playable saves', () => {
     const original = createNewGame({ seed: 42, mode: 'sandbox', culture: 'turkish' });
-    const result = loadSaveFile(createSaveFile(original));
-    expect(result.cityId).toBe('trabzon');
+    const saved = createSaveFile(original);
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    const result = loadSaveFile(saved.file);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.cityId).toBe('trabzon');
   });
 });
