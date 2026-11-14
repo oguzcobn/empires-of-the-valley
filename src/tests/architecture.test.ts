@@ -91,6 +91,24 @@ describe('legacy saves (schema v1)', () => {
 });
 
 describe('architectural cultures', () => {
+  it('Turkish huts use three distinct apartment tiers without changing the save identity', () => {
+    const looks = [1, 2, 3].map((level) => defaultLook('turkish', 'hut', level));
+    expect(looks.map((look) => look.floors)).toEqual([4, 4, 10]);
+    expect(looks.map((look) => look.facade)).toEqual(['ochre', 'cream', 'white']);
+    expect(looks.map((look) => look.roofMaterial)).toEqual(['clay', 'slate', 'clay']);
+    expect(looks.every((look) => look.roof === 'hip' && look.balcony === 'iron')).toBe(true);
+    const s = newCampaign(42, 'turkish');
+    const placed = build(s, 'hut').state;
+    const hut = home(placed).buildings.find((b) => b.definitionId === 'hut')!;
+    expect(hut.level).toBe(1);
+    expect(hut.style).toBe('turkish');
+    const save = createSaveFile(placed);
+    const loaded = parseSaveText(JSON.stringify(save.ok && save.file));
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    expect(home(loaded.state).buildings.find((b) => b.id === hut.id)).toEqual(hut);
+  });
+
   it('a new game starts in the chosen culture', () => {
     for (const culture of ['scottish', 'turkish', 'japanese', 'medieval_european'] as const) {
       const s = newCampaign(42, culture);
