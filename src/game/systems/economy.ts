@@ -148,6 +148,7 @@ export function computeFlows(s: GameState): Record<ResourceId, Flow> {
     if (isBuilt(b)) add('gold', 'consumers', name, spec.upkeepGold);
   }
   add('gold', 'sources', '@building.town_center.name', dailyTownIncome(p));
+  add('gold', 'sources', '@flow.tradePacts', 1000 * Object.values(s.treaties ?? {}).filter((v) => v === 'trade').length);
   add('gold', 'sources', '@flow.taxes', dailyTaxIncome(p));
   add('food', 'consumers', '@flow.citizens', dailyFoodNeed(p));
   // tourism, markets and the fleet settle once a day (systems/tourism.ts); forecast for today

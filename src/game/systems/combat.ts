@@ -22,7 +22,7 @@ const BIOME_DEFENSE: Record<string, number> = {
 };
 
 /** Army quality and defensive terrain determine the result before the order is issued. */
-export function forecastBattle(game: Pick<GameState, 'seed' | 'tick' | 'militia' | 'claimedDistricts'>, provinceId: string): BattleForecast | null {
+export function forecastBattle(game: Pick<GameState, 'seed' | 'tick' | 'militia' | 'claimedDistricts' | 'treaties'>, provinceId: string): BattleForecast | null {
   const province = WORLD_BY_ID[provinceId];
   if (!province) return null;
   const attackers = Math.max(0, Math.trunc(game.militia ?? 0));
@@ -30,7 +30,8 @@ export function forecastBattle(game: Pick<GameState, 'seed' | 'tick' | 'militia'
   let hash = game.seed ^ Math.floor(game.tick / 24);
   for (const char of provinceId) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) | 0;
   const modifier = ((hash >>> 0) % 21) - 10;
-  const attackPower = attackers * 11 + modifier;
+  const allies = Object.values(game.treaties ?? {}).filter((v) => v === 'alliance').length;
+  const attackPower = attackers * 11 + modifier + allies * 20;
   const defensePower = (BIOME_DEFENSE[province.biome] ?? 60) + (game.claimedDistricts?.length ?? 0) * 5;
   const victory = attackers >= 5 && attackPower >= defensePower;
   const casualties = attackers === 0 ? 0 : Math.min(attackers, Math.max(1, Math.ceil(defensePower / (victory ? 45 : 25))));

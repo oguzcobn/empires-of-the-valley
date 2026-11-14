@@ -150,7 +150,7 @@ function economyStep(s: GameState, p: Province, hour: number): void {
   const caps = storageCaps(s, p);
 
   // 1. income
-  gain(p, 'gold', portion(dailyTownIncome(p) + dailyTaxIncome(p), hour), caps.gold);
+  gain(p, 'gold', portion(dailyTownIncome(p) + dailyTaxIncome(p) + 1000 * Object.values(s.treaties ?? {}).filter((v) => v === 'trade').length, hour), caps.gold);
 
   // 2. upkeep, in stable building order. Unpaid buildings stand idle this tick.
   for (const b of p.buildings) {
