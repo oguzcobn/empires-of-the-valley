@@ -19,7 +19,7 @@ export function MonumentPreview({ cityId }: { cityId: CityId }): ReactElement {
     renderToDataUrl(`city-monument-${city.id}`, (_, root) => {
       const g = new Graphics();
       drawStyledBuilding(g, {
-        definitionId: city.landmark,
+        definitionId: cityId === 'kyoto' || cityId === 'prague' ? 'town_center' : city.landmark,
         style: city.culture,
         look: null,
         level: 1,
@@ -31,6 +31,6 @@ export function MonumentPreview({ cityId }: { cityId: CityId }): ReactElement {
     return () => { alive = false; };
   }, [cityId]);
   return src
-    ? <img className="city-landmark" src={src} alt={cityId === 'trabzon' ? 'Sümela Manastırı 2,5D modeli' : 'Scott Monument 2,5D modeli'} />
+    ? <img className="city-landmark" src={src} alt={`${city.name} 2,5D mimari önizlemesi`} />
     : <div className="city-landmark city-landmark-fallback" aria-hidden="true">◈</div>;
 }

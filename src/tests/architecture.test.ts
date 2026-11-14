@@ -92,7 +92,7 @@ describe('legacy saves (schema v1)', () => {
 
 describe('architectural cultures', () => {
   it('a new game starts in the chosen culture', () => {
-    for (const culture of ['scottish', 'turkish'] as const) {
+    for (const culture of ['scottish', 'turkish', 'japanese', 'medieval_european'] as const) {
       const s = newCampaign(42, culture);
       expect(s.culture).toBe(culture);
       expect(home(s).buildings.every((b) => b.style === culture)).toBe(true);
@@ -100,13 +100,12 @@ describe('architectural cultures', () => {
     }
   });
 
-  it('only implemented cultures are playable', () => {
-    const s = newCampaign();
-    const plan = findSite(home(s), BUILDINGS.hut)!;
-    expect(refused(s, { type: 'setCulture', style: 'japanese' })).toBe('err.styleUnavailable');
-    expect(
-      refused(s, { type: 'placeBuilding', buildingId: 'hut', x: plan.x, y: plan.y, style: 'medieval_european' }),
-    ).toBe('err.styleUnavailable');
+  it('all four implemented cultures are playable', () => {
+    for (const culture of ['scottish', 'turkish', 'japanese', 'medieval_european'] as const) {
+      const s = newCampaign(17, culture);
+      expect(s.culture).toBe(culture);
+      expectValid(s);
+    }
   });
 
   it('materials change real costs, and the exact displayed cost is paid', () => {

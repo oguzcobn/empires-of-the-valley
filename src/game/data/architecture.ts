@@ -164,10 +164,10 @@ export const CULTURES: Record<ArchitectureStyle, CultureDefinition> = {
     flag: 0xd23a32,
     bonuses: { ...NEUTRAL, repairPermille: 750, marketPermille: 1200, innBeds: 2 },
   },
-  japanese: { id: 'japanese', implemented: false, accent: 0x8a3a3a, flag: 0xc0392b, bonuses: { ...NEUTRAL, decayPermille: 850, schoolPermille: 1100 } },
+  japanese: { id: 'japanese', implemented: true, accent: 0x8a3a3a, flag: 0xc0392b, bonuses: { ...NEUTRAL, decayPermille: 850, schoolPermille: 1100 } },
   medieval_european: {
     id: 'medieval_european',
-    implemented: false,
+    implemented: true,
     accent: 0x6b5b3a,
     flag: 0x8e6c2f,
     bonuses: { ...NEUTRAL, watchRadius: 1, marketPermille: 1100 },
@@ -175,7 +175,7 @@ export const CULTURES: Record<ArchitectureStyle, CultureDefinition> = {
 };
 
 /** Cultures with complete content. Extend this union when a new culture is finished. */
-export type PlayableStyle = Extract<ArchitectureStyle, 'scottish' | 'turkish'>;
+export type PlayableStyle = ArchitectureStyle;
 export const PLAYABLE_STYLES = ALL_STYLES.filter((s) => CULTURES[s].implemented) as readonly PlayableStyle[];
 export const isPlayableStyle = (s: unknown): s is PlayableStyle =>
   typeof s === 'string' && (PLAYABLE_STYLES as readonly string[]).includes(s);
