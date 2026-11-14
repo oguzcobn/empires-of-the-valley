@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDINGS } from '../game/data/buildings';
-import { executeCommand } from '../game/systems/commands';
+import { executeCommand, planRoadRoute } from '../game/systems/commands';
 import { applyTick, applyTicks } from '../game/systems/tick';
 import { housingCapacity, storageCaps } from '../game/systems/economy';
 import { findSite } from '../game/systems/placement';
@@ -72,6 +72,36 @@ describe('roads and connectivity', () => {
     expect(executeCommand(s, { type: 'placeRoad', x: 11, y: 14 }).ok).toBe(false);
     const next = must(s, { type: 'placeRoad', x: 10, y: 17 });
     expect(home(next).stocks.wood).toBe(160000 - 2000);
+  });
+
+  it('previews a connected street and charges the displayed total once', () => {
+    const s = newCampaign();
+    const start = { x: 11, y: 17 };
+    const end = { x: 9, y: 17 };
+    const plan = planRoadRoute(s, start, end);
+    expect(plan.error).toBeNull();
+    expect(plan.tiles).toEqual([{ x: 10, y: 17, type: 'dirt' }, { x: 9, y: 17, type: 'dirt' }]);
+    const next = must(s, { type: 'placeRoadRoute', start, end });
+    expect(home(next).stocks.wood).toBe(home(s).stocks.wood - plan.cost.wood!);
+    for (const { x, y } of plan.tiles) expect(home(next).tiles[y * home(next).width + x]?.road).toBe(true);
+    expectValid(next);
+  });
+
+  it('refuses the entire street if any segment is blocked or its total is unaffordable', () => {
+    const s = newCampaign();
+    const start = { x: 11, y: 17 };
+    const end = { x: 9, y: 17 };
+    const blocked = tweak(s, (draft) => {
+      const p = home(draft);
+      p.tiles[end.y * p.width + end.x]!.terrain = 'lake';
+    });
+    const poor = tweak(s, (draft) => void (home(draft).stocks.wood = 2000));
+    for (const [initial, key] of [[blocked, 'err.lakeRoad'], [poor, 'err.cost']] as const) {
+      expect(executeCommand(initial, { type: 'placeRoadRoute', start, end })).toEqual({
+        ok: false, error: expect.objectContaining({ key }),
+      });
+      expect(home(initial).tiles[start.y * home(initial).width + start.x - 1]?.road).toBe(false);
+    }
   });
 
   it('cutting a road does not disable off-road homes', () => {

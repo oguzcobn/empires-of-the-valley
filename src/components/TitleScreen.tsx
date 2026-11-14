@@ -8,7 +8,6 @@ import type { PlayableStyle } from '../game/data/architecture';
 import { MonumentPreview } from './MonumentPreview';
 import { CITIES } from '../game/data/cities';
 import type { CityId } from '../game/data/cities';
-import { GAME_VERSION } from '../game/data/balance';
 import { t } from '../i18n';
 import { Modal } from './common';
 import { PanelHost } from './Panels';
@@ -109,32 +108,9 @@ export function TitleScreen(): ReactElement {
   const hasSave = slots.length > 0;
   return (
     <main className="title-screen">
-      <div className="title-art" aria-hidden="true">
-        <svg viewBox="0 0 800 360" preserveAspectRatio="xMidYMax slice">
-          <path d="M0 250 120 150l90 70 110-120 130 110 100-80 250 150v80H0z" fill="#9fc7a0" />
-          <path d="M0 290 160 210l140 60 160-90 180 80 160-50v150H0z" fill="#7fb56a" />
-          <path d="M0 330 200 270l200 40 200-50 200 40v60H0z" fill="#69a551" />
-          <path
-            d="M330 300c40-30 60-60 50-110"
-            stroke="#5ab0dc"
-            strokeWidth="16"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <g transform="translate(470 250)">
-            <path d="M0 0 40 20 0 40-40 20z" fill="#d8c79c" />
-            <path d="M-22 20V2L0-10 22 2v18L0 31z" fill="#eedfb8" />
-            <path d="M-26 2 0-24 26 2 0 14z" fill="#c9793f" />
-            <rect x="-4" y="14" width="8" height="14" fill="#5a3b22" />
-          </g>
-          <g fill="#3f8a4a">
-            <path d="M150 300l14-40 14 40zM185 310l12-34 12 34zM620 300l14-40 14 40zM655 312l12-34 12 34zM580 318l10-28 10 28z" />
-          </g>
-        </svg>
-      </div>
-      <div className="title-card card">
-        <p className="eyebrow">{t('title.eyebrow')}</p>
-        <h1>Empires of the Valley</h1>
+      <div className="title-art" aria-hidden="true" />
+      <div className="title-card">
+        <h1>Empires <span>of the</span> Valley</h1>
         <p className="tagline">{t('title.tagline')}</p>
         <div className="title-menu">
           <button
@@ -166,7 +142,6 @@ export function TitleScreen(): ReactElement {
             {t('title.credits')}
           </button>
         </div>
-        <p className="hint">{t('title.phase', { v: GAME_VERSION })}</p>
       </div>
       {newGame && <NewGameDialog mode={newGame} onClose={() => setNewGame(null)} />}
       <PanelHost game={null} />

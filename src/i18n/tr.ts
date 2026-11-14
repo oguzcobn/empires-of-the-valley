@@ -244,6 +244,7 @@ export const tr = {
   'err.needStone': 'Menzilde (3 karo) taş yatağı yok.',
   'err.noRoad': 'Köy Meydanı’na bağlı bir yola bitişik olmalı.',
   'err.alreadyRoad': 'Burada zaten yol var.',
+  'err.routeNoNewRoad': 'Bu güzergahta yeni yol karesi yok.',
   'err.roadNotAdjacent': 'Yol, mevcut bir yolun devamı olmalı.',
   'err.noRoadHere': 'Burada yol yok.',
   'err.cost': 'Yetersiz kaynak: {resource}.',

@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import { DEMOLISH_REFUND_PERMILLE } from '../game/data/balance';
 import { ValleyRenderer } from '../game/rendering/ValleyRenderer';
 import { homeProvince } from '../game/systems/economy';
-import { validatePlacement } from '../game/systems/commands';
+import { planRoadRoute, validatePlacement } from '../game/systems/commands';
 import { buildingById, tileAt } from '../game/systems/grid';
-import { t } from '../i18n';
+import { fmtAmount, t } from '../i18n';
 import { artDetail, effectiveQuality, lowerQuality, setAutoCap } from '../app/settings';
 
 /** The live renderer, for camera buttons and keyboard shortcuts. Null while not mounted. */
@@ -52,6 +52,15 @@ export function ValleyCanvas(): ReactElement {
   const [placement, setPlacement] = useState<{x:number;y:number}|null>(null);
   const tool = useApp((s) => s.tool);
   const placing = tool.kind === 'build';
+  const game = useApp((s) => s.game);
+  const roadTarget = useApp((s) => s.tool.kind === 'roadPlan' ? s.tool.end ?? s.hover : null);
+  const roadPlan = useMemo(
+    () => game && tool.kind === 'roadPlan' && tool.start && roadTarget
+      ? planRoadRoute(game, tool.start, roadTarget) : null,
+    [game, tool, roadTarget],
+  );
+  const roadPlanRef = useRef(roadPlan);
+  useEffect(() => { roadPlanRef.current = roadPlan; }, [roadPlan]);
   useEffect(() => { setPlacement(null); }, [tool]);
   const focus = useApp((s) => s.focus);
   const graphics = useApp((s) => s.settings.graphics);
@@ -74,6 +83,7 @@ export function ValleyCanvas(): ReactElement {
           ? {
               game: s.game,
               tool: s.tool,
+              roadPlan: roadPlanRef.current,
               selectedBuildingId: s.selectedBuildingId,
               reducedMotion: s.settings.reducedMotion,
               detail: artDetail(s.settings),
@@ -111,7 +121,12 @@ export function ValleyCanvas(): ReactElement {
         const s = useApp.getState();
         if (!s.game) return;
         const tool = s.tool;
-        if (tool.kind === 'build') {
+        if (tool.kind === 'roadPlan') {
+          if (!tileAt(homeProvince(s.game), x, y)) return;
+          const point = { x, y };
+          if (tool.start) s.setTool({ kind: 'roadPlan', start: tool.start, end: point });
+          else s.setTool({ kind: 'roadPlan', start: point });
+        } else if (tool.kind === 'build') {
           if (window.matchMedia('(pointer: coarse)').matches) {
             setPlacement({ x, y });
             return;
@@ -164,7 +179,6 @@ export function ValleyCanvas(): ReactElement {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);
   }, [focus]);
 
-  const game = useApp((s) => s.game);
   const placementError = placement && game && tool.kind === 'build'
     ? validatePlacement(game, tool.buildingId, placement.x, placement.y, tool.style, tool.look ?? null)
     : null;
@@ -204,6 +218,34 @@ export function ValleyCanvas(): ReactElement {
         </div>
         <div className="mobile-place-actions"><button type="button" onClick={() => {setPlacement(null);useApp.getState().setHover(null);}}>İptal</button><button type="button" disabled={!!placementError} onClick={confirmPlacement}>✓ Buraya inşa et</button></div>
       </div>}
+      {tool.kind === 'roadPlan' && (
+        <div className="road-plan-controls" aria-label="Yol planı">
+          <p role="status">
+            {!tool.start ? 'Mevcut yola veya yolun yanındaki bir kareye dokun.' :
+              !tool.end ? 'Yolun biteceği kareyi seç.' :
+              roadPlan?.error ? t(roadPlan.error.key, roadPlan.error.params) :
+              roadPlan && [
+                `${roadPlan.tiles.length} yeni kare`,
+                ...Object.entries(roadPlan.cost).map(([id, amount]) =>
+                  `${fmtAmount(amount)} ${t(`resource.${id}` as Parameters<typeof t>[0])}`,
+                ),
+              ].join(' · ')}
+          </p>
+          <div>
+            <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'select' })}>Kapat</button>
+            {tool.start && (
+              <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'roadPlan' })}>Sıfırla</button>
+            )}
+            {tool.start && tool.end && (
+              <button type="button" className="btn primary" disabled={!roadPlan || !!roadPlan.error} onClick={() => {
+                const s = useApp.getState();
+                if (tool.start && tool.end && s.dispatch({ type: 'placeRoadRoute', start: tool.start, end: tool.end }))
+                  s.setTool({ kind: 'roadPlan' });
+              }}>Yolu İnşa Et</button>
+            )}
+          </div>
+        </div>
+      )}
       {error && (
         <div className="canvas-error" role="alert">
           <b>{t('ui.renderError')}</b>

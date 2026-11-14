@@ -26,7 +26,7 @@ import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { homeProvince, idleWorkers, isBuilt, storageCaps, totalPopulation } from './economy';
 import { logEvent } from './events';
-import { buildingById, footprintTiles, idx, refreshConnectivity, tileAt, townCenter } from './grid';
+import { buildingById, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter } from './grid';
 import { checkRoadSite, checkSite, roadTypeFor } from './placement';
 import { investedCost, levelCost, repairCost, restyleCost, sameLook } from './architecture';
 import { lookSchema } from '../save/lookSchema';
@@ -55,6 +55,7 @@ export type Command =
   | { type: 'cancelVessel'; orderId: number }
   | { type: 'sellYacht' }
   | { type: 'placeRoad'; x: number; y: number }
+  | { type: 'placeRoadRoute'; start: RoadPoint; end: RoadPoint }
   | { type: 'paveRoad'; x: number; y: number }
   | { type: 'buildTerrace'; x: number; y: number }
   | { type: 'removeRoad'; x: number; y: number }
@@ -146,13 +147,66 @@ export function validatePlacement(
 }
 
 /** Road structure and price for a tile, or the reason it cannot hold a road. */
-export function roadQuote(s: GameState, x: number, y: number): { type: RoadType; cost: Cost } | { error: MessageRef } {
-  const p = homeProvince(s);
+export function roadQuote(s: GameState, x: number, y: number, p = homeProvince(s)): { type: RoadType; cost: Cost } | { error: MessageRef } {
   const site = checkRoadSite(p, x, y);
   if (site) return { error: site };
   const type = roadTypeFor(p, x, y)!;
   if (type === 'tunnel' && !s.researchedTechIds.includes('masonry')) return { error: { key: 'err.needMasonryTunnel' } };
   return { type, cost: ROAD_COSTS[type] };
+}
+
+export interface RoadPoint {
+  x: number;
+  y: number;
+}
+
+export interface RoadPlan {
+  tiles: (RoadPoint & { type: RoadType })[];
+  cost: Cost;
+  error: MessageRef | null;
+  blocked: RoadPoint | null;
+}
+
+/** Trace a diagonal or axial street in orthogonal steps that the road network can join. */
+export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint): RoadPlan {
+  const p = homeProvince(s);
+  const plan: RoadPlan = { tiles: [], cost: {}, error: null, blocked: null };
+  for (const point of [start, end]) {
+    if (!Number.isInteger(point.x) || !Number.isInteger(point.y) || !inBounds(p, point.x, point.y))
+      return { ...plan, error: { key: 'err.outOfBounds' } };
+  }
+
+  const preview = { ...p, tiles: [...p.tiles] };
+  const dx = Math.abs(end.x - start.x);
+  const dy = Math.abs(end.y - start.y);
+  const stepX = Math.sign(end.x - start.x);
+  const stepY = Math.sign(end.y - start.y);
+  let x = start.x;
+  let y = start.y;
+  let movedX = 0;
+  let movedY = 0;
+
+  for (let i = 0; i <= dx + dy; i++) {
+    const index = idx(p, x, y);
+    const tile = preview.tiles[index]!;
+    if (!tile.road) {
+      const quote = roadQuote(s, x, y, preview);
+      if ('error' in quote) return { ...plan, error: quote.error, blocked: { x, y } };
+      plan.tiles.push({ x, y, type: quote.type });
+      for (const id of COST_KEYS(quote.cost)) plan.cost[id] = (plan.cost[id] ?? 0) + (quote.cost[id] ?? 0);
+      preview.tiles[index] = { ...tile, road: true, roadType: quote.type };
+    }
+    if (movedX < dx && (movedY === dy || (2 * movedX + 1) * dy <= (2 * movedY + 1) * dx)) {
+      x += stepX;
+      movedX++;
+    } else if (movedY < dy) {
+      y += stepY;
+      movedY++;
+    }
+  }
+
+  plan.error = plan.tiles.length ? missingFor(p, plan.cost) : { key: 'err.routeNoNewRoad' };
+  return plan;
 }
 
 /** Cost of every construction stage a landmark has paid so far (for cancellation refunds). */
@@ -167,7 +221,7 @@ function paidLandmarkCost(b: BuildingInstance): Cost {
 }
 
 /** Pure validation: returns the reason a command is refused, or null if it may run. */
-export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
+export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): MessageRef | null {
   const p = homeProvince(s);
   switch (cmd.type) {
     case 'placeBuilding':
@@ -207,6 +261,8 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
       const quote = roadQuote(s, cmd.x, cmd.y);
       return 'error' in quote ? quote.error : missingFor(p, quote.cost);
     }
+    case 'placeRoadRoute':
+      return (roadPlan ?? planRoadRoute(s, cmd.start, cmd.end)).error;
     case 'paveRoad': {
       if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y)) return { key: 'err.invalid' };
       const road = tileAt(p, cmd.x, cmd.y);
@@ -350,7 +406,7 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
   }
 }
 
-function applyCommand(s: GameState, cmd: Command): void {
+function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
   const p = homeProvince(s);
   switch (cmd.type) {
     case 'placeBuilding': {
@@ -385,6 +441,17 @@ function applyCommand(s: GameState, cmd: Command): void {
       const t = p.tiles[idx(p, cmd.x, cmd.y)]!;
       t.road = true;
       t.roadType = quote.type;
+      refreshConnectivity(p);
+      break;
+    }
+    case 'placeRoadRoute': {
+      const plan = roadPlan!;
+      pay(p, plan.cost);
+      for (const { x, y, type } of plan.tiles) {
+        const tile = p.tiles[idx(p, x, y)]!;
+        tile.road = true;
+        tile.roadType = type;
+      }
       refreshConnectivity(p);
       break;
     }
@@ -568,12 +635,13 @@ function applyCommand(s: GameState, cmd: Command): void {
  * state together with a user-facing reason; an accepted one returns a new state.
  */
 export function executeCommand(state: GameState, cmd: Command): CommandResult {
-  const error = validateCommand(state, cmd);
+  const roadPlan = cmd.type === 'placeRoadRoute' ? planRoadRoute(state, cmd.start, cmd.end) : undefined;
+  const error = validateCommand(state, cmd, roadPlan);
   if (error) return { ok: false, error };
   return {
     ok: true,
     state: produce(state, (draft) => {
-      applyCommand(draft, cmd);
+      applyCommand(draft, cmd, roadPlan);
       evaluateQuests(draft);
     }),
   };

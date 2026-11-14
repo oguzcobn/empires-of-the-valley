@@ -11,6 +11,7 @@ import type { Season } from '../core/time';
 import type { ArchitectureStyle, BuildingId, BuildingInstance, BuildingLook, GameState, Province, Tile } from '../core/types';
 import { FOREST_TILE_MAX, HEIGHT_PX, MAX_HEIGHT } from '../data/balance';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
+import type { RoadPlan, RoadPoint } from '../systems/commands';
 import { validatePlacement } from '../systems/commands';
 import { homeProvince, isBuilt, isOperating, totalPopulation } from '../systems/economy';
 import { NEIGHBORS4, buildingById, footprintTiles, tileAt, tilesInRange } from '../systems/grid';
@@ -36,6 +37,7 @@ export type Tool =
   | { kind: 'select' }
   | { kind: 'build'; buildingId: BuildingId; style?: ArchitectureStyle; look?: BuildingLook | null }
   | { kind: 'road' }
+  | { kind: 'roadPlan'; start?: RoadPoint; end?: RoadPoint }
   | { kind: 'pave' }
   | { kind: 'terrace' }
   | { kind: 'demolish' }
@@ -54,6 +56,7 @@ export interface RendererView {
   game: GameState;
   tool: Tool;
   selectedBuildingId: string | null;
+  roadPlan?: RoadPlan | null;
   reducedMotion: boolean;
   detail: ArtDetail;
   dayNight: boolean;
@@ -1363,7 +1366,21 @@ export class ValleyRenderer {
       this.outline(g, selected.x, selected.y, w, h, COLORS.select, 3, pulse);
     }
 
-    if (hover) {
+    if (tool.kind === 'roadPlan') {
+      const plan = view.roadPlan;
+      if (plan) {
+        const color = plan.error ? COLORS.bad : COLORS.ok;
+        for (const { x, y } of plan.tiles) {
+          this.tileFill(g, x, y, color, 0.45);
+          this.outline(g, x, y, 1, 1, color, 2, 0.92);
+        }
+        if (plan.blocked) {
+          this.tileFill(g, plan.blocked.x, plan.blocked.y, COLORS.bad, 0.6);
+        }
+      }
+      const anchor = tool.start ?? hover;
+      if (anchor) this.outline(g, anchor.x, anchor.y, 1, 1, COLORS.select, 3, 0.95);
+    } else if (hover) {
       if (tool.kind === 'build') {
         const def = BUILDINGS[tool.buildingId];
         const ok =
