@@ -612,6 +612,7 @@ function BackupList(): ReactElement | null {
 
 export function SettingsPanel({ game }: { game: GameState | null }): ReactElement {
   const [sfxVolume, updateSfxVolume] = useState(getSfxVolume);
+  const [cheatCode, setCheatCode] = useState('');
   const settings = useApp((s) => s.settings);
   const { updateSettings, dispatch } = useApp.getState();
   return (
@@ -722,6 +723,38 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
         />
         <span>{t('graphics.weather')}</span>
       </label>
+      {game && (
+        <fieldset className="field plain" data-testid="settings-cheat">
+          <legend>Hile Kodu</legend>
+          <p className="hint">KAYNAK100000: Odun, taş, yiyecek, altın, alet ve araştırmanın her birine 100.000 ekler. Kaynak depolarının kapasitesi de artırılır.</p>
+          <div className="actions">
+            <input
+              className="input"
+              type="text"
+              value={cheatCode}
+              onChange={(e) => setCheatCode(e.target.value)}
+              placeholder="Hile kodunu yaz"
+              aria-label="Hile kodu"
+              autoComplete="off"
+              data-testid="cheat-code"
+            />
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                const success = dispatch({ type: 'redeemCheat', code: cheatCode });
+                if (success) {
+                  setCheatCode('');
+                  useApp.getState().toast('success', 'Her kaynağa 100.000 eklendi!');
+                }
+              }}
+              data-testid="redeem-cheat"
+            >
+              Kodu Kullan
+            </button>
+          </div>
+        </fieldset>
+      )}
       {game && (
         <label className="check-field">
           <input
