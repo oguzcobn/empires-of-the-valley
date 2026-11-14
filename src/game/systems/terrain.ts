@@ -215,6 +215,49 @@ export function surroundValley(seed: number, core: readonly Tile[]): Tile[] {
   return out;
 }
 
+/**
+ * Stylized city-specific coast and relief on the outer ring. The protected 24x24 playable
+ * interior and hand-made landmark sites remain untouched. Existing saves are never regenerated.
+ */
+export function applyCityGeography(tiles: Tile[], style: ArchitectureStyle): Tile[] {
+  if (style !== 'turkish' && style !== 'scottish') return tiles;
+  const out = tiles.map((t) => ({ ...t }));
+  const set = (x: number, y: number, terrain: TerrainId, height = 0): void => {
+    if (x < 0 || y < 0 || x >= MAP_SIZE || y >= MAP_SIZE) return;
+    const original = out[y * MAP_SIZE + x]!;
+    out[y * MAP_SIZE + x] = tile(terrain, original.variant, height);
+  };
+
+  // Black Sea in the north of Trabzon; Firth of Forth in the north of Edinburgh.
+  // Preserve the 3x3 hill at x=17..21 needed by the original landmark catalogue.
+  const seaDepth = style === 'turkish' ? 3 : 2;
+  for (let x = 5; x < MAP_SIZE; x++) {
+    if (x >= 17 && x <= 21) continue;
+    for (let y = 0; y < seaDepth; y++) set(x, y, 'lake');
+    set(x, seaDepth, 'sand');
+  }
+
+  if (style === 'turkish') {
+    // The steep southern and eastern Black Sea mountain flanks.
+    for (let y = 25; y < MAP_SIZE; y++)
+      for (let x = 28; x < MAP_SIZE; x++) {
+        const edge = Math.min(4, 1 + (x - 28) + Math.floor((y - 25) / 2));
+        set(x, y, edge >= 3 ? 'mountain' : 'hill', edge);
+      }
+    // Forested uplands on the western flank, clear of the Sümela ledge.
+    for (let y = 24; y < 29; y++)
+      for (let x = 0; x < 3; x++) set(x, y, 'forest', 1);
+  } else {
+    // Edinburgh's Arthur's Seat inspired crag, on the outer east edge.
+    for (let y = 16; y <= 23; y++)
+      for (let x = 28; x < MAP_SIZE; x++) {
+        const crest = x >= 30 && y >= 18 && y <= 21;
+        set(x, y, crest ? 'mountain' : 'hill', crest ? 3 : 1);
+      }
+  }
+  return out;
+}
+
 /** Stamps the starting hamlet onto freshly generated tiles and returns its building instances. */
 export function stampStart(
   tiles: Tile[],
@@ -285,7 +328,7 @@ export function generateValley(
   style: ArchitectureStyle = LEGACY_STYLE,
 ): GeneratedValley {
   for (let attempt = 0; attempt < 24; attempt++) {
-    const tiles = surroundValley(seed, generateCore((seed >>> 0) * 31 + attempt * 7919));
+    const tiles = applyCityGeography(surroundValley(seed, generateCore((seed >>> 0) * 31 + attempt * 7919)), style);
     const buildings = stampStart(tiles, provinceId, style);
     if (isPlayableStart({ width: MAP_SIZE, height: MAP_SIZE, tiles, buildings })) {
       return { tiles, buildings, attempts: attempt + 1 };
