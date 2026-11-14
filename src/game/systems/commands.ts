@@ -319,7 +319,7 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
     }
     case 'recruitMilitia':
       if (cmd.amount !== 5 || (s.militia ?? 0) + cmd.amount > 100) return { key: 'err.invalid' };
-      if (!p.buildings.some((b) => b.definitionId === 'watchtower' && isBuilt(b))) return { key: 'err.invalid' };
+      if (!p.buildings.some((b) => (b.definitionId === 'watchtower' || b.definitionId === 'barracks') && isBuilt(b))) return { key: 'err.invalid' };
       return missingFor(p, { gold: 10000, food: 5000 });
     case 'moveMilitia': {
       if ((s.militia ?? 0) <= 0) return { key: 'err.invalid' };
