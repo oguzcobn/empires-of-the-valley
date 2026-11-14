@@ -115,6 +115,7 @@ export const gameStateSchema = z
     tick: nat,
     speed: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)]),
     difficulty: z.enum(['easy', 'normal', 'hard']).optional(),
+    cheatStorageBonus: nat.max(1000000000000).optional(),
     playerFactionId: shortText,
     culture: style,
     cityId: z.enum(['trabzon', 'edinburgh', 'kyoto', 'prague']).optional(),
