@@ -31,6 +31,6 @@ export function MonumentPreview({ cityId }: { cityId: CityId }): ReactElement {
     return () => { alive = false; };
   }, [cityId]);
   return src
-    ? <img className="city-landmark" src={src} alt={`${city.name} 2,5D mimari önizlemesi`} />
+    ? <img className="city-landmark" src={src} alt={`${CITIES[cityId].name} 2,5D mimari önizlemesi`} />
     : <div className="city-landmark city-landmark-fallback" aria-hidden="true">◈</div>;
 }

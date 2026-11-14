@@ -1,13 +1,13 @@
 import { Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import type { BuildingId } from '../game/core/types';
+import type { ArchitectureStyle, BuildingId } from '../game/core/types';
 import { PLAYABLE_STYLES } from '../game/data/architecture';
 import { BUILDINGS, BUILDING_IDS } from '../game/data/buildings';
 import { drawStyledBuilding, drawStyledConstruction } from '../game/rendering/arch/buildings';
 import { SEASON_PALETTE } from '../game/rendering/palette';
 import { nightFactor, weatherFor } from '../game/rendering/weather';
 
-const draw = (id: BuildingId, style: 'scottish' | 'turkish', level: number, detail: 0 | 1 | 2, condition = 10000) => {
+const draw = (id: BuildingId, style: ArchitectureStyle, level: number, detail: 0 | 1 | 2, condition = 10000) => {
   const g = new Graphics();
   const info = drawStyledBuilding(g, { definitionId: id, style, look: null, level, condition }, SEASON_PALETTE.summer, detail, 99);
   const ops = g.context.instructions.length;
