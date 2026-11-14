@@ -43,6 +43,7 @@ export function createNewGame({ seed, mode, culture = LEGACY_STYLE }: NewGameOpt
     culture,
     cityId: cityForCulture(culture),
     claimedDistricts: [],
+    treaties: {},
     militia: 0,
     armyOrder: 'defend',
     homeProvinceId: HOME_PROVINCE_ID,
