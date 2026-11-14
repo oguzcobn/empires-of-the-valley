@@ -6,6 +6,8 @@ export const trArch = {
   'style.medieval_european': 'Orta Çağ Avrupa',
   'style.scottish.long': 'İskoç mimarisi',
   'style.turkish.long': 'Türk mimarisi',
+  'style.japanese.long': 'Japon mimarisi',
+  'style.medieval_european.long': 'Avrupa Orta Çağ mimarisi',
   'style.scottish.desc':
     'Granit ve kumtaşı duvarlar, arduvaz çatılar, basamaklı alınlıklar ve kule evler. Highland köylerinden Edinburgh’ün Georgian sokaklarına.',
   'style.turkish.desc':
