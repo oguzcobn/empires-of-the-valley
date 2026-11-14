@@ -28,7 +28,7 @@ import {
 import { growthBlocker, happinessFactors, happinessTarget } from '../game/systems/population';
 import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
 import { Bar, Modal, Row } from './common';
-import { GRAPHICS_SETTINGS, effectiveQuality } from '../app/settings';
+import { GRAPHICS_SETTINGS, UI_SCALES, effectiveQuality } from '../app/settings';
 import { Icon } from './icons';
 import { ObjectiveList, rewardLabel } from './QuestTracker';
 import { WorkshopPanel } from './Workshop';
@@ -656,9 +656,9 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
         <select
           className="input"
           value={settings.uiScale}
-          onChange={(e) => updateSettings({ uiScale: Number(e.target.value) as 90 | 100 | 115 | 130 })}
+          onChange={(e) => updateSettings({ uiScale: Number(e.target.value) as (typeof UI_SCALES)[number] })}
         >
-          {[90, 100, 115, 130].map((s) => (
+          {UI_SCALES.map((s) => (
             <option key={s} value={s}>
               %{s}
             </option>

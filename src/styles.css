@@ -1904,3 +1904,83 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
 .tool-group .btn.danger { color: #fff0e0; background: #783b2a; }
 .tool-group .btn:disabled { opacity: .55; }
 .hud-date, .chip, .road-plan-controls { border-color: #b2935b; border-radius: .35rem; }
+
+/* Keep both HUD rows and the tools in reserved bands inside the game frame. */
+.game-screen {
+  --hud-bottom: 2.85rem;
+  --tools-top: 3.6rem;
+  --panel-edge: max(.35rem, env(safe-area-inset-top));
+}
+.game-screen .top-hud {
+  top: var(--panel-edge);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .28rem;
+}
+.game-screen .hud-resources,
+.game-screen .hud-time {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  gap: .2rem;
+}
+.game-screen .hud-resources { order: 0; }
+.game-screen .hud-resources > *,
+.game-screen .hud-time > * { flex: none; }
+.game-screen .chip { padding: .12rem .3rem; }
+.game-screen .hud-resources .icon { width: 1rem; height: 1rem; }
+.game-screen .hud-date { padding: .12rem .35rem; }
+.game-screen .speed-btn { min-width: 2rem; padding: .2rem .35rem; }
+.game-screen .toolbar {
+  bottom: max(.25rem, env(safe-area-inset-bottom));
+  justify-content: start;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+.game-screen .toolbar .tool-group {
+  flex: none;
+  max-width: none;
+  flex-wrap: nowrap;
+  padding: .13rem;
+}
+.game-screen .toolbar .btn { padding: .19rem .27rem; }
+.game-screen .toolbar .tool { min-width: 2.3rem; }
+.game-screen .left-column,
+.game-screen .right-column {
+  top: calc(var(--hud-bottom) + var(--panel-edge));
+  bottom: auto;
+  width: min(16rem, 26vw);
+  max-height: calc(100dvh - var(--hud-bottom) - var(--panel-edge) - var(--tools-top));
+  overflow-y: auto;
+}
+.game-screen .left-column > *,
+.game-screen .right-column > * { flex-shrink: 0; }
+.game-screen :is(.quest, .catalog, .inspector) { max-height: none; }
+.game-screen .info-strip { bottom: var(--tools-top); max-width: 46vw; }
+@media (max-width: 1050px), (max-height: 520px) {
+  .game-screen { --hud-bottom: 4.7rem; }
+  .game-screen .top-hud { grid-template-columns: auto minmax(0, 1fr); }
+  .game-screen .hud-time { justify-self: end; }
+  .game-screen .hud-resources { grid-column: 1 / -1; }
+  .game-screen .matchday-chip { display: none; }
+}
+@media (max-width: 550px) and (orientation: portrait) {
+  .game-screen .left-column,
+  .game-screen .right-column { width: calc(100% - 1rem); max-height: 23dvh; }
+  .game-screen .right-column { top: auto; bottom: var(--tools-top); }
+  .game-screen .info-strip { display: none; }
+}
+@media (pointer: coarse) {
+  .game-screen { --tools-top: 4.5rem; }
+  .game-screen .toolbar .btn { min-height: 38px; }
+}
+@media (pointer: coarse) and (orientation: landscape) {
+  .game-screen .road-plan-controls,
+  .game-screen .mobile-placement-pad { bottom: var(--tools-top); }
+}

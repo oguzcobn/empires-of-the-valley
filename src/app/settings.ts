@@ -2,9 +2,11 @@ export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
 export type GraphicsSetting = 'auto' | GraphicsQuality;
 export const GRAPHICS_SETTINGS: readonly GraphicsSetting[] = ['auto', 'low', 'medium', 'high', 'ultra'];
 
+export const UI_SCALES = [75, 85, 90, 100, 115, 130] as const;
+
 export interface AppSettings {
   autosaveMinutes: 0 | 1 | 5 | 10;
-  uiScale: 90 | 100 | 115 | 130;
+  uiScale: (typeof UI_SCALES)[number];
   reducedMotion: boolean;
   muted: boolean;
   showPerf: boolean;
@@ -51,7 +53,7 @@ export function defaultSettings(): AppSettings {
     typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   return {
     autosaveMinutes: 5,
-    uiScale: 100,
+    uiScale: 85,
     reducedMotion: reduced,
     muted: false,
     showPerf: false,
@@ -69,7 +71,7 @@ export function loadSettings(): AppSettings {
     if (raw && typeof raw === 'object') {
       const r = raw as Partial<AppSettings>;
       if ([0, 1, 5, 10].includes(r.autosaveMinutes as number)) base.autosaveMinutes = r.autosaveMinutes!;
-      if ([90, 100, 115, 130].includes(r.uiScale as number)) base.uiScale = r.uiScale!;
+      if (r.uiScale !== undefined && UI_SCALES.includes(r.uiScale)) base.uiScale = r.uiScale;
       if (typeof r.reducedMotion === 'boolean') base.reducedMotion = r.reducedMotion;
       if (typeof r.muted === 'boolean') base.muted = r.muted;
       if (typeof r.showPerf === 'boolean') base.showPerf = r.showPerf;
