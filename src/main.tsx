@@ -8,6 +8,7 @@ import { findSite } from './game/systems/placement';
 import { applyTicks } from './game/systems/tick';
 import { levelCost } from './game/systems/architecture';
 import './styles.css';
+import './mobile-layout.css';
 
 createRoot(document.getElementById('root')!).render(<App />);
 
