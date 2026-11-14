@@ -1,20 +1,22 @@
 import type { ArchitectureStyle } from '../core/types';
 
-export type CityId = 'trabzon' | 'edinburgh';
+export type CityId = 'trabzon' | 'edinburgh' | 'kyoto' | 'prague';
 export interface CityInfo {
   id: CityId;
   name: string;
-  culture: 'turkish' | 'scottish';
+  culture: ArchitectureStyle;
   leader: string;
   leaderTitle: string;
   landmark: 'sumela_monastery' | 'scott_monument';
+  /** Whether all city-specific art, gameplay and localization are ready for new games. */
+  playable: boolean;
   districts: readonly string[];
 }
 
 /** Real place names; Edinburgh districts are neighbourhoods/wards rather than Turkish-style municipalities. */
 export const CITIES: Record<CityId, CityInfo> = {
   trabzon: {
-    id: 'trabzon', name: 'Trabzon', culture: 'turkish',
+    id: 'trabzon', name: 'Trabzon', culture: 'turkish', playable: true,
     leader: 'Ahmet Metin Genç', leaderTitle: 'Büyükşehir Belediye Başkanı',
     landmark: 'sumela_monastery',
     districts: [
@@ -25,7 +27,7 @@ export const CITIES: Record<CityId, CityInfo> = {
     ],
   },
   edinburgh: {
-    id: 'edinburgh', name: 'Edinburgh', culture: 'scottish',
+    id: 'edinburgh', name: 'Edinburgh', culture: 'scottish', playable: true,
     leader: 'Jane Meagher', leaderTitle: 'City of Edinburgh Council Leader',
     landmark: 'scott_monument',
     districts: [
@@ -35,10 +37,34 @@ export const CITIES: Record<CityId, CityInfo> = {
       'Duddingston','Joppa','Colinton','Blackford','Marchmont','Restalrig',
     ],
   },
+  kyoto: {
+    id: 'kyoto', name: 'Kyoto', culture: 'japanese', playable: false,
+    leader: 'Kent Meclisi', leaderTitle: 'Tarihî Japon Şehri',
+    // Temporary preview fallback; replace with a Japanese landmark before unlocking.
+    landmark: 'scott_monument',
+    districts: [
+      'Higashiyama','Arashiyama','Gion','Fushimi','Nishijin','Kamigyo',
+      'Nakagyo','Shimogyo','Sakyo','Ukyo','Yamashina','Nishikyo',
+      'Kita','Minami','Katsura','Ohara','Kurama','Takao',
+      'Saga','Kiyomizu','Demachiyanagi','Okazaki','Uji','Yase',
+    ],
+  },
+  prague: {
+    id: 'prague', name: 'Prague', culture: 'medieval_european', playable: false,
+    leader: 'Kent Meclisi', leaderTitle: 'Orta Çağ Avrupa Şehri',
+    // Temporary preview fallback; replace with a Prague landmark before unlocking.
+    landmark: 'edinburgh_castle',
+    districts: [
+      'Stare Mesto','Mala Strana','Hradcany','Nove Mesto','Vysehrad','Josefov',
+      'Vinohrady','Zizkov','Karlin','Smichov','Holesovice','Dejvice',
+      'Brevnov','Liben','Troja','Vrsovice','Nusle','Podoli',
+      'Strahov','Letna','Petrin','Andel','Bubenec','Vysocany',
+    ],
+  },
 };
 
 export const cityForCulture = (culture: ArchitectureStyle): CityId =>
-  culture === 'scottish' ? 'edinburgh' : 'trabzon';
+  culture === 'scottish' ? 'edinburgh' : culture === 'japanese' ? 'kyoto' : culture === 'medieval_european' ? 'prague' : 'trabzon';
 
 export function cityOf(cityId: CityId | undefined, culture: ArchitectureStyle): CityInfo {
   return CITIES[cityId ?? cityForCulture(culture)];

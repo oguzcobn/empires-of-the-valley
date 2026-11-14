@@ -116,7 +116,7 @@ export const gameStateSchema = z
     speed: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)]),
     playerFactionId: shortText,
     culture: style,
-    cityId: z.enum(['trabzon', 'edinburgh']).optional(),
+    cityId: z.enum(['trabzon', 'edinburgh', 'kyoto', 'prague']).optional(),
     claimedDistricts: z.array(shortText).max(24).optional(),
     militia: nat.max(200).optional(),
     armyOrder: z.enum(['defend', 'patrol']).optional(),
