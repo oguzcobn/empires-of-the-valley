@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
-import type { GameMode } from '../game/core/types';
+import type { Difficulty, GameMode } from '../game/core/types';
+import { DIFFICULTY_RULES } from '../game/data/difficulty';
 import { isPlayableStyle } from '../game/data/architecture';
 import type { PlayableStyle } from '../game/data/architecture';
 import { MonumentPreview } from './MonumentPreview';
@@ -19,6 +20,7 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
   const startNewGame = useApp((s) => s.startNewGame);
   const [seedText, setSeedText] = useState(String(randomSeed()));
   const [culture, setCulture] = useState<PlayableStyle>('turkish');
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const seed = Number(seedText);
   const valid = /^\d{1,9}$/.test(seedText);
   return (
@@ -62,6 +64,24 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
           })}
         </div>
       </fieldset>
+      <fieldset className="field plain" data-testid="difficulty-picker">
+        <legend>Zorluk seviyesi</legend>
+        <div className="segmented" role="group" aria-label="Zorluk seviyesi">
+          {(['easy', 'normal', 'hard'] as Difficulty[]).map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={`btn ${difficulty === id ? 'active' : ''}`}
+              aria-pressed={difficulty === id}
+              onClick={() => setDifficulty(id)}
+              data-testid={`difficulty-${id}`}
+            >
+              {DIFFICULTY_RULES[id].label}
+            </button>
+          ))}
+        </div>
+        <p className="hint">{DIFFICULTY_RULES[difficulty].description}. Oyun hızını 1×, 2× veya 4× seçerek zamanı ayrıca hızlandırabilirsin.</p>
+      </fieldset>
       <div className="actions">
         <button className="btn" onClick={onClose}>
           {t('ui.cancel')}
@@ -69,7 +89,7 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
         <button
           className="btn primary"
           disabled={!valid}
-          onClick={() => startNewGame(mode, seed, culture)}
+          onClick={() => startNewGame(mode, seed, culture, difficulty)}
           data-testid="start-game"
         >
           {t('newGame.start')}

@@ -84,7 +84,7 @@ interface AppStore {
   tickMs: number;
   focus: { x: number; y: number; n: number } | null;
 
-  startNewGame(mode: GameMode, seed: number, culture?: ArchitectureStyle): void;
+  startNewGame(mode: GameMode, seed: number, culture?: ArchitectureStyle, difficulty?: 'easy' | 'normal' | 'hard'): void;
   backups: BackupRecord[];
   /** Style chosen in the build catalog (null = the city's culture). */
   buildStyle: PlayableStyle | null;
@@ -333,8 +333,8 @@ export const useApp = create<AppStore>((set, get) => {
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     },
 
-    startNewGame(mode, seed, culture) {
-      enterGame(createNewGame({ mode, seed, culture }));
+    startNewGame(mode, seed, culture, difficulty) {
+      enterGame(createNewGame({ mode, seed, culture, difficulty }));
       set({ introOpen: true });
     },
 

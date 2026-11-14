@@ -16,6 +16,7 @@ import { fmtInt, fmtRate, t } from '../i18n';
 import { Icon } from './icons';
 import { matchDayFor } from '../game/data/matchDays';
 import { cityOf } from '../game/data/cities';
+import { DIFFICULTY_RULES, difficultyOf } from '../game/data/difficulty';
 
 const HUD_RESOURCES: ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
 const SPEEDS: { speed: GameSpeed; label: string; key: string }[] = [
@@ -80,6 +81,9 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
       </div>
       <div className="hud-time">
         <span className="chip hud-city" title="Şehir merkezi">{cityOf(game.cityId, game.culture).name}</span>
+        <span className="chip" title={DIFFICULTY_RULES[difficultyOf(game.difficulty)].description} data-testid="hud-difficulty">
+          {DIFFICULTY_RULES[difficultyOf(game.difficulty)].label}
+        </span>
         {match && (
           <span className="chip matchday-chip" title="Gerçek maç takvimi değil; oyun içi kurgusal maç atmosferi">
             ⚽ Maç günü · {match.teamName}{match.home ? '' : ' (ziyaretçi taraftarı)'} · Şehirde taraftarlar!

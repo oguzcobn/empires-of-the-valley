@@ -4,6 +4,7 @@ import { mulPermille, portion } from '../core/fixed';
 import { TICKS_PER_DAY, calendar, daysUntilWinter } from '../core/time';
 import type { BuildingInstance, GameState, Province, ResourceId } from '../core/types';
 import { FOREST_REGROW_PER_DAY, FOREST_TILE_MAX, WINTER_WARNING_DAYS } from '../data/balance';
+import { DIFFICULTY_RULES, difficultyOf } from '../data/difficulty';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import {
@@ -90,7 +91,7 @@ function constructionStep(s: GameState, p: Province): void {
     // per simulation hour. 4x clock speed remains unchanged: this does
     // not accelerate day/night, food consumption, taxation or seasons.
     // Monuments keep their separate, staged builder-hours system.
-    b.progressTicks = Math.min(requiredTicks(b), b.progressTicks + 3);
+    b.progressTicks = Math.min(requiredTicks(b), b.progressTicks + DIFFICULTY_RULES[difficultyOf(s.difficulty)].constructionWorkPerHour);
     if (b.progressTicks < requiredTicks(b)) continue;
     if (b.state === 'upgrading') {
       b.level += 1;
