@@ -2,7 +2,8 @@ import { u } from '../core/fixed';
 import type { BuildingDefinition, BuildingId, BuildingInstance, LandmarkId, LevelSpec, TerrainId } from '../core/types';
 import { LANDMARKS } from './landmarks';
 
-const DAY = 24;
+// Construction-only day length: shorten waiting without changing production, seasons or saves.
+const DAY = 8;
 const LAND: readonly TerrainId[] = ['grass', 'fertile', 'sand'];
 /** Small buildings may also stand on hills and on terraces (flat footprint required). */
 const LAND_AND_HILLS: readonly TerrainId[] = ['grass', 'fertile', 'sand', 'hill', 'terrace'];
