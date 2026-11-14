@@ -4,6 +4,7 @@ import { useApp } from '../app/store';
 import { DEMOLISH_REFUND_PERMILLE } from '../game/data/balance';
 import { ValleyRenderer } from '../game/rendering/ValleyRenderer';
 import { homeProvince } from '../game/systems/economy';
+import { validatePlacement } from '../game/systems/commands';
 import { buildingById, tileAt } from '../game/systems/grid';
 import { t } from '../i18n';
 import { artDetail, effectiveQuality, lowerQuality, setAutoCap } from '../app/settings';
@@ -163,8 +164,21 @@ export function ValleyCanvas(): ReactElement {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);
   }, [focus]);
 
+  const game = useApp((s) => s.game);
+  const placementError = placement && game && tool.kind === 'build'
+    ? validatePlacement(game, tool.buildingId, placement.x, placement.y, tool.style, tool.look ?? null)
+    : null;
+  const nudgePlacement = (dx: number, dy: number) => {
+    if (!placement || !game) return;
+    const p = homeProvince(game);
+    const x = Math.max(0, Math.min(p.width - 1, placement.x + dx));
+    const y = Math.max(0, Math.min(p.height - 1, placement.y + dy));
+    setPlacement({ x, y });
+    useApp.getState().setHover({ x, y });
+  };
+
   const confirmPlacement = () => {
-    if (!placement || tool.kind !== 'build') return;
+    if (!placement || tool.kind !== 'build' || placementError) return;
     const s = useApp.getState();
     if (!s.game) return;
     const ok = s.dispatch({type:'placeBuilding',buildingId:tool.buildingId,x:placement.x,y:placement.y,style:tool.style,look:tool.look ?? null});
@@ -182,7 +196,14 @@ export function ValleyCanvas(): ReactElement {
   return (
     <div className="valley-canvas" ref={hostRef}>
       {placing && <div className="mobile-place-hint" aria-live="polite">{placement ? `Konum: ${placement.x + 1}, ${placement.y + 1} · Haritaya dokunarak değiştir` : 'Haritada bir yere dokun · Önizle · Onayla'}</div>}
-      {placing && placement && <div className="mobile-place-actions"><button type="button" onClick={() => setPlacement(null)}>İptal</button><button type="button" onClick={confirmPlacement}>✓ Buraya inşa et</button></div>}
+      {placing && placement && <div className="mobile-placement-pad" aria-label="Bina konumunu hassas ayarla">
+        <div className="mobile-placement-message" role="status">{placementError ? `⚠ ${t(placementError.key, placementError.params)}` : '✓ Bu konuma inşa edilebilir'}</div>
+        <div className="mobile-placement-arrows">
+          <button type="button" aria-label="Bir kare yukarı" onClick={() => nudgePlacement(0,-1)}>↑</button>
+          <div><button type="button" aria-label="Bir kare sola" onClick={() => nudgePlacement(-1,0)}>←</button><button type="button" aria-label="Bir kare aşağı" onClick={() => nudgePlacement(0,1)}>↓</button><button type="button" aria-label="Bir kare sağa" onClick={() => nudgePlacement(1,0)}>→</button></div>
+        </div>
+        <div className="mobile-place-actions"><button type="button" onClick={() => {setPlacement(null);useApp.getState().setHover(null);}}>İptal</button><button type="button" disabled={!!placementError} onClick={confirmPlacement}>✓ Buraya inşa et</button></div>
+      </div>}
       {error && (
         <div className="canvas-error" role="alert">
           <b>{t('ui.renderError')}</b>
