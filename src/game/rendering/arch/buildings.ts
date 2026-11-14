@@ -35,6 +35,7 @@ import {
 } from './kit';
 import type { DrawCtx, RoofResult } from './kit';
 import { drawLandmark } from './landmarks';
+import { turkishHutRailing } from './turkishHousing';
 
 /**
  * Culture-aware building compositions. Each building type is assembled from the kit using its
@@ -371,7 +372,7 @@ function dressFront(ctx: DrawCtx, look: BuildingLook, w: number, h: number, pal:
 
 // ------------------------------------------------------------------ building types
 
-function house(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette): void {
+function house(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level: number, pal: SeasonPalette): void {
   const big = look.floors >= 3;
   const [u0, v0, u1, v1] = big ? [0.13, 0.15, 0.87, 0.85] : look.floors === 2 ? [0.16, 0.18, 0.84, 0.82] : [0.18, 0.22, 0.82, 0.8];
   shadowFor(ctx, u0, v0, u1, v1, look.floors * FLOOR_H + 12);
@@ -380,6 +381,25 @@ function house(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, pal: 
     axis: style === 'scottish' ? 'u' : undefined,
     spacing: big ? 0.24 : 0.3,
   });
+  // Turkish apartment progression: level 1 iron, level 2 blue and level 3 terracotta
+  // balcony rails. Keep these details out of the low-quality mobile render tier.
+  if (style === 'turkish' && ctx.detail >= 1 && look.balcony === 'iron') {
+    const rail = turkishHutRailing(level);
+    const count = Math.min(look.floors - 1, 10);
+    for (let floor = 1; floor <= count; floor++) {
+      const z = floor * FLOOR_H + 0.5;
+      const a = u0 + (u1 - u0) * 0.25;
+      const b = u0 + (u1 - u0) * 0.75;
+      const front = v1 + 0.065;
+      line(ctx, P(a, front, z + 3.8), P(b, front, z + 3.8), rail, 1.6);
+      if (ctx.detail >= 2) {
+        for (const t of [0, 0.5, 1]) {
+          const u = a + (b - a) * t;
+          line(ctx, P(u, front, z), P(u, front, z + 3.8), rail, 0.9);
+        }
+      }
+    }
+  }
   dressFront(ctx, look, 1, 1, pal);
 }
 
@@ -817,7 +837,7 @@ export function drawStyledBuilding(
   const look = renderLook(b);
   switch (b.definitionId) {
     case 'hut':
-      house(ctx, look, b.style, pal);
+      house(ctx, look, b.style, b.level, pal);
       break;
     case 'town_center':
       townCenter(ctx, look, b.style, b.level, pal);
