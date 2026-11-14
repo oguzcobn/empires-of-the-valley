@@ -26,6 +26,7 @@ export type BuildingId =
   | 'market'
   | 'inn'
   | 'watchtower'
+  | 'barracks'
   | 'shipyard'
   | LandmarkId;
 
