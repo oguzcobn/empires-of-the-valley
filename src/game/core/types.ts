@@ -391,6 +391,8 @@ export interface GameState {
   difficulty?: Difficulty;
   /** Extra storage capacity granted by resource cheats (milli-units). Optional for old saves. */
   cheatStorageBonus?: number;
+  /** When true, resource and research production runs at ten times its normal rate. */
+  cheatProduction10x?: boolean;
   playerFactionId: FactionId;
   /** Default culture for new buildings. Each building also stores its own style. */
   culture: ArchitectureStyle;
