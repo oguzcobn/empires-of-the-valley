@@ -1,3 +1,4 @@
+import { CityWork } from './CityNews';
 import { getSfxVolume, setSfxVolume } from '../app/audio';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
@@ -829,32 +830,37 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
 
 function LogPanel({ game }: { game: GameState }): ReactElement {
   const { focusOn, openPanel } = useApp.getState();
+  const [view, setView] = useState<'news' | 'work'>('news');
   const events = [...game.eventLog].reverse();
   return (
-    <ul className="log">
-      {events.map((e) => {
-        const cal = calendar(e.tick);
-        return (
-          <li key={e.id} className={e.kind}>
-            <span className="muted">
-              {t(`season.${cal.season}`)} {cal.dayOfSeason}
-            </span>
-            <span>{t(e.key, e.params)}</span>
-            {e.at && (
-              <button
-                className="btn link"
-                onClick={() => {
-                  focusOn(e.at!.x, e.at!.y);
-                  openPanel(null);
-                }}
-              >
-                {t('alerts.jump')}
-              </button>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      <div className="segmented city-news-switch" role="group" aria-label="Şehir panosu">
+        <button type="button" className={`btn ${view === 'news' ? 'active' : ''}`}
+          aria-pressed={view === 'news'} onClick={() => setView('news')}>Son Haberler</button>
+        <button type="button" className={`btn ${view === 'work' ? 'active' : ''}`}
+          aria-pressed={view === 'work'} onClick={() => setView('work')}>Şehir İşleri</button>
+      </div>
+      {view === 'work' ? <CityWork game={game} /> : (
+        <ul className="log">
+          {events.length === 0 && <li>Henüz şehir haberi yok.</li>}
+          {events.map((e) => {
+            const cal = calendar(e.tick);
+            return (
+              <li key={e.id} className={e.kind}>
+                <span className="muted">{t(`season.${cal.season}`)} {cal.dayOfSeason}</span>
+                <span>{t(e.key, e.params)}</span>
+                {e.at && (
+                  <button type="button" className="btn link" onClick={() => {
+                    focusOn(e.at!.x, e.at!.y);
+                    openPanel(null);
+                  }}>{t('alerts.jump')}</button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
   );
 }
 
@@ -1002,7 +1008,7 @@ export function PanelHost({ game }: { game: GameState | null }): ReactElement | 
       );
     case 'log':
       return (
-        <Modal title={t('panel.log')} onClose={close}>
+        <Modal title="Şehirden Haberler" onClose={close}>
           <LogPanel game={game} />
         </Modal>
       );
