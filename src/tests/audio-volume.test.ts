@@ -24,6 +24,23 @@ describe('sound effect volume', () => {
     expect(values.get('eov-sfx-volume-v1')).toBe('35');
   });
 
+  it('hydrates an existing volume preference on startup', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => key === 'eov-sfx-volume-v1' ? '25' : null,
+      setItem: () => undefined,
+    });
+    expect(getSfxVolume()).toBe(25);
+  });
+
+  it('ignores malformed persisted preferences', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => 'not-a-number',
+      setItem: () => undefined,
+    });
+    setSfxVolume(70);
+    expect(getSfxVolume()).toBe(70);
+  });
+
   it('survives blocked local storage', () => {
     vi.stubGlobal('localStorage', {
       getItem: () => { throw new Error('blocked'); },
