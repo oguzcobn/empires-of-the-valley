@@ -3,7 +3,7 @@ import { produce } from 'immer';
 import { TICKS_PER_DAY } from '../game/core/time';
 import { PAVING_COST } from '../game/data/balance';
 import { matchDayFor } from '../game/data/matchDays';
-import { pedestrianSidewalkOffset, vehicleLaneOffset } from '../game/rendering/trafficMath';
+import { pedestrianSidewalkOffset, vehicleLaneOffset, smoothVehicleTurnOffset } from '../game/rendering/trafficMath';
 import { loadSaveFile, createSaveFile } from '../game/save/serialize';
 import { validateCommand } from '../game/systems/commands';
 import { home, must, newCampaign } from './helpers';
@@ -51,6 +51,9 @@ describe('paved roads, sidewalk and traffic', () => {
     expect(vehicleLaneOffset(1, 0, true)).toEqual([0, -0.13]);
     expect(pedestrianSidewalkOffset(1, 0, 1)).toEqual([0, 0.3]);
     expect(pedestrianSidewalkOffset(1, 0, -1)).toEqual([0, -0.3]);
+    expect(smoothVehicleTurnOffset(1, 0, 0, 1, 0, false)).toEqual(vehicleLaneOffset(1, 0, false));
+    expect(smoothVehicleTurnOffset(1, 0, 0, 1, 1, false)).toEqual(vehicleLaneOffset(0, 1, false));
+    expect(smoothVehicleTurnOffset(1, 0, 0, 1, 0.2, false)).toEqual([-0.065, 0.065]);
   });
 });
 
@@ -60,6 +63,8 @@ describe('fictional local and visiting fan matchdays', () => {
     expect(matchDayFor(base)).toBeNull();
     const s = { ...base, tick: TICKS_PER_DAY * 3 };
     expect(matchDayFor(s)?.team).toBe('trabzonspor');
+    expect(matchDayFor({ ...s, cityId: 'kyoto', culture: 'japanese' })).toBeNull();
+    expect(matchDayFor({ ...s, cityId: 'prague', culture: 'medieval_european' })).toBeNull();
     expect(matchDayFor({ ...s, tick: TICKS_PER_DAY * 4 })).toBeNull();
   });
 
