@@ -164,13 +164,13 @@ export const CULTURES: Record<ArchitectureStyle, CultureDefinition> = {
     flag: 0xd23a32,
     bonuses: { ...NEUTRAL, repairPermille: 750, marketPermille: 1200, innBeds: 2 },
   },
-  japanese: { id: 'japanese', implemented: false, accent: 0x8a3a3a, flag: 0xc0392b, bonuses: NEUTRAL },
+  japanese: { id: 'japanese', implemented: false, accent: 0x8a3a3a, flag: 0xc0392b, bonuses: { ...NEUTRAL, decayPermille: 850, schoolPermille: 1100 } },
   medieval_european: {
     id: 'medieval_european',
     implemented: false,
     accent: 0x6b5b3a,
     flag: 0x8e6c2f,
-    bonuses: NEUTRAL,
+    bonuses: { ...NEUTRAL, watchRadius: 1, marketPermille: 1100 },
   },
 };
 
@@ -292,6 +292,52 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
       look({ wall: 'wood', roofMaterial: 'slate', roof: 'gable', door: 'double', facade: 'umber' }),
       look({ floors: 2, wall: 'granite', roofMaterial: 'slate', roof: 'gable', door: 'double', facade: 'grey' }),
     ],
+  },
+  japanese: {
+    // Timber machiya -> two-storey merchant house -> refined castle-town residence.
+    hut: [
+      look({ wall: 'wood', roofMaterial: 'shingle', roof: 'gable', windows: 'latticed', door: 'plank', facade: 'umber', garden: 'hedge' }),
+      look({ floors: 2, wall: 'timber_frame', roofMaterial: 'clay', roof: 'hip', windows: 'latticed', door: 'double', facade: 'cream', garden: 'flowers' }),
+      look({ floors: 3, wall: 'plaster', roofMaterial: 'clay', roof: 'hip', windows: 'latticed', door: 'double', balcony: 'gallery', facade: 'white', garden: 'orchard' }),
+    ],
+    town_center: [
+      look({ floors: 2, wall: 'timber_frame', roofMaterial: 'clay', roof: 'hip', windows: 'latticed', door: 'double', facade: 'white', courtyard: 'well' }),
+      look({ floors: 3, wall: 'plaster', roofMaterial: 'clay', roof: 'hip', windows: 'latticed', door: 'double', tower: 'square', facade: 'white', decor: 'banners' }),
+    ],
+    warehouse: [look({ floors: 2, wall: 'plaster', roofMaterial: 'clay', roof: 'gable', door: 'double', windows: 'small', facade: 'white' })],
+    granary: [look({ floors: 1, wall: 'wood', roofMaterial: 'shingle', roof: 'hip', door: 'plank', facade: 'umber' })],
+    school: [look({ floors: 2, wall: 'timber_frame', roofMaterial: 'clay', roof: 'hip', windows: 'latticed', courtyard: 'well', facade: 'cream' })],
+    lumber_camp: [look({ wall: 'wood', roofMaterial: 'shingle', roof: 'gable', facade: 'umber' })],
+    farm: [look({ wall: 'wood', roofMaterial: 'thatch', roof: 'hip', facade: 'honey' })],
+    terrace_farm: [look({ wall: 'wood', roofMaterial: 'thatch', roof: 'hip', facade: 'honey' })],
+    quarry: [look({ wall: 'stone_timber', roofMaterial: 'shingle', roof: 'gable', facade: 'grey' })],
+    market: [look({ floors: 2, wall: 'timber_frame', roofMaterial: 'clay', roof: 'gable', windows: 'latticed', door: 'double', decor: 'lanterns', facade: 'cream' })],
+    inn: [look({ floors: 2, wall: 'wood', roofMaterial: 'clay', roof: 'hip', windows: 'latticed', garden: 'flowers', courtyard: 'well', facade: 'umber' })],
+    watchtower: [look({ floors: 3, wall: 'plaster', roofMaterial: 'clay', roof: 'hip', windows: 'small', tower: 'square', facade: 'white' })],
+    shipyard: [look({ wall: 'wood', roofMaterial: 'shingle', roof: 'gable', door: 'double', facade: 'umber' })],
+  },
+  medieval_european: {
+    // Wattle-and-daub cottage -> guild town house -> stone burgher residence.
+    hut: [
+      look({ wall: 'timber_frame', roofMaterial: 'thatch', roof: 'gable', windows: 'small', facade: 'cream', chimney: 'gable' }),
+      look({ floors: 2, wall: 'stone_timber', roofMaterial: 'shingle', roof: 'gable', windows: 'small', chimney: 'central', facade: 'honey' }),
+      look({ floors: 3, wall: 'brick', roofMaterial: 'clay', roof: 'crow_step', windows: 'arched', door: 'arched', chimney: 'twin', facade: 'rose' }),
+    ],
+    town_center: [
+      look({ floors: 2, wall: 'stone_timber', roofMaterial: 'slate', roof: 'crow_step', windows: 'arched', tower: 'bell', facade: 'cream', decor: 'banners' }),
+      look({ floors: 3, wall: 'sandstone', roofMaterial: 'slate', roof: 'crow_step', windows: 'arched', door: 'arched', tower: 'clock', facade: 'honey', decor: 'banners' }),
+    ],
+    warehouse: [look({ floors: 2, wall: 'brick', roofMaterial: 'clay', roof: 'gable', door: 'double', facade: 'rose' })],
+    granary: [look({ floors: 2, wall: 'stone_timber', roofMaterial: 'thatch', roof: 'gable', facade: 'cream' })],
+    school: [look({ floors: 2, wall: 'sandstone', roofMaterial: 'slate', roof: 'gable', windows: 'arched', tower: 'bell', facade: 'honey' })],
+    lumber_camp: [look({ wall: 'wood', roofMaterial: 'thatch', roof: 'gable', facade: 'umber' })],
+    farm: [look({ wall: 'timber_frame', roofMaterial: 'thatch', roof: 'gable', facade: 'cream' })],
+    terrace_farm: [look({ wall: 'timber_frame', roofMaterial: 'thatch', roof: 'gable', facade: 'cream' })],
+    quarry: [look({ wall: 'granite', roofMaterial: 'slate', roof: 'gable', facade: 'grey' })],
+    market: [look({ floors: 2, wall: 'timber_frame', roofMaterial: 'clay', roof: 'gable', windows: 'arched', decor: 'banners', facade: 'honey' })],
+    inn: [look({ floors: 2, wall: 'stone_timber', roofMaterial: 'thatch', roof: 'gable', windows: 'small', chimney: 'central', facade: 'cream' })],
+    watchtower: [look({ floors: 4, wall: 'granite', roofMaterial: 'slate', roof: 'pyramid', windows: 'small', tower: 'turret', facade: 'grey' })],
+    shipyard: [look({ wall: 'stone_timber', roofMaterial: 'shingle', roof: 'gable', door: 'double', facade: 'umber' })],
   },
   turkish: {
     // Anatolian village house -> Black Sea timber house -> Safranbolu mansion
