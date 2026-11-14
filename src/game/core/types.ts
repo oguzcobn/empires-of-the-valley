@@ -100,6 +100,7 @@ export interface BuildingLook {
 export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy' | 'architecture';
 export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08' | 'q09' | 'q10' | 'q11' | 'q12' | 'q13' | 'q14' | 'q15' | 'q16';
 export type ProvinceId = string;
+export type DiplomacyPact = 'trade' | 'non_aggression' | 'alliance';
 export type FactionId = string;
 export type GameSpeed = 0 | 1 | 2 | 4;
 export type TaxRate = 'low' | 'normal' | 'high';
@@ -391,6 +392,8 @@ export interface GameState {
   cityId?: CityId;
   /** Strategically secured surrounding districts, as world province IDs. */
   claimedDistricts?: ProvinceId[];
+  /** Diplomatic relations with neighbouring, non-player provinces. Optional in legacy saves. */
+  treaties?: Record<ProvinceId, DiplomacyPact>;
   /** Trained guards who can hold or patrol newly secured districts. */
   militia?: number;
   armyOrder?: 'defend' | 'patrol';
