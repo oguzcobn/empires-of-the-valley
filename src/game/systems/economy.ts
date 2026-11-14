@@ -93,6 +93,7 @@ export function dailyOutput(s: GameState, p: Province, b: BuildingInstance): num
   if (def.id === 'school') rate = mulPermille(rate, bonusesOf(b.style).schoolPermille);
   if (def.usesTools && p.stocks.tools <= 0) rate = mulPermille(rate, NO_TOOLS_OUTPUT_PERMILLE);
   rate = mulPermille(rate, DIFFICULTY_RULES[difficultyOf(s.difficulty)].productionPermille);
+  if (s.cheatProduction10x === true) rate *= 10;
   // extraction can never exceed what is physically left in range
   if (def.harvests) rate = Math.min(rate, depositInRange(p, b));
   return rate;
