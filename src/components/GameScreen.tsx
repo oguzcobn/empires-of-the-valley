@@ -52,6 +52,10 @@ function useShortcuts(): void {
       }
       if (modal) return;
       const key = e.key.toLowerCase();
+      if (key === 'v') {
+        s.updateSettings({ muted: !s.settings.muted });
+        return;
+      }
       const pan = 60;
       if (e.code === 'Space') {
         e.preventDefault();
