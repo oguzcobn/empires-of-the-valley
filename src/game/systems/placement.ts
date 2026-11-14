@@ -137,9 +137,9 @@ export function checkSite(
   if (def.harvests && !tilesInRange(g, def, x, y).some((i) => g.tiles[i]!.deposit > 0)) {
     return { key: def.harvests.terrain === 'forest' ? 'err.needForest' : 'err.needStone' };
   }
-  const roadRule = siteRoadError(g, def, x, y);
-  if (roadRule) return roadRule;
-  if (!touchesRoads(g, def, x, y, roads)) return { key: 'err.noRoad' };
+  // Roads are optional for buildings; terrain, collisions and resources still constrain placement.
+  // Kept road-related arguments for compatibility with route-planning callers.
+  void roads;
   return null;
 }
 
