@@ -38,7 +38,7 @@ export const CITIES: Record<CityId, CityInfo> = {
     ],
   },
   kyoto: {
-    id: 'kyoto', name: 'Kyoto', culture: 'japanese', playable: false,
+    id: 'kyoto', name: 'Kyoto', culture: 'japanese', playable: true,
     leader: 'Kent Meclisi', leaderTitle: 'Tarihî Japon Şehri',
     // Temporary preview fallback; replace with a Japanese landmark before unlocking.
     landmark: 'scott_monument',
@@ -50,7 +50,7 @@ export const CITIES: Record<CityId, CityInfo> = {
     ],
   },
   prague: {
-    id: 'prague', name: 'Prague', culture: 'medieval_european', playable: false,
+    id: 'prague', name: 'Prague', culture: 'medieval_european', playable: true,
     leader: 'Kent Meclisi', leaderTitle: 'Orta Çağ Avrupa Şehri',
     // Temporary preview fallback; replace with a Prague landmark before unlocking.
     landmark: 'edinburgh_castle',
