@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import type { GameMode } from '../game/core/types';
+import { isPlayableStyle } from '../game/data/architecture';
 import type { PlayableStyle } from '../game/data/architecture';
 import { MonumentPreview } from './MonumentPreview';
 import { CITIES } from '../game/data/cities';
@@ -49,7 +50,7 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
             return (
               <button key={id} type="button" className={`culture-card city-card city-${id}`}
                 aria-pressed={culture === city.culture}
-                onClick={() => setCulture(city.culture)}
+                onClick={() => { if (isPlayableStyle(city.culture)) setCulture(city.culture); }}
                 data-testid={`culture-${city.culture}`}>
                 <MonumentPreview cityId={id} />
                 <h4>{city.name}</h4>
