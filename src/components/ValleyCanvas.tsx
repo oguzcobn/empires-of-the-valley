@@ -48,6 +48,10 @@ export function requestDemolish(buildingId: string): void {
 export function ValleyCanvas(): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [placement, setPlacement] = useState<{x:number;y:number}|null>(null);
+  const tool = useApp((s) => s.tool);
+  const placing = tool.kind === 'build';
+  useEffect(() => { setPlacement(null); }, [tool]);
   const focus = useApp((s) => s.focus);
   const graphics = useApp((s) => s.settings.graphics);
   const [capNonce, setCapNonce] = useState(0);
@@ -107,6 +111,10 @@ export function ValleyCanvas(): ReactElement {
         if (!s.game) return;
         const tool = s.tool;
         if (tool.kind === 'build') {
+          if (window.matchMedia('(pointer: coarse)').matches) {
+            setPlacement({ x, y });
+            return;
+          }
           if (
             !s.dispatch({
               type: 'placeBuilding',
@@ -155,8 +163,26 @@ export function ValleyCanvas(): ReactElement {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);
   }, [focus]);
 
+  const confirmPlacement = () => {
+    if (!placement || tool.kind !== 'build') return;
+    const s = useApp.getState();
+    if (!s.game) return;
+    const ok = s.dispatch({type:'placeBuilding',buildingId:tool.buildingId,x:placement.x,y:placement.y,style:tool.style,look:tool.look ?? null});
+    if (ok) {
+      setPlacement(null);
+      if (tool.buildingId !== 'hut') {
+        const placed = homeProvince(useApp.getState().game!).buildings.at(-1);
+        s.setTool({kind:'select'});
+        s.toggleBuild(false);
+        if (placed) s.select(placed.id);
+      }
+    }
+  };
+
   return (
     <div className="valley-canvas" ref={hostRef}>
+      {placing && <div className="mobile-place-hint" aria-live="polite">{placement ? `Konum: ${placement.x + 1}, ${placement.y + 1} · Haritaya dokunarak değiştir` : 'Haritada bir yere dokun · Önizle · Onayla'}</div>}
+      {placing && placement && <div className="mobile-place-actions"><button type="button" onClick={() => setPlacement(null)}>İptal</button><button type="button" onClick={confirmPlacement}>✓ Buraya inşa et</button></div>}
       {error && (
         <div className="canvas-error" role="alert">
           <b>{t('ui.renderError')}</b>
