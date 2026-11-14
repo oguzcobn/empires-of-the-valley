@@ -177,7 +177,7 @@ export const CULTURES: Record<ArchitectureStyle, CultureDefinition> = {
 /** Cultures with complete content. Extend this union when a new culture is finished. */
 export type PlayableStyle = Extract<ArchitectureStyle, 'scottish' | 'turkish'>;
 export const PLAYABLE_STYLES = ALL_STYLES.filter((s) => CULTURES[s].implemented) as readonly PlayableStyle[];
-export const isPlayableStyle = (s: unknown): s is ArchitectureStyle =>
+export const isPlayableStyle = (s: unknown): s is PlayableStyle =>
   typeof s === 'string' && (PLAYABLE_STYLES as readonly string[]).includes(s);
 
 /** Culture for buildings that come from saves made before architecture existed. */
