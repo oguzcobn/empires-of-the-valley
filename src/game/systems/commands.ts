@@ -1,4 +1,5 @@
 import { produce } from 'immer';
+import { RESOURCE_IDS } from '../core/types';
 import { mulPermille } from '../core/fixed';
 import type {
   ArchitectureStyle,
@@ -67,6 +68,7 @@ export type Command =
   | { type: 'trade'; offerId: string }
   | { type: 'setGameSpeed'; speed: GameSpeed }
   | { type: 'setAutoPause'; enabled: boolean }
+  | { type: 'redeemCheat'; code: string }
   | { type: 'claimDistrict'; provinceId: string }
   | { type: 'attackDistrict'; provinceId: string }
   | { type: 'signPact'; provinceId: string; pact: DiplomacyPact }
@@ -337,6 +339,9 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
       return cmd.order === 'defend' || cmd.order === 'patrol' ? null : { key: 'err.invalid' };
     case 'setGameSpeed':
       return [0, 1, 2, 4].includes(cmd.speed) ? null : { key: 'err.invalid' };
+    case 'redeemCheat':
+      return cmd.code.trim().toUpperCase() === 'KAYNAK100000' && (s.cheatStorageBonus ?? 0) <= 999900000000
+        ? null : { key: 'err.invalid' };
     case 'setAutoPause':
       return typeof cmd.enabled === 'boolean' ? null : { key: 'err.invalid' };
   }
@@ -537,6 +542,13 @@ function applyCommand(s: GameState, cmd: Command): void {
     case 'setGameSpeed':
       s.speed = cmd.speed;
       break;
+    case 'redeemCheat': {
+      const amount = 100000 * 1000;
+      // Raise finite storage capacity first; the reward is then safe to autosave.
+      s.cheatStorageBonus = (s.cheatStorageBonus ?? 0) + amount;
+      for (const id of RESOURCE_IDS) p.stocks[id] += amount;
+      break;
+    }
     case 'setAutoPause':
       s.settings.autoPauseOnMilestone = cmd.enabled;
       break;
