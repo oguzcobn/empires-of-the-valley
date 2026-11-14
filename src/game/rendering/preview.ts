@@ -33,15 +33,17 @@ export function renderToDataUrl(key: string, draw: (g: Graphics, root: Container
     const root = new Container();
     const g = new Graphics();
     root.addChild(g);
-    draw(g, root);
-    const url = await r.extract.base64({
-      target: root,
-      frame: undefined,
-      resolution: 2,
-      clearColor: [0, 0, 0, 0],
-    });
-    root.destroy({ children: true });
-    return url;
+    try {
+      draw(g, root);
+      return await r.extract.base64({
+        target: root,
+        frame: undefined,
+        resolution: 2,
+        clearColor: [0, 0, 0, 0],
+      });
+    } finally {
+      root.destroy({ children: true });
+    }
   })();
   cache.set(key, job);
   job.catch(() => cache.delete(key));

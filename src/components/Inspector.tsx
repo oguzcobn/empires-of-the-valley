@@ -21,6 +21,7 @@ import { DESIGNABLE, PLAYABLE_STYLES } from '../game/data/architecture';
 import { conditionBand, decayPerDay, levelCost, repairCost, restyleCost } from '../game/systems/architecture';
 import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
 import { Bar, CostList, Row, costText } from './common';
+import { BuildingPreview } from './BuildingPreview';
 import { Icon } from './icons';
 import { requestDemolish } from './ValleyCanvas';
 import { ShipyardSection } from './Heritage';
@@ -336,6 +337,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
           ✕
         </button>
       </header>
+      <BuildingPreview id={b.definitionId} style={b.style} level={b.level} look={b.look} condition={b.condition} />
       <p className="muted">{t(`building.${b.definitionId}.desc`)}</p>
       {b.definitionId === 'hut' && isBuilt(b) && (() => {
         const district = neighborhoodServices(p).homes.find(({ home }) => home.id === b.id);

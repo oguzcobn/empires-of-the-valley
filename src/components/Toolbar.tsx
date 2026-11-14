@@ -70,6 +70,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           }}
           data-testid="tool-road-plan"
         >
+          <span className="glyph" aria-hidden="true">⌁</span>
           Yol Planla
         </button>
         <button
@@ -81,6 +82,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           }}
           data-testid="tool-bridge"
         >
+          <span className="glyph" aria-hidden="true">╭─╮</span>
           Köprü
         </button>
         <button

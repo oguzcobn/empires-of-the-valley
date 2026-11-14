@@ -9,6 +9,7 @@ import { PLAYABLE_STYLES } from '../game/data/architecture';
 import { homeProvince } from '../game/systems/economy';
 import { t, tm } from '../i18n';
 import { CostList } from './common';
+import { BuildingPreview } from './BuildingPreview';
 import { Icon } from './icons';
 
 const CATEGORIES: ('all' | BuildingCategory)[] = ['all', 'housing', 'production', 'storage', 'education', 'governance', 'civic', 'landmark'];
@@ -40,7 +41,7 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
   useEffect(() => {
     void refreshDesigns();
   }, [refreshDesigns]);
-  const style = buildStyle ?? (game.culture === 'scottish' ? 'scottish' : 'turkish');
+  const style = buildStyle ?? game.culture;
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('all');
   const [query, setQuery] = useState('');
   const p = homeProvince(game);
@@ -133,6 +134,7 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
           const design = buildDesign?.buildingId === id ? buildDesign : null;
           const cost = levelCost(id, 0, style, design?.look ?? null);
           const affordable = missingFor(p, cost) === null;
+          const requirement = requirementError(game, spec);
           const active = tool.kind === 'build' && tool.buildingId === id;
           return (
             <button
@@ -142,6 +144,7 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
               aria-pressed={active}
               data-testid={`build-${id}`}
             >
+              <BuildingPreview id={id} style={style} look={design?.look ?? null} />
               <span className="catalog-name">
                 {t(`building.${id}.name`)}
                 <span className="muted">
@@ -164,6 +167,7 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
               </span>
               <span className="catalog-rule">{t(`building.${id}.rule`)}</span>
               {def.landmark && <LandmarkFacts game={game} id={id} />}
+              {requirement && !def.landmark && <span className="catalog-warn">{tm(requirement)}</span>}
               {!affordable && <span className="catalog-warn">{t('catalog.cannotAfford')}</span>}
             </button>
           );
