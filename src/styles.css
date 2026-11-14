@@ -1704,3 +1704,119 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
   .mobile-placement-pad .mobile-place-actions { display:flex; position:static; transform:none; width:100%; gap:10px; }
   .mobile-placement-pad .mobile-place-actions button:disabled { opacity:.5; cursor:not-allowed; }
 }
+
+
+/* Landscape-first touch UI: keep the map playable on compact mobile viewports. */
+.mobile-landscape-prompt {
+  display: none;
+}
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 900px) {
+  .mobile-landscape-prompt {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .55rem;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 72;
+    width: min(21rem, calc(100% - 2rem));
+    padding: 1.15rem;
+    background: rgba(255, 248, 230, .97);
+    border: 2px solid #c49b5c;
+    border-radius: 1.1rem;
+    box-shadow: 0 15px 55px rgba(23, 31, 25, .36);
+    text-align: center;
+  }
+  .mobile-landscape-prompt p { font-size: .82rem; line-height: 1.4; }
+  .mobile-landscape-prompt .btn { min-height: 44px; width: 100%; touch-action: manipulation; }
+  .landscape-phone-symbol { font-size: 2.5rem; line-height: 1; color: #3c7531; }
+  .landscape-manual { color: #9a501a; font-weight: 700; }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
+  .game-screen { height: 100dvh; }
+  .top-hud {
+    top: max(.14rem, env(safe-area-inset-top));
+    left: max(.25rem, env(safe-area-inset-left));
+    right: max(.25rem, env(safe-area-inset-right));
+    gap: .16rem;
+    flex-wrap: wrap;
+  }
+  .hud-time {
+    flex-shrink: 0;
+    gap: .14rem;
+    margin-left: auto;
+  }
+  .hud-resources {
+    order: 3;
+    flex: 0 0 100%;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    gap: .16rem;
+    padding-bottom: .15rem;
+  }
+  .hud-resources .chip {
+    flex-shrink: 0;
+    font-size: .68rem;
+    padding: .08rem .27rem;
+  }
+  .hud-resources .chip-cap,
+  .hud-resources .chip-rate { display: none; }
+  .hud-date { padding: .08rem .3rem; font-size: .64rem; }
+  .hud-date b { font-size: .69rem; }
+  .speed-btn { min-width: 1.85rem; min-height: 1.85rem; padding: .12rem .2rem; }
+  .matchday-chip { display: none; }
+
+  .left-column,
+  .right-column {
+    top: 4.5rem;
+    bottom: auto;
+    width: min(13rem, 26vw);
+    max-height: calc(100dvh - 8.4rem);
+    overflow-y: auto;
+  }
+  .left-column { left: max(.2rem, env(safe-area-inset-left)); }
+  .right-column { right: max(.2rem, env(safe-area-inset-right)); }
+  .left-column > *,
+  .right-column > * { min-height: 0; }
+  .quest, .catalog, .inspector { max-height: calc(100dvh - 8.4rem); }
+  .info-strip { display: none; }
+
+  .toolbar {
+    left: max(.2rem, env(safe-area-inset-left));
+    right: max(.2rem, env(safe-area-inset-right));
+    bottom: max(.1rem, env(safe-area-inset-bottom));
+    width: auto;
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: 3.6rem;
+    min-height: 2.75rem;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    gap: .16rem;
+  }
+  .toolbar .tool-group { flex: none; flex-wrap: nowrap; max-width: none; padding: .12rem; }
+  .toolbar .tool { min-width: 2.4rem; }
+  .toolbar .btn { padding: .17rem .25rem; font-size: .65rem; min-height: 2.35rem; }
+  .tool .glyph { font-size: .85rem; }
+  .toasts { bottom: 3.7rem; }
+  .mobile-place-hint { top: 4.7rem; font-size: .7rem; padding: .25rem .45rem; }
+  .mobile-placement-pad {
+    left: 50%;
+    bottom: 3.6rem;
+    width: min(18rem, 39vw);
+    gap: 3px;
+  }
+  .mobile-placement-pad .mobile-place-actions button { min-height: 38px; font-size: .75rem; }
+  .mobile-placement-arrows button { min-height: 34px; min-width: 34px; }
+  .mobile-placement-message { font-size: .7rem; padding: .3rem .5rem; }
+}
