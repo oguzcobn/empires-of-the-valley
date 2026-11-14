@@ -1,4 +1,5 @@
 import { produce } from 'immer';
+import { crimeDayEnd } from './crime';
 import { securityDayEnd } from './security';
 import { mulPermille, portion } from '../core/fixed';
 import { TICKS_PER_DAY, calendar, daysUntilWinter } from '../core/time';
@@ -210,6 +211,7 @@ function dayEnd(s: GameState, p: Province): void {
   populationDayEnd(s, p, cal.day);
   tourismDayEnd(s, p);
   securityDayEnd(s, p);
+  crimeDayEnd(s, p, cal.day);
 
   // buildings weather: stone lasts, timber and thatch need care (see data/architecture.ts)
   for (const b of p.buildings) {

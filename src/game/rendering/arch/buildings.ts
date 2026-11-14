@@ -707,6 +707,43 @@ function barracks(ctx: DrawCtx, look: BuildingLook, level: number): void {
   drawFlagPole(ctx, P(0.4, 1.45, 1), 31, 0x972e29);
 }
 
+function civicBuilding(ctx: DrawCtx, id: 'mosque' | 'church' | 'theatre' | 'cinema' | 'police_station', look: BuildingLook, style: ArchitectureStyle): void {
+  const scottish = style === 'scottish';
+  groundPad(ctx, 2, 2, 0xb7aa91, 0.85);
+  const stone = { ...look, floors: 1 as const, wall: scottish ? 'granite' as const : 'sandstone' as const, chimney: 'none' as const, decor: 'none' as const };
+  if (id === 'mosque') {
+    const { zTop } = mass(ctx, { ...stone, door: 'arched' }, 0.23, 0.18, 1.52, 1.55, { roof: 'flat', windows: 'arched' });
+    drawDome(ctx, 0.87, 0.86, zTop + 2, 0.55);
+    drawTurret(ctx, 1.67, 0.32, 0, scottish ? 36 : 43, 0.12, 0xd8c8aa, ROOF_HEX.lead);
+  } else if (id === 'church') {
+    mass(ctx, { ...stone, roofMaterial: 'slate', door: 'arched' }, 0.22, 0.22, 1.48, 1.74, { roof: scottish ? 'crow_step' : 'gable', windows: 'arched' });
+    mass(ctx, { ...stone, floors: 2, roofMaterial: 'slate' }, 1.08, 0.95, 1.69, 1.62, { roof: 'pyramid', windows: 'arched' });
+    const [x, y] = P(1.39, 1.28, 46);
+    line(ctx, [x, y + 5], [x, y - 3], 0xc9a35b, 1.3);
+    line(ctx, [x - 3, y], [x + 3, y], 0xc9a35b, 1.3);
+  } else {
+    const cinema = id === 'cinema';
+    const theatre = id === 'theatre';
+    const color = cinema ? 0xb75f3c : theatre ? 0x8f3f3d : 0x2d5272;
+    mass(ctx, { ...stone, wall: cinema ? 'brick' : 'sandstone', door: 'double' },
+      0.18, 0.19, 1.79, 1.54, { roof: cinema ? (scottish ? 'gable' : 'flat') : (scottish ? 'crow_step' : 'hip'), windows: cinema ? 'sash' : 'arched' });
+    const f = faceL(0.18, 1.79, 1.54);
+    quad(ctx, f, 0.43, 1.52, 12, 17, color);
+    if (theatre) {
+      for (const u of [0.35, 0.71, 1.24, 1.65]) {
+        box(ctx, u - 0.03, 1.69, u + 0.03, 1.77, 0, 18, 0xe1c9a3);
+      }
+    } else if (cinema) {
+      for (const u of [0.51, 0.69, 0.87, 1.05, 1.23, 1.41]) {
+        const [x, y] = fp(f, u, 14.5);
+        ctx.g.circle(x, y, 1.2).fill(0xffdb7b);
+      }
+    } else {
+      drawFlagPole(ctx, P(1.64, 1.42, 18), color);
+    }
+  }
+}
+
 function watchtower(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle): void {
   const h = look.floors * FLOOR_H + 6;
   shadowFor(ctx, 0.25, 0.25, 0.75, 0.75, h);
@@ -817,6 +854,13 @@ export function drawStyledBuilding(
       break;
     case 'barracks':
       barracks(ctx, look, b.level);
+      break;
+    case 'mosque':
+    case 'church':
+    case 'cinema':
+    case 'theatre':
+    case 'police_station':
+      civicBuilding(ctx, b.definitionId, look, b.style);
       break;
     case 'shipyard':
       shipyard(ctx, look, b.level);

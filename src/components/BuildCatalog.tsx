@@ -11,7 +11,7 @@ import { t, tm } from '../i18n';
 import { CostList } from './common';
 import { Icon } from './icons';
 
-const CATEGORIES: ('all' | BuildingCategory)[] = ['all', 'housing', 'production', 'storage', 'education', 'governance', 'landmark'];
+const CATEGORIES: ('all' | BuildingCategory)[] = ['all', 'housing', 'production', 'storage', 'education', 'governance', 'civic', 'landmark'];
 
 function LandmarkFacts({ game, id }: { game: GameState; id: BuildingId }): ReactElement {
   const spec = BUILDINGS[id].landmark!;

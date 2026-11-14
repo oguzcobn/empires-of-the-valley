@@ -14,6 +14,7 @@ import {
   isBuilt,
   techOutputPermille,
 } from '../game/systems/economy';
+import { neighborhoodServices } from '../game/systems/crime';
 import { buildingById } from '../game/systems/grid';
 import { landmarkStage, requiredTicks } from '../game/systems/tick';
 import { DESIGNABLE, PLAYABLE_STYLES } from '../game/data/architecture';
@@ -336,6 +337,16 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         </button>
       </header>
       <p className="muted">{t(`building.${b.definitionId}.desc`)}</p>
+      {b.definitionId === 'hut' && isBuilt(b) && (() => {
+        const district = neighborhoodServices(p).homes.find(({ home }) => home.id === b.id);
+        return district && (
+          <section className="section">
+            <Row label="Günlük suç riski">%{district.risk}</Row>
+            <Row label="Polis devriyesi">{district.protection > 0 ? 'Var' : 'Yok'}</Row>
+            <Row label="Kent hizmetlerinden mutluluk">+{district.community}</Row>
+          </section>
+        );
+      })()}
       <StatusLine b={b} />
 
       {b.state === 'construction' && def.landmark && (

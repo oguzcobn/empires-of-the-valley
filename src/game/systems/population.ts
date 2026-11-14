@@ -12,11 +12,12 @@ import {
   TAX_HAPPINESS,
 } from '../data/balance';
 import { assignedWorkers, housingCapacity, idleWorkers, isOperating, totalPopulation } from './economy';
+import { neighborhoodServices } from './crime';
 import { logEvent } from './events';
 import { heritageHappiness } from './tourism';
 
 export interface HappinessFactor {
-  id: 'base' | 'food' | 'housing' | 'employment' | 'education' | 'tax' | 'tools' | 'maintenance' | 'heritage';
+  id: 'base' | 'food' | 'housing' | 'employment' | 'education' | 'tax' | 'tools' | 'maintenance' | 'heritage' | 'community' | 'crime';
   value: number;
 }
 
@@ -34,6 +35,7 @@ export function happinessFactors(p: Province): HappinessFactor[] {
   const daysOfFood = pop > 0 ? p.stocks.food / (pop * FOOD_PER_CITIZEN_PER_DAY) : 99;
   const starving = p.population.shortfallToday > 0 || p.population.starvationDays > 0 || p.stocks.food <= 0;
   const idleRatio = p.population.adults > 0 ? idleWorkers(p) / p.population.adults : 0;
+  const services = neighborhoodServices(p);
   return [
     { id: 'base', value: 60 },
     { id: 'food', value: starving ? -25 : daysOfFood >= 5 ? 10 : daysOfFood >= 2 ? 4 : -5 },
@@ -47,6 +49,8 @@ export function happinessFactors(p: Province): HappinessFactor[] {
     { id: 'tools', value: p.stocks.tools <= 0 ? -3 : 0 },
     { id: 'maintenance', value: averageCondition(p) < 5000 ? -4 : 0 },
     { id: 'heritage', value: heritageHappiness(p) },
+    { id: 'community', value: services.community },
+    { id: 'crime', value: -Math.round(services.risk / 6) },
   ];
 }
 

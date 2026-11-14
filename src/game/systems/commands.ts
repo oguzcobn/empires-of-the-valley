@@ -26,7 +26,7 @@ import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { homeProvince, idleWorkers, isBuilt, storageCaps, totalPopulation } from './economy';
 import { logEvent } from './events';
-import { buildingById, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter } from './grid';
+import { buildingById, canLink, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter } from './grid';
 import { checkRoadSite, checkSite, roadTypeFor } from './placement';
 import { investedCost, levelCost, repairCost, restyleCost, sameLook } from './architecture';
 import { lookSchema } from '../save/lookSchema';
@@ -55,7 +55,7 @@ export type Command =
   | { type: 'cancelVessel'; orderId: number }
   | { type: 'sellYacht' }
   | { type: 'placeRoad'; x: number; y: number }
-  | { type: 'placeRoadRoute'; start: RoadPoint; end: RoadPoint }
+  | { type: 'placeRoadRoute'; start: RoadPoint; end: RoadPoint; bridge?: boolean }
   | { type: 'paveRoad'; x: number; y: number }
   | { type: 'buildTerrace'; x: number; y: number }
   | { type: 'removeRoad'; x: number; y: number }
@@ -168,7 +168,7 @@ export interface RoadPlan {
 }
 
 /** Trace a diagonal or axial street in orthogonal steps that the road network can join. */
-export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint): RoadPlan {
+export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, bridge = false): RoadPlan {
   const p = homeProvince(s);
   const plan: RoadPlan = { tiles: [], cost: {}, error: null, blocked: null };
   for (const point of [start, end]) {
@@ -181,6 +181,20 @@ export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint): R
   const dy = Math.abs(end.y - start.y);
   const stepX = Math.sign(end.x - start.x);
   const stepY = Math.sign(end.y - start.y);
+  if (bridge) {
+    const banks = [start, end].every(({ x, y }) => {
+      const terrain = tileAt(p, x, y)!.terrain;
+      return terrain !== 'water' && terrain !== 'lake';
+    });
+    if (!banks || (dx > 0 && dy > 0) || dx + dy < 2)
+      return { ...plan, error: { key: 'err.bridgeBanks' } };
+    for (let i = 1; i < dx + dy; i++) {
+      const x = start.x + stepX * i;
+      const y = start.y + stepY * i;
+      if (tileAt(p, x, y)?.terrain !== 'water')
+        return { ...plan, error: { key: 'err.bridgeRiver' }, blocked: { x, y } };
+    }
+  }
   let x = start.x;
   let y = start.y;
   let movedX = 0;
@@ -202,6 +216,17 @@ export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint): R
     } else if (movedY < dy) {
       y += stepY;
       movedY++;
+    }
+  }
+
+  if (bridge) {
+    for (let i = 1; i <= dx + dy; i++) {
+      const x = start.x + stepX * i;
+      const y = start.y + stepY * i;
+      const from = tileAt(preview, x - stepX, y - stepY)!;
+      const to = tileAt(preview, x, y)!;
+      if (!canLink(from, to))
+        return { ...plan, error: { key: 'err.roadTooSteep', params: { n: Math.abs(from.height - to.height) } }, blocked: { x, y } };
     }
   }
 
@@ -262,7 +287,7 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       return 'error' in quote ? quote.error : missingFor(p, quote.cost);
     }
     case 'placeRoadRoute':
-      return (roadPlan ?? planRoadRoute(s, cmd.start, cmd.end)).error;
+      return (roadPlan ?? planRoadRoute(s, cmd.start, cmd.end, cmd.bridge)).error;
     case 'paveRoad': {
       if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y)) return { key: 'err.invalid' };
       const road = tileAt(p, cmd.x, cmd.y);
@@ -635,7 +660,7 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
  * state together with a user-facing reason; an accepted one returns a new state.
  */
 export function executeCommand(state: GameState, cmd: Command): CommandResult {
-  const roadPlan = cmd.type === 'placeRoadRoute' ? planRoadRoute(state, cmd.start, cmd.end) : undefined;
+  const roadPlan = cmd.type === 'placeRoadRoute' ? planRoadRoute(state, cmd.start, cmd.end, cmd.bridge) : undefined;
   const error = validateCommand(state, cmd, roadPlan);
   if (error) return { ok: false, error };
   return {

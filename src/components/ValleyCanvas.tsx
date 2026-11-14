@@ -56,7 +56,7 @@ export function ValleyCanvas(): ReactElement {
   const roadTarget = useApp((s) => s.tool.kind === 'roadPlan' ? s.tool.end ?? s.hover : null);
   const roadPlan = useMemo(
     () => game && tool.kind === 'roadPlan' && tool.start && roadTarget
-      ? planRoadRoute(game, tool.start, roadTarget) : null,
+      ? planRoadRoute(game, tool.start, roadTarget, tool.bridge) : null,
     [game, tool, roadTarget],
   );
   const roadPlanRef = useRef(roadPlan);
@@ -124,8 +124,8 @@ export function ValleyCanvas(): ReactElement {
         if (tool.kind === 'roadPlan') {
           if (!tileAt(homeProvince(s.game), x, y)) return;
           const point = { x, y };
-          if (tool.start) s.setTool({ kind: 'roadPlan', start: tool.start, end: point });
-          else s.setTool({ kind: 'roadPlan', start: point });
+          if (tool.start) s.setTool({ ...tool, end: point });
+          else s.setTool({ ...tool, start: point });
         } else if (tool.kind === 'build') {
           if (window.matchMedia('(pointer: coarse)').matches) {
             setPlacement({ x, y });
@@ -219,10 +219,10 @@ export function ValleyCanvas(): ReactElement {
         <div className="mobile-place-actions"><button type="button" onClick={() => {setPlacement(null);useApp.getState().setHover(null);}}>İptal</button><button type="button" disabled={!!placementError} onClick={confirmPlacement}>✓ Buraya inşa et</button></div>
       </div>}
       {tool.kind === 'roadPlan' && (
-        <div className="road-plan-controls" aria-label="Yol planı">
+        <div className="road-plan-controls" aria-label={tool.bridge ? 'Köprü planı' : 'Yol planı'}>
           <p role="status">
-            {!tool.start ? 'Mevcut yola veya yolun yanındaki bir kareye dokun.' :
-              !tool.end ? 'Yolun biteceği kareyi seç.' :
+            {!tool.start ? (tool.bridge ? 'Yola bağlı bir kıyı karesi seç.' : 'Mevcut yola veya yolun yanındaki bir kareye dokun.') :
+              !tool.end ? (tool.bridge ? 'Aynı hizada karşı kıyıyı seç.' : 'Yolun biteceği kareyi seç.') :
               roadPlan?.error ? t(roadPlan.error.key, roadPlan.error.params) :
               roadPlan && [
                 `${roadPlan.tiles.length} yeni kare`,
@@ -234,14 +234,14 @@ export function ValleyCanvas(): ReactElement {
           <div>
             <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'select' })}>Kapat</button>
             {tool.start && (
-              <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'roadPlan' })}>Sıfırla</button>
+              <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'roadPlan', bridge: tool.bridge })}>Sıfırla</button>
             )}
             {tool.start && tool.end && (
               <button type="button" className="btn primary" disabled={!roadPlan || !!roadPlan.error} onClick={() => {
                 const s = useApp.getState();
-                if (tool.start && tool.end && s.dispatch({ type: 'placeRoadRoute', start: tool.start, end: tool.end }))
-                  s.setTool({ kind: 'roadPlan' });
-              }}>Yolu İnşa Et</button>
+                if (tool.start && tool.end && s.dispatch({ type: 'placeRoadRoute', start: tool.start, end: tool.end, bridge: tool.bridge }))
+                  s.setTool({ kind: 'roadPlan', bridge: tool.bridge });
+              }}>{tool.bridge ? 'Köprüyü İnşa Et' : 'Yolu İnşa Et'}</button>
             )}
           </div>
         </div>

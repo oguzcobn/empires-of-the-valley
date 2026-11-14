@@ -320,6 +320,36 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
       level({ cost: { wood: u(60), stone: u(50), gold: u(25) }, buildTicks: 4 * DAY, workerSlots: 3, upkeepGold: u(0.6), requires: { townCenterLevel: 2 } }),
     ],
   },
+  mosque: {
+    id: 'mosque', category: 'civic', era: 1, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 3 },
+    levels: [level({ cost: { wood: u(24), stone: u(32), gold: u(8) }, buildTicks: 3 * DAY, workerSlots: 1, upkeepGold: u(0.12) })],
+  },
+  church: {
+    id: 'church', category: 'civic', era: 1, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 3 },
+    levels: [level({ cost: { wood: u(24), stone: u(32), gold: u(8) }, buildTicks: 3 * DAY, workerSlots: 1, upkeepGold: u(0.12) })],
+  },
+  theatre: {
+    id: 'theatre', category: 'civic', era: 1, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 5, attraction: 8 },
+    levels: [level({ cost: { wood: u(45), stone: u(36), gold: u(15) }, buildTicks: 4 * DAY, workerSlots: 2, upkeepGold: u(0.25), requires: { population: 20 } })],
+  },
+  cinema: {
+    id: 'cinema', category: 'civic', era: 1, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 6, attraction: 10 },
+    levels: [level({ cost: { wood: u(48), stone: u(45), gold: u(25), tools: u(12) }, buildTicks: 5 * DAY, workerSlots: 2, upkeepGold: u(0.35), requires: { townCenterLevel: 2 } })],
+  },
+  police_station: {
+    id: 'police_station', category: 'civic', era: 1, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { patrolRadius: 5 },
+    levels: [level({ cost: { wood: u(30), stone: u(26), gold: u(8) }, buildTicks: 3 * DAY, workerSlots: 2, upkeepGold: u(0.22) })],
+  },
   shipyard: {
     id: 'shipyard',
     category: 'production',

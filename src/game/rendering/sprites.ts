@@ -123,6 +123,7 @@ export function drawGroundTile(
   detail = 2,
   paved = false,
   pavedLinks: PavedLinks = { negX: false, posX: false, negY: false, posY: false },
+  bridgeAlongY = false,
 ): void {
   const h = ctx.height;
   const z = h * LEVEL;
@@ -182,7 +183,7 @@ export function drawGroundTile(
     g.circle(ox + 8, oy + 12, 1.6).fill(0xfff4b8);
     g.circle(ox - 9, oy + 19, 1.6).fill(0xf7c6d9);
   }
-  if (road) drawRoad(g, ox, oy, roadType, pal, detail, paved, pavedLinks);
+  if (road) drawRoad(g, ox, oy, roadType, pal, detail, paved, pavedLinks, bridgeAlongY);
 }
 
 function cliffTexture(g: Graphics, ax: number, ay: number, bx: number, by: number, drop: number, terrain: TerrainId, c: number): void {
@@ -213,6 +214,7 @@ function drawRoad(
   g: Graphics, ox: number, oy: number, type: RoadType,
   pal: SeasonPalette, detail: number, paved = false,
   links: PavedLinks = { negX: false, posX: false, negY: false, posY: false },
+  bridgeAlongY = false,
 ): void {
   const inset = 0.12;
   const d = [ox, oy + 32 * inset, ox + 32 * (1 - inset), oy + 16, ox, oy + 32 * (1 - inset), ox - 32 * (1 - inset), oy + 16];
@@ -294,19 +296,25 @@ function drawRoad(
     return;
   }
   if (type === 'bridge') {
-    // stone piers in the water and a timber deck with rails
-    g.rect(ox - 14, oy + 16, 6, 9).fill(0x9a958a);
-    g.rect(ox + 8, oy + 16, 6, 9).fill(0x8a857a);
-    g.poly(d).fill(0xa8794a);
-    if (detail >= 1)
-      for (let i = 1; i < 6; i++) {
-        const t = i / 6;
-        g.moveTo(ox - 28 * (1 - t), oy + 16 - 14 * (1 - t) + 14 * t * 0)
-          .lineTo(ox + 28 * t, oy + 16 + 14 * t - 14)
-          .stroke({ color: 0x7d5532, width: 0.6, alpha: 0.6 });
+    const point = (u: number, v: number, z = 0): Pt => {
+      const [x, y] = bridgeAlongY ? [v, u] : [u, v];
+      return [ox + (x - y) * 32, oy + (x + y) * 16 - z];
+    };
+    const front = (u: number, z: number) => point(u, 0.79, z);
+    const arch: Pt[] = [front(0, 0), front(0.18, 0)];
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8;
+      arch.push(front(0.18 + t * 0.64, Math.sin(t * Math.PI) * 7));
+    }
+    arch.push(front(0.82, 0), front(1, 0), front(1, 9), front(0, 9));
+    g.poly(arch.flat()).fill(0x90816a);
+    g.poly([point(0, 0.21, 9), point(1, 0.21, 9), front(1, 9), front(0, 9)].flat()).fill(0xd7c3a0);
+    for (const edge of [0.21, 0.79]) {
+      line(g, point(0, edge, 12), point(1, edge, 12), 0xb7a17e, 2.2);
+      for (const u of detail >= 1 ? [0.04, 0.34, 0.66, 0.96] : [0.04, 0.96]) {
+        line(g, point(u, edge, 9), point(u, edge, 14), 0xe0ceb1, 1.8);
       }
-    g.moveTo(ox - 28, oy + 14).lineTo(ox, oy).stroke({ color: 0x5a3b22, width: 1.4 });
-    g.moveTo(ox, oy + 30).lineTo(ox + 28, oy + 16).stroke({ color: 0x5a3b22, width: 1.4 });
+    }
     return;
   }
   const fill =

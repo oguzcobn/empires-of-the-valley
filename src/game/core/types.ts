@@ -27,6 +27,11 @@ export type BuildingId =
   | 'inn'
   | 'watchtower'
   | 'barracks'
+  | 'mosque'
+  | 'church'
+  | 'cinema'
+  | 'theatre'
+  | 'police_station'
   | 'shipyard'
   | LandmarkId;
 
@@ -154,7 +159,7 @@ export interface LevelSpec {
 }
 
 export type BuildingCategory =
-  'housing' | 'production' | 'storage' | 'education' | 'governance' | 'landmark';
+  'housing' | 'production' | 'storage' | 'education' | 'governance' | 'civic' | 'landmark';
 
 /** Special terrain rule of a landmark, checked for real by placement (see systems/placement.ts). */
 export type SiteRule =
@@ -212,6 +217,8 @@ export interface BuildingDefinition {
     marketGold?: number;
     safety?: number;
     safetyRadius?: number;
+    community?: number;
+    patrolRadius?: number;
   };
   landmark?: LandmarkSpec;
 }

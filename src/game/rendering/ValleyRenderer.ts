@@ -37,7 +37,7 @@ export type Tool =
   | { kind: 'select' }
   | { kind: 'build'; buildingId: BuildingId; style?: ArchitectureStyle; look?: BuildingLook | null }
   | { kind: 'road' }
-  | { kind: 'roadPlan'; start?: RoadPoint; end?: RoadPoint }
+  | { kind: 'roadPlan'; start?: RoadPoint; end?: RoadPoint; bridge?: boolean }
   | { kind: 'pave' }
   | { kind: 'terrace' }
   | { kind: 'demolish' }
@@ -559,8 +559,12 @@ export class ValleyRenderer {
           detail,
           t.paved ?? false,
           getPavedLinks(p, x, y),
+          t.road && t.roadType === 'bridge'
+            ? Number(!!tileAt(p, x, y - 1)?.road) + Number(!!tileAt(p, x, y + 1)?.road) >
+              Number(!!tileAt(p, x - 1, y)?.road) + Number(!!tileAt(p, x + 1, y)?.road)
+            : false,
         );
-        if (t.terrain === 'water' || t.terrain === 'lake') this.waterTiles.push([x, y]);
+        if ((t.terrain === 'water' || t.terrain === 'lake') && !t.road) this.waterTiles.push([x, y]);
         if (t.road) this.roadTiles.push([x, y]);
         if (t.road && t.paved && t.roadType === 'dirt') this.pavedRoadTiles.push([x, y]);
       }
@@ -1343,6 +1347,17 @@ export class ValleyRenderer {
 
   private drawRange(g: Graphics, p: Province, id: BuildingId, x: number, y: number): void {
     const def = BUILDINGS[id];
+    if (def.services?.patrolRadius) {
+      const [w, h] = def.footprint;
+      const r = def.services.patrolRadius;
+      for (let dy = -r; dy < h + r; dy++) {
+        for (let dx = -r; dx < w + r; dx++) {
+          const distance = Math.max(-dx, dx - w + 1, 0) + Math.max(-dy, dy - h + 1, 0);
+          if (distance <= r && tileAt(p, x + dx, y + dy))
+            this.tileFill(g, x + dx, y + dy, COLORS.range, 0.23);
+        }
+      }
+    }
     if (!def.harvests) return;
     const r = def.harvests.radius;
     this.outline(g, x - r, y - r, def.footprint[0] + 2 * r, def.footprint[1] + 2 * r, COLORS.range, 2, 0.7);

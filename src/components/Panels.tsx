@@ -13,6 +13,7 @@ import { cityOf, districtName } from '../game/data/cities';
 import { citizens } from '../game/data/citizens';
 import type { WorldProvince } from '../game/data/worldMap';
 import { PACT_PRICES, validateCommand } from '../game/systems/commands';
+import { neighborhoodServices } from '../game/systems/crime';
 import { forecastBattle } from '../game/systems/combat';
 import {
   UNCAPPED,
@@ -116,6 +117,7 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
   const pop = totalPopulation(p);
   const cap = housingCapacity(p);
   const factors = happinessFactors(p);
+  const crime = neighborhoodServices(p);
   const blocker = growthBlocker(p, calendar(game.tick).day);
   return (
     <div className="grid-2">
@@ -156,6 +158,23 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
           </Row>
         ))}
         <p className="hint">{t('population.services')}</p>
+      </section>
+      <section>
+        <h4>Mahalle Güvenliği</h4>
+        <Row label="Günlük suç riski">%{crime.risk}</Row>
+        <Row label="Devriye kapsamındaki evler">
+          {crime.homes.filter((entry) => entry.protection > 0).length} / {crime.homes.length}
+        </Row>
+        <p className="hint">Suç riski 30 nüfustan itibaren başlar. İşsizlik, açlık ve yüksek vergi riski artırır. Polis atanan karakollar yakın evleri korur.</p>
+        <h4>Son Olaylar</h4>
+        {(() => {
+          const incidents = game.eventLog.filter((event) =>
+            event.key === 'event.crimeTheft' || event.key === 'event.crimeVandalism' || event.key === 'event.crimePatrol',
+          ).slice(-5).reverse();
+          return incidents.length ? <ul>{incidents.map((event) => (
+            <li key={event.id}>{calendar(event.tick).day}. gün · {t(event.key, event.params)}</li>
+          ))}</ul> : <p className="hint">Kayıtlı olay yok.</p>;
+        })()}
       </section>
       <section className="citizen-roster">
         <h4>Şehrin Sakinleri</h4>

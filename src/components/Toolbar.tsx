@@ -62,15 +62,26 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           {t('tool.road')}
         </button>
         <button
-          className={`btn tool ${tool.kind === 'roadPlan' ? 'active' : ''}`}
-          aria-pressed={tool.kind === 'roadPlan'}
+          className={`btn tool ${tool.kind === 'roadPlan' && !tool.bridge ? 'active' : ''}`}
+          aria-pressed={tool.kind === 'roadPlan' && !tool.bridge}
           onClick={() => {
             toggleBuild(false);
-            setTool(tool.kind === 'roadPlan' ? { kind: 'select' } : { kind: 'roadPlan' });
+            setTool(tool.kind === 'roadPlan' && !tool.bridge ? { kind: 'select' } : { kind: 'roadPlan' });
           }}
           data-testid="tool-road-plan"
         >
           Yol Planla
+        </button>
+        <button
+          className={`btn tool ${tool.kind === 'roadPlan' && tool.bridge ? 'active' : ''}`}
+          aria-pressed={tool.kind === 'roadPlan' && tool.bridge === true}
+          onClick={() => {
+            toggleBuild(false);
+            setTool(tool.kind === 'roadPlan' && tool.bridge ? { kind: 'select' } : { kind: 'roadPlan', bridge: true });
+          }}
+          data-testid="tool-bridge"
+        >
+          Köprü
         </button>
         <button
           className={`btn tool ${tool.kind === 'pave' ? 'active' : ''}`}
