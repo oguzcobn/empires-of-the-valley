@@ -340,30 +340,23 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
     shipyard: [look({ wall: 'stone_timber', roofMaterial: 'shingle', roof: 'gable', door: 'double', facade: 'umber' })],
   },
   turkish: {
-    // Anatolian village house -> Black Sea timber house -> Safranbolu mansion
+    // User-approved Turkish apartment progression: ochre lived-in block -> blue-balcony block -> tall red-balcony block.
+    // Preserve the 'hut' building ID and levels for existing saves.
     hut: [
-      look({ wall: 'plaster', roofMaterial: 'earth', roof: 'flat', windows: 'small', facade: 'ochre', chimney: 'central' }),
       look({
-        floors: 2,
-        wall: 'stone_timber',
-        roofMaterial: 'shingle',
-        roof: 'hip',
-        windows: 'latticed',
-        chimney: 'central',
-        garden: 'orchard',
-        facade: 'umber',
+        floors: 4, wall: 'plaster', roofMaterial: 'clay', roof: 'hip',
+        windows: 'sash', balcony: 'iron', facade: 'ochre',
+        decor: 'flowerboxes', chimney: 'none',
       }),
       look({
-        floors: 3,
-        wall: 'timber_frame',
-        roofMaterial: 'clay',
-        roof: 'hip',
-        windows: 'latticed',
-        balcony: 'cumba',
-        door: 'double',
-        chimney: 'central',
-        decor: 'flowerboxes',
-        facade: 'white',
+        floors: 4, wall: 'plaster', roofMaterial: 'slate', roof: 'hip',
+        windows: 'sash', balcony: 'iron', facade: 'cream',
+        decor: 'flowerboxes', chimney: 'none',
+      }),
+      look({
+        floors: 10, wall: 'plaster', roofMaterial: 'clay', roof: 'hip',
+        windows: 'sash', balcony: 'iron', facade: 'white',
+        decor: 'flowerboxes', chimney: 'none',
       }),
     ],
     town_center: [
