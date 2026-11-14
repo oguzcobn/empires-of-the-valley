@@ -25,7 +25,7 @@ describe('new culture content packs', () => {
     expect(CULTURES.medieval_european.bonuses.watchRadius).toBe(1);
     expect(isPlayableStyle('turkish')).toBe(true);
     expect(isPlayableStyle('scottish')).toBe(true);
-    expect(isPlayableStyle('japanese')).toBe(false);
-    expect(isPlayableStyle('medieval_european')).toBe(false);
+    expect(isPlayableStyle('japanese')).toBe(true);
+    expect(isPlayableStyle('medieval_european')).toBe(true);
   });
 });
