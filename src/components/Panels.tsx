@@ -425,6 +425,7 @@ function ArmyPanel({ game }: { game: GameState }): ReactElement {
   const p = homeProvince(game);
   const ready = validateCommand(game, { type: 'recruitMilitia', amount: 5 }) === null;
   const towers = p.buildings.filter((b) => b.definitionId === 'watchtower' && b.state === 'active').length;
+  const barracksCount = p.buildings.filter((b) => b.definitionId === 'barracks' && b.state === 'active').length;
   const force = game.militia ?? 0;
   const order = game.armyOrder ?? 'defend';
   return (
@@ -433,8 +434,9 @@ function ArmyPanel({ game }: { game: GameState }): ReactElement {
         <h4>Şehir Savunma Birliği</h4>
         <Row label="Eğitimli milis">{force} asker</Row>
         <Row label="Gözetleme kulesi">{towers}</Row>
+        <Row label="Kışla">{barracksCount}</Row>
         <Row label="Güvenli ilçeler">{game.claimedDistricts?.length ?? 0}</Row>
-        <p className="hint">5 milis eğitmek için 10 altın, 5 yiyecek ve çalışan bir gözetleme kulesi gerekir.</p>
+        <p className="hint">Kışlada çalışan her eğitmen günde 1 milis üretir (2 altın, 1 yiyecek). Ayrıca çalışan kışla veya gözetleme kulesiyle 10 altın ve 5 yiyecek karşılığında 5 milis eğitebilirsin.</p>
         <button className="btn primary" disabled={!ready} onClick={() => dispatch({ type: 'recruitMilitia', amount: 5 })}>
           +5 Milis Eğit
         </button>
