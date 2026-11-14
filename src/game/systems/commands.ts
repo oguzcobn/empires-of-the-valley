@@ -33,6 +33,7 @@ import { fleetCount } from './tourism';
 import { evaluateQuests } from './quests';
 import { findRoadPath } from '../rendering/armyPath';
 import { WORLD_BY_ID } from '../data/worldMap';
+import { forecastBattle } from './combat';
 
 export type Command =
   | {
@@ -66,6 +67,7 @@ export type Command =
   | { type: 'setGameSpeed'; speed: GameSpeed }
   | { type: 'setAutoPause'; enabled: boolean }
   | { type: 'claimDistrict'; provinceId: string }
+  | { type: 'attackDistrict'; provinceId: string }
   | { type: 'recruitMilitia'; amount: number }
   | { type: 'setArmyOrder'; order: 'defend' | 'patrol' }
   | { type: 'moveMilitia'; x: number; y: number };
@@ -292,6 +294,15 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
       if (totalPopulation(p) < 20) return { key: 'err.needPopulation', params: { n: 20 } };
       return missingFor(p, { gold: 20000 + (s.claimedDistricts?.length ?? 0) * 10000 });
     }
+    case 'attackDistrict': {
+      const region = WORLD_BY_ID[cmd.provinceId];
+      if (!region || region.id === s.homeProvinceId || s.claimedDistricts?.includes(region.id)) return { key: 'err.invalid' };
+      const owned = [s.homeProvinceId, ...(s.claimedDistricts ?? [])];
+      if (!region.neighbors.some((id) => owned.includes(id))) return { key: 'err.invalid' };
+      if (s.mode === 'campaign' && !s.completedChapters.includes(1)) return { key: 'err.invalid' };
+      if ((s.militia ?? 0) < 5) return { key: 'err.needMilitia' };
+      return missingFor(p, { gold: 5000, food: 3000 });
+    }
     case 'recruitMilitia':
       if (cmd.amount !== 5 || (s.militia ?? 0) + cmd.amount > 100) return { key: 'err.invalid' };
       if (!p.buildings.some((b) => b.definitionId === 'watchtower' && isBuilt(b))) return { key: 'err.invalid' };
@@ -473,6 +484,19 @@ function applyCommand(s: GameState, cmd: Command): void {
       (s.claimedDistricts ??= []).push(cmd.provinceId);
       if (!s.revealedProvinceIds.includes(cmd.provinceId)) s.revealedProvinceIds.push(cmd.provinceId);
       logEvent(s, 'success', 'event.districtClaimed', { n: s.claimedDistricts.length });
+      break;
+    }
+    case 'attackDistrict': {
+      const battle = forecastBattle(s, cmd.provinceId)!;
+      pay(p, { gold: 5000, food: 3000 });
+      s.militia = Math.max(0, (s.militia ?? 0) - battle.casualties);
+      if (battle.victory) {
+        (s.claimedDistricts ??= []).push(cmd.provinceId);
+        if (!s.revealedProvinceIds.includes(cmd.provinceId)) s.revealedProvinceIds.push(cmd.provinceId);
+        logEvent(s, 'success', 'event.battleWon', { losses: battle.casualties });
+      } else {
+        logEvent(s, 'warning', 'event.battleLost', { losses: battle.casualties });
+      }
       break;
     }
     case 'recruitMilitia':

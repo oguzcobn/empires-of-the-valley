@@ -12,6 +12,7 @@ import { cityOf, districtName } from '../game/data/cities';
 import { citizens } from '../game/data/citizens';
 import type { WorldProvince } from '../game/data/worldMap';
 import { validateCommand } from '../game/systems/commands';
+import { forecastBattle } from '../game/systems/combat';
 import {
   UNCAPPED,
   computeFlows,
@@ -328,6 +329,8 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
   const adjacent = pickedProvince.neighbors.some((id) => owned.includes(id));
   const cost = 20 + (game.claimedDistricts?.length ?? 0) * 10;
   const available = validateCommand(game, { type: 'claimDistrict', provinceId: picked }) === null;
+  const attackAvailable = validateCommand(game, { type: 'attackDistrict', provinceId: picked }) === null;
+  const battle = forecastBattle(game, picked);
   const label = (p: WorldProvince): string => p.id === game.homeProvinceId
     ? city.name
     : districtName(game.cityId, game.culture, WORLD_PROVINCES.indexOf(p));
@@ -385,6 +388,15 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
                 İlçeyi Yönetimine Kat
               </button>
               {!available && <p className="hint">Yeterli altın, nüfus ve komşu toprak şartlarını kontrol et.</p>}
+              <div className="actions">
+                <button className="btn" disabled={!attackAvailable}
+                  onClick={() => dispatch({ type: 'attackDistrict', provinceId: picked })}
+                  data-testid="attack-district">
+                  ⚔ Otomatik Savaş
+                </button>
+              </div>
+              {battle && <p className="hint">Milis: {battle.attackers} · Hücum: {battle.attackPower} · Savunma: {battle.defensePower} · Tahmini kayıp: {battle.casualties} · {battle.victory ? 'Zafer bekleniyor' : 'Mağlubiyet bekleniyor'}. Sefer bedeli: 5 altın, 3 yiyecek.</p>}
+
             </>
           )}
           <p className="hint">Bölgeler stratejik haritada genişler. Ayrı ilçelerde bina inşası sonraki geliştirme aşamasıdır.</p>
