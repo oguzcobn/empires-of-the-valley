@@ -120,6 +120,8 @@ export const tr = {
   'panel.army': 'Ordu',
   'event.districtClaimed': '{n}. ilçe yönetiminize katıldı.',
   'event.battleWon': 'Savaş kazanıldı! {losses} asker kaybedildi; bölge ele geçirildi.',
+  'event.pactSigned': 'Diplomatik anlaşma imzalandı: {pact}.',
+  'err.truceActive': 'Saldırmazlık anlaşması nedeniyle bu bölgeye saldıramazsınız.',
   'event.battleLost': 'Savaş kaybedildi. {losses} asker kaybedildi.',
   'err.needMilitia': 'Saldırmak için en az 5 milis gerekiyor.',
   'event.militiaRecruited': 'Milis sayısı {n} kişiye yükseldi.',
@@ -426,6 +428,7 @@ export const tr = {
   'economy.note':
     'Hazine eksiye düşemez: bakımı ödenemeyen yapı o saat çalışmaz. Vergi oranı ve tüccar Köy Meydanı’ndadır.',
   'flow.taxes': 'Konut vergisi',
+  'flow.tradePacts': 'Ticaret anlaşmaları',
   'flow.citizens': 'Halk (kişi başı 0,25)',
 
   'population.demographics': 'Nüfus yapısı',
