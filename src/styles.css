@@ -1681,3 +1681,13 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
   transition: opacity .45s ease;
   pointer-events: none;
 }
+
+/* Touch-friendly, two-step construction: preview the tile before committing resources. */
+.mobile-place-hint,.mobile-place-actions{display:none}
+@media (pointer:coarse){
+ .valley-canvas{position:relative}
+ .mobile-place-hint{display:block;position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:30;pointer-events:none;max-width:calc(100% - 24px);padding:10px 14px;border-radius:14px;background:rgba(16,29,39,.9);color:#fff;font-size:13px;font-weight:700;text-align:center;box-shadow:0 4px 18px #0004}
+ .mobile-place-actions{display:flex;position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:31;gap:10px;width:min(440px,calc(100% - 24px));pointer-events:auto}
+ .mobile-place-actions button{flex:1;min-height:52px;border-radius:14px;border:1px solid #d4dfd4;background:#f4f6ef;color:#17251c;font-size:15px;font-weight:750;box-shadow:0 5px 20px #0004;touch-action:manipulation}
+ .mobile-place-actions button:last-child{flex:2;background:#c8ed86;border-color:#8ebd50;color:#182b14}
+}
