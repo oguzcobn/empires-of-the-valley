@@ -393,6 +393,17 @@ function house(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level
       const front = v1 + 0.065;
       line(ctx, P(a, front, z + 3.8), P(b, front, z + 3.8), rail, 1.6);
       if (ctx.detail >= 2) {
+        // Lived-in Turkish balconies: alternating planters and laundry, deterministic
+        // per floor to avoid animation flicker or changes to saved game data.
+        if (floor % 2 === 0) {
+          const pot = P(a + (b - a) * 0.18, front + 0.01, z + 4);
+          ctx.g.circle(pot[0], pot[1], 2.2).fill(0xb86d48);
+          ctx.g.circle(pot[0], pot[1] - 2.4, 2.7).fill(0x4b8754);
+        } else {
+          const laundry = P(a + (b - a) * 0.6, front + 0.01, z + 3.7);
+          ctx.g.roundRect(laundry[0] - 2.5, laundry[1], 5, 5.5, 0.5)
+            .fill(floor % 3 === 0 ? 0xe6e1d5 : 0x75a8ca);
+        }
         for (const t of [0, 0.5, 1]) {
           const u = a + (b - a) * t;
           line(ctx, P(u, front, z), P(u, front, z + 3.8), rail, 0.9);
