@@ -9,7 +9,6 @@ import {
   perimeterPairs,
   tileAt,
   tilesInRange,
-  touchesRoads,
   townCenter,
 } from './grid';
 import type { GridLike } from './grid';
@@ -84,14 +83,6 @@ export function siteRuleError(g: GridLike, def: BuildingDefinition, x: number, y
       return null;
     }
   }
-}
-
-/** Road-related site requirements that only make sense once the city exists (city garden). */
-function siteRoadError(g: GridLike, def: BuildingDefinition, x: number, y: number): MessageRef | null {
-  if (def.landmark?.site !== 'cityGarden') return null;
-  const [w, h] = def.footprint;
-  const roads = countInRadius(g, x, y, x + w - 1, y + h - 1, 3, (tx, ty) => tileAt(g, tx, ty)!.road);
-  return roads >= 6 ? null : { key: 'err.site.cityGarden' };
 }
 
 /** Terrain-only part of the site check (bounds, collisions, terrain types, flatness, site rule). */
