@@ -57,7 +57,7 @@ export function techScalar(
 
 /** Storage caps from completed storage buildings. Gold (treasury) and research are uncapped. */
 export function storageCaps(
-  s: Pick<GameState, 'researchedTechIds'>,
+  s: Pick<GameState, 'researchedTechIds'> & Partial<Pick<GameState, 'cheatStorageBonus'>>,
   p: Province,
   without?: string,
 ): ResourceMap {
@@ -68,7 +68,9 @@ export function storageCaps(
     for (const key of Object.keys(storage) as ResourceId[]) caps[key] += storage[key] ?? 0;
   }
   const mult = techScalar(s, 'storageMultiplier');
-  for (const key of ['wood', 'stone', 'food', 'tools'] as const) caps[key] = mulPermille(caps[key], mult);
+  for (const key of ['wood', 'stone', 'food', 'tools'] as const) {
+    caps[key] = mulPermille(caps[key], mult) + (s.cheatStorageBonus ?? 0);
+  }
   return caps;
 }
 

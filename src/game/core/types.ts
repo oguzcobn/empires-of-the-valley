@@ -389,6 +389,8 @@ export interface GameState {
   speed: GameSpeed;
   /** Optional for legacy saves; missing means normal difficulty. */
   difficulty?: Difficulty;
+  /** Extra storage capacity granted by resource cheats (milli-units). Optional for old saves. */
+  cheatStorageBonus?: number;
   playerFactionId: FactionId;
   /** Default culture for new buildings. Each building also stores its own style. */
   culture: ArchitectureStyle;
