@@ -1,0 +1,34 @@
+import { describe, expect, it } from 'vitest';
+import { CITIES, cityForCulture, cityOf, districtName } from '../game/data/cities';
+import { isPlayableStyle } from '../game/data/architecture';
+import { createNewGame } from '../game/scenarios/newGame';
+import { createSaveFile, loadSaveFile } from '../game/save/serialize';
+
+describe('future cities remain safely locked until content is complete', () => {
+  it('maps the four cultures to distinct cities and 24 districts', () => {
+    expect(cityForCulture('turkish')).toBe('trabzon');
+    expect(cityForCulture('scottish')).toBe('edinburgh');
+    expect(cityForCulture('japanese')).toBe('kyoto');
+    expect(cityForCulture('medieval_european')).toBe('prague');
+    for (const city of Object.values(CITIES)) {
+      expect(city.districts).toHaveLength(24);
+      expect(cityOf(city.id, city.culture).name).toBe(city.name);
+      expect(districtName(city.id, city.culture, 0)).toBe(city.districts[0]);
+    }
+  });
+
+  it('does not expose unfinished cultures in the new game flow', () => {
+    expect(CITIES.kyoto.playable).toBe(false);
+    expect(CITIES.prague.playable).toBe(false);
+    expect(isPlayableStyle('japanese')).toBe(false);
+    expect(isPlayableStyle('medieval_european')).toBe(false);
+    expect(() => createNewGame({ seed: 42, mode: 'sandbox', culture: 'japanese' })).toThrow();
+    expect(() => createNewGame({ seed: 42, mode: 'sandbox', culture: 'medieval_european' })).toThrow();
+  });
+
+  it('preserves existing playable saves', () => {
+    const original = createNewGame({ seed: 42, mode: 'sandbox', culture: 'turkish' });
+    const result = loadSaveFile(createSaveFile(original));
+    expect(result.cityId).toBe('trabzon');
+  });
+});
