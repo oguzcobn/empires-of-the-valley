@@ -119,6 +119,9 @@ export const tr = {
   // ------------------------------------------------------------ görevler
   'panel.army': 'Ordu',
   'event.districtClaimed': '{n}. ilçe yönetiminize katıldı.',
+  'event.battleWon': 'Savaş kazanıldı! {losses} asker kaybedildi; bölge ele geçirildi.',
+  'event.battleLost': 'Savaş kaybedildi. {losses} asker kaybedildi.',
+  'err.needMilitia': 'Saldırmak için en az 5 milis gerekiyor.',
   'event.militiaRecruited': 'Milis sayısı {n} kişiye yükseldi.',
   'event.raidDefended': 'Sınırda silahlı saldırı püskürtüldü! Savunma {defenders} / tehdit {attackers}.',
   'event.raidDamage': 'Sınır saldırısında {gold} altın kaybedildi. Gözetleme kulesi ve milislerini güçlendir.',
