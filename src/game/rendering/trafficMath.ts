@@ -22,7 +22,9 @@ export function smoothVehicleTurnOffset(
     ? vehicleLaneOffset(dx, dy, leftSideDriving)
     : vehicleLaneOffset(prevDx, prevDy, leftSideDriving);
   const outgoing = vehicleLaneOffset(dx, dy, leftSideDriving);
-  const t = Math.max(0, Math.min(1, progress / 0.4));
+  // Browser frame timing can briefly produce non-finite interpolation values.
+  // Keep vehicle sprites inside their legal lanes instead of rendering NaN coordinates.
+  const t = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress / 0.4)) : 0;
   const blend = t * t * (3 - 2 * t);
   return [
     incoming[0] + (outgoing[0] - incoming[0]) * blend,
