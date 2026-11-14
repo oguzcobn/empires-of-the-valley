@@ -726,7 +726,7 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
       {game && (
         <fieldset className="field plain" data-testid="settings-cheat">
           <legend>Hile Kodu</legend>
-          <p className="hint">KAYNAK100000: Odun, taş, yiyecek, altın, alet ve araştırmanın her birine 100.000 ekler. Kaynak depolarının kapasitesi de artırılır.</p>
+          <p className="hint">KAYNAK100000: Her kaynağa 100.000 ekler. URETIM10X: Kaynak ve araştırma üretimini kalıcı olarak 10 kat artırır. İnşaat ve oyun saati değişmez.</p>
           <div className="actions">
             <input
               className="input"
@@ -742,10 +742,14 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
               type="button"
               className="btn primary"
               onClick={() => {
-                const success = dispatch({ type: 'redeemCheat', code: cheatCode });
+                const code = cheatCode.trim().toUpperCase();
+                const success = dispatch({ type: 'redeemCheat', code });
                 if (success) {
                   setCheatCode('');
-                  useApp.getState().toast('success', 'Her kaynağa 100.000 eklendi!');
+                  useApp.getState().toast(
+                    'success',
+                    code === 'URETIM10X' ? 'Üretim hızı 10 katına çıkarıldı!' : 'Her kaynağa 100.000 eklendi!',
+                  );
                 }
               }}
               data-testid="redeem-cheat"
@@ -753,6 +757,7 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
               Kodu Kullan
             </button>
           </div>
+          {game.cheatProduction10x && <p className="hint" data-testid="production-cheat-active">✓ 10× üretim hilesi aktif</p>}
         </fieldset>
       )}
       {game && (
