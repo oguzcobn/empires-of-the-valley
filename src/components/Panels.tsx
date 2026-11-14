@@ -11,7 +11,7 @@ import { WORLD_PROVINCES } from '../game/data/worldMap';
 import { cityOf, districtName } from '../game/data/cities';
 import { citizens } from '../game/data/citizens';
 import type { WorldProvince } from '../game/data/worldMap';
-import { validateCommand } from '../game/systems/commands';
+import { PACT_PRICES, validateCommand } from '../game/systems/commands';
 import { forecastBattle } from '../game/systems/combat';
 import {
   UNCAPPED,
@@ -331,6 +331,7 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
   const available = validateCommand(game, { type: 'claimDistrict', provinceId: picked }) === null;
   const attackAvailable = validateCommand(game, { type: 'attackDistrict', provinceId: picked }) === null;
   const battle = forecastBattle(game, picked);
+  const pact = game.treaties?.[picked];
   const label = (p: WorldProvince): string => p.id === game.homeProvinceId
     ? city.name
     : districtName(game.cityId, game.culture, WORLD_PROVINCES.indexOf(p));
@@ -388,6 +389,16 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
                 İlçeyi Yönetimine Kat
               </button>
               {!available && <p className="hint">Yeterli altın, nüfus ve komşu toprak şartlarını kontrol et.</p>}
+              <p className="hint">Diplomasi: {pact === 'trade' ? 'Ticaret anlaşması (+1 altın/gün)' : pact === 'non_aggression' ? 'Saldırmazlık anlaşması (saldırı engelli)' : pact === 'alliance' ? 'İttifak (savaş gücü bonusu)' : 'Anlaşma yok'}</p>
+              {!pact && <div className="actions">
+                {(['trade', 'non_aggression', 'alliance'] as const).map((kind) => (
+                  <button key={kind} type="button" className="btn"
+                    disabled={validateCommand(game, { type: 'signPact', provinceId: picked, pact: kind }) !== null}
+                    onClick={() => dispatch({ type: 'signPact', provinceId: picked, pact: kind })}>
+                    {kind === 'trade' ? 'Ticaret' : kind === 'non_aggression' ? 'Saldırmazlık' : 'İttifak'} · {PACT_PRICES[kind] / 1000} altın
+                  </button>
+                ))}
+              </div>}
               <div className="actions">
                 <button className="btn" disabled={!attackAvailable}
                   onClick={() => dispatch({ type: 'attackDistrict', provinceId: picked })}
