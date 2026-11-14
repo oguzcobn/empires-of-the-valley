@@ -24,7 +24,7 @@ import { executeCommand } from '../game/systems/commands';
 import type { Command } from '../game/systems/commands';
 import { applyTick } from '../game/systems/tick';
 import { t, tm } from '../i18n';
-import { playSfx, setMuted } from './audio';
+import { getSfxVolume, playSfx, setMuted } from './audio';
 import { loadSettings, storeSettings } from './settings';
 import type { AppSettings } from './settings';
 
@@ -139,6 +139,7 @@ let saving = false;
 
 const initialSettings = loadSettings();
 setMuted(initialSettings.muted);
+getSfxVolume(); // Restore persisted sound level before any gameplay sound plays.
 
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
