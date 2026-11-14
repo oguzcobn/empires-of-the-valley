@@ -103,6 +103,7 @@ export type ProvinceId = string;
 export type DiplomacyPact = 'trade' | 'non_aggression' | 'alliance';
 export type FactionId = string;
 export type GameSpeed = 0 | 1 | 2 | 4;
+export type Difficulty = 'easy' | 'normal' | 'hard';
 export type TaxRate = 'low' | 'normal' | 'high';
 export type GameMode = 'campaign' | 'sandbox';
 
@@ -385,6 +386,8 @@ export interface GameState {
   mode: GameMode;
   tick: number;
   speed: GameSpeed;
+  /** Optional for legacy saves; missing means normal difficulty. */
+  difficulty?: Difficulty;
   playerFactionId: FactionId;
   /** Default culture for new buildings. Each building also stores its own style. */
   culture: ArchitectureStyle;
