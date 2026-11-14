@@ -23,7 +23,10 @@ const CLUBS: Record<FootballTeam, Omit<MatchDay, 'day' | 'home'>> = {
 export function matchDayFor(game: Pick<GameState, 'tick' | 'cityId' | 'culture'>): MatchDay | null {
   const day = Math.floor(game.tick / TICKS_PER_DAY);
   if (day < 3 || day % 7 !== 3) return null;
-  const isEdinburgh = (game.cityId ?? (game.culture === 'scottish' ? 'edinburgh' : 'trabzon')) === 'edinburgh';
+  const city = game.cityId ?? (game.culture === 'scottish' ? 'edinburgh' : game.culture === 'turkish' ? 'trabzon' : null);
+  // Fictional fan events belong only to the two cities that actually have these clubs.
+  if (city !== 'trabzon' && city !== 'edinburgh') return null;
+  const isEdinburgh = city === 'edinburgh';
   const team: FootballTeam = isEdinburgh
     ? ((['hearts', 'celtic', 'rangers'] as const)[Math.floor(day / 7) % 3] ?? 'hearts')
     : 'trabzonspor';

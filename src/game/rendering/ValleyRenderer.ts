@@ -29,7 +29,7 @@ import { getPavedLinks } from './roadGeometry';
 import { matchDayFor } from '../data/matchDays';
 import type { MatchDay } from '../data/matchDays';
 import { drawCityCar, drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
-import { pedestrianSidewalkOffset, vehicleLaneOffset } from './trafficMath';
+import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
 
 export type Tool =
@@ -1303,7 +1303,9 @@ export class ValleyRenderer {
       }
       const x = car.from[0] + dx * car.t + 0.5;
       const y = car.from[1] + dy * car.t + 0.5;
-      const [laneX, laneY] = vehicleLaneOffset(dx, dy, uk);
+      const prevDx = car.from[0] - car.prev[0];
+      const prevDy = car.from[1] - car.prev[1];
+      const [laneX, laneY] = smoothVehicleTurnOffset(prevDx, prevDy, dx, dy, car.t, uk);
       const lift = this.hz(p, car.from[0], car.from[1]);
       car.c.position.set(
         isoX(x + laneX, y + laneY),
