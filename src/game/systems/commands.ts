@@ -339,9 +339,12 @@ export function validateCommand(s: GameState, cmd: Command): MessageRef | null {
       return cmd.order === 'defend' || cmd.order === 'patrol' ? null : { key: 'err.invalid' };
     case 'setGameSpeed':
       return [0, 1, 2, 4].includes(cmd.speed) ? null : { key: 'err.invalid' };
-    case 'redeemCheat':
-      return cmd.code.trim().toUpperCase() === 'KAYNAK100000' && (s.cheatStorageBonus ?? 0) <= 999900000000
+    case 'redeemCheat': {
+      const code = cmd.code.trim().toUpperCase();
+      if (code === 'URETIM10X') return null;
+      return code === 'KAYNAK100000' && (s.cheatStorageBonus ?? 0) <= 999900000000
         ? null : { key: 'err.invalid' };
+    }
     case 'setAutoPause':
       return typeof cmd.enabled === 'boolean' ? null : { key: 'err.invalid' };
   }
@@ -543,6 +546,11 @@ function applyCommand(s: GameState, cmd: Command): void {
       s.speed = cmd.speed;
       break;
     case 'redeemCheat': {
+      if (cmd.code.trim().toUpperCase() === 'URETIM10X') {
+        // Idempotent: entering the same code again never stacks it to 100x.
+        s.cheatProduction10x = true;
+        break;
+      }
       const amount = 100000 * 1000;
       // Raise finite storage capacity first; the reward is then safe to autosave.
       s.cheatStorageBonus = (s.cheatStorageBonus ?? 0) + amount;
