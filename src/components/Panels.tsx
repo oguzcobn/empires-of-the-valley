@@ -1,3 +1,4 @@
+import { getSfxVolume, setSfxVolume } from '../app/audio';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { SLOT_IDS, useApp } from '../app/store';
@@ -608,6 +609,7 @@ function BackupList(): ReactElement | null {
 }
 
 export function SettingsPanel({ game }: { game: GameState | null }): ReactElement {
+  const [sfxVolume, updateSfxVolume] = useState(getSfxVolume);
   const settings = useApp((s) => s.settings);
   const { updateSettings, dispatch } = useApp.getState();
   return (
@@ -657,6 +659,23 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
           onChange={(e) => updateSettings({ muted: e.target.checked })}
         />
         <span>{t('settings.mute')}</span>
+      </label>
+      <label className="field">
+        <span>Efekt ses seviyesi: %{sfxVolume}</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={sfxVolume}
+          aria-label="Efekt ses seviyesi"
+          disabled={settings.muted}
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            setSfxVolume(next);
+            updateSfxVolume(next);
+          }}
+        />
       </label>
       <label className="check-field">
         <input

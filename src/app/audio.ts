@@ -3,6 +3,33 @@ export type Sfx = 'click' | 'place' | 'error' | 'complete' | 'quest';
 
 let ctx: AudioContext | null = null;
 let muted = false;
+const VOLUME_KEY = 'eov-sfx-volume-v1';
+let volume = 60;
+
+/** Sound-effect volume is independent of mute and of the gameplay save format. */
+export function getSfxVolume(): number {
+  try {
+    const raw = localStorage.getItem(VOLUME_KEY);
+    if (raw !== null) {
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) volume = Math.max(0, Math.min(100, Math.round(parsed)));
+    }
+  } catch {
+    /* blocked storage is harmless */
+  }
+  return volume;
+}
+
+export function setSfxVolume(next: number): void {
+  if (!Number.isFinite(next)) return;
+  volume = Math.max(0, Math.min(100, Math.round(next)));
+  try {
+    localStorage.setItem(VOLUME_KEY, String(volume));
+  } catch {
+    /* blocked storage is harmless */
+  }
+}
+
 
 export const setMuted = (value: boolean): void => {
   muted = value;
@@ -27,7 +54,7 @@ const NOTES: Record<Sfx, [number, number, OscillatorType][]> = {
 };
 
 export function playSfx(name: Sfx): void {
-  if (muted) return;
+  if (muted || volume === 0) return;
   try {
     ctx ??= new AudioContext();
     if (ctx.state === 'suspended') void ctx.resume();
@@ -38,7 +65,7 @@ export function playSfx(name: Sfx): void {
       osc.type = type;
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.06, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.06 * volume / 100, t + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       osc.connect(gain).connect(ctx.destination);
       osc.start(t);
