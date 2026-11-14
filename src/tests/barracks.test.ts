@@ -15,7 +15,9 @@ describe('barracks training', () => {
   });
 
   it('can train troops from staffed barracks with resources', () => {
-    const game = createNewGame({ seed: 42, mode: 'sandbox' });
+    const game = produce(createNewGame({ seed: 42, mode: 'sandbox' }), (draft) => {
+      homeProvince(draft).population.adults += 10; // Meets barracks population requirement.
+    });
     const p = homeProvince(game);
     const plan = findSite(p, BUILDINGS.barracks);
     expect(plan).not.toBeNull();
