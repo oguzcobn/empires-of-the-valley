@@ -81,7 +81,10 @@ describe('two-city long campaign', () => {
 
   it('recruits guards only after a watchtower and charges food and gold', () => {
     let s = tweak(playChapterOne(42).state, (d) => {
-      home(d).stocks.gold += 100000;
+      const { stocks } = home(d);
+      stocks.gold += 100000;
+      stocks.wood += 50000;
+      stocks.stone += 50000;
     });
     const site = build(s, 'watchtower');
     s = days(site.state, 4);

@@ -36,6 +36,17 @@ describe('procedural architecture art', () => {
     }
   });
 
+  it('keeps the barracks banner and graphics within the building sprite', () => {
+    for (const style of PLAYABLE_STYLES) {
+      for (let level = 1; level <= BUILDINGS.barracks.levels.length; level++) {
+        const { info } = draw('barracks', style, level, 2);
+        expect(info.flags[0]?.color).toBe(0x972e29);
+        expect(info.flags[0]?.at[1]).toBeGreaterThan(-80);
+        expect(info.height).toBeLessThan(160);
+      }
+    }
+  });
+
   it('historic landmarks are large, detailed sprites', () => {
     for (const id of BUILDING_IDS.filter((x) => BUILDINGS[x].landmark)) {
       const { info, ops } = draw(id, BUILDINGS[id].landmark!.culture as 'scottish' | 'turkish', 1, 2);

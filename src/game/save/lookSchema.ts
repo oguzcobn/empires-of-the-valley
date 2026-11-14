@@ -19,7 +19,7 @@ const oneOf = <T extends string>(values: readonly T[]) => z.enum(values as unkno
 /** Strict schema for a building look: used by saves, workshop designs and design imports. */
 export const lookSchema = z
   .object({
-    floors: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+    floors: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(10)]),
     roof: oneOf(ROOF_TYPES),
     roofMaterial: oneOf(ROOF_MATERIALS),
     wall: oneOf(WALL_MATERIALS),

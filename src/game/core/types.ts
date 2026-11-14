@@ -89,7 +89,7 @@ export type DecorType = 'none' | 'flowerboxes' | 'lanterns' | 'banners';
 
 /** Parametric appearance of a building. Materials also change cost and durability (data-driven). */
 export interface BuildingLook {
-  floors: 1 | 2 | 3 | 4;
+  floors: 1 | 2 | 3 | 4 | 10;
   roof: RoofType;
   roofMaterial: RoofMaterial;
   wall: WallMaterial;

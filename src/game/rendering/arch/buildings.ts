@@ -704,7 +704,7 @@ function barracks(ctx: DrawCtx, look: BuildingLook, level: number): void {
   shadowFor(ctx, 0.12, 0.12, 1.86, 0.82, 28);
   mass(ctx, { ...look, floors: level > 1 ? 2 : 1 }, 0.12, 0.12, 1.88, 0.82, { door: 'L', doorT: 0.98, chimneys: false, balcony: false });
   mass(ctx, { ...look, floors: 1 }, 1.25, 0.85, 1.88, 1.78, { door: 'L', chimneys: false, balcony: false });
-  drawFlagPole(ctx, P(0.4, 1.45, 1), 31, 0x972e29);
+  drawFlagPole(ctx, P(0.4, 1.45, 1), 0x972e29, 15);
 }
 
 function civicBuilding(ctx: DrawCtx, id: 'mosque' | 'church' | 'theatre' | 'cinema' | 'police_station', look: BuildingLook, style: ArchitectureStyle): void {
