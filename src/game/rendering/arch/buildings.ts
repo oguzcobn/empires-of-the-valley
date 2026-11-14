@@ -35,7 +35,7 @@ import {
 } from './kit';
 import type { DrawCtx, RoofResult } from './kit';
 import { drawLandmark } from './landmarks';
-import { turkishHutRailing } from './turkishHousing';
+import { turkishBalconyDetail, turkishHutRailing } from './turkishHousing';
 
 /**
  * Culture-aware building compositions. Each building type is assembled from the kit using its
@@ -395,7 +395,7 @@ function house(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level
       if (ctx.detail >= 2) {
         // Lived-in Turkish balconies: alternating planters and laundry, deterministic
         // per floor to avoid animation flicker or changes to saved game data.
-        if (floor % 2 === 0) {
+        if (turkishBalconyDetail(floor) === 'plant') {
           const pot = P(a + (b - a) * 0.18, front + 0.01, z + 4);
           ctx.g.circle(pot[0], pot[1], 2.2).fill(0xb86d48);
           ctx.g.circle(pot[0], pot[1] - 2.4, 2.7).fill(0x4b8754);
