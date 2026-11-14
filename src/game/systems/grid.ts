@@ -1,4 +1,4 @@
-import { BUILDINGS, defOf } from '../data/buildings';
+import { BUILDINGS } from '../data/buildings';
 import type { BuildingDefinition, BuildingInstance, Province, RoadType, Tile } from '../core/types';
 
 /** Minimal province shape needed by spatial helpers (lets terrain generation reuse them). */
