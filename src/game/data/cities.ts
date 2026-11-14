@@ -1,4 +1,4 @@
-import type { ArchitectureStyle } from '../core/types';
+import type { ArchitectureStyle, LandmarkId } from '../core/types';
 
 export type CityId = 'trabzon' | 'edinburgh' | 'kyoto' | 'prague';
 export interface CityInfo {
@@ -7,7 +7,7 @@ export interface CityInfo {
   culture: ArchitectureStyle;
   leader: string;
   leaderTitle: string;
-  landmark: 'sumela_monastery' | 'scott_monument';
+  landmark: LandmarkId;
   /** Whether all city-specific art, gameplay and localization are ready for new games. */
   playable: boolean;
   districts: readonly string[];
