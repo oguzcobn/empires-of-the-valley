@@ -1,4 +1,5 @@
 import { mulPermille } from '../core/fixed';
+import { DIFFICULTY_RULES, difficultyOf } from '../data/difficulty';
 import { calendar } from '../core/time';
 import type {
   BuildingId,
@@ -89,6 +90,7 @@ export function dailyOutput(s: GameState, p: Province, b: BuildingInstance): num
   rate = mulPermille(rate, conditionPermille(b.condition));
   if (def.id === 'school') rate = mulPermille(rate, bonusesOf(b.style).schoolPermille);
   if (def.usesTools && p.stocks.tools <= 0) rate = mulPermille(rate, NO_TOOLS_OUTPUT_PERMILLE);
+  rate = mulPermille(rate, DIFFICULTY_RULES[difficultyOf(s.difficulty)].productionPermille);
   // extraction can never exceed what is physically left in range
   if (def.harvests) rate = Math.min(rate, depositInRange(p, b));
   return rate;
