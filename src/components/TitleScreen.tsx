@@ -45,7 +45,7 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
         <legend>{t('city.selectTitle')}</legend>
         <p className="hint">{t('city.startNote')}</p>
         <div className="culture-pick city-pick" role="group" aria-label={t('city.selectTitle')}>
-          {(['trabzon','edinburgh'] as CityId[]).map((id) => {
+          {(['trabzon','edinburgh','kyoto','prague'] as CityId[]).map((id) => {
             const city = CITIES[id];
             return (
               <button key={id} type="button" className={`culture-card city-card city-${id}`}
@@ -56,7 +56,7 @@ function NewGameDialog({ mode, onClose }: { mode: GameMode; onClose: () => void 
                 <h4>{city.name}</h4>
                 <span className="muted">{city.leaderTitle}</span>
                 <strong>{city.leader}</strong>
-                <small>{id === 'trabzon' ? 'Sümela Manastırı · Akçaabat · Maçka · Araklı' : 'Scott Monument · Leith · Portobello · Morningside'}</small>
+                <small>{id === 'trabzon' ? 'Sümela Manastırı · Akçaabat · Maçka · Araklı' : id === 'edinburgh' ? 'Scott Monument · Leith · Portobello · Morningside' : id === 'kyoto' ? 'Gion · Higashiyama · Arashiyama · Fushimi' : 'Stare Mesto · Mala Strana · Hradcany · Vysehrad'}</small>
               </button>
             );
           })}
