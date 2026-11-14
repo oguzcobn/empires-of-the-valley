@@ -39,7 +39,8 @@ describe('workshop designs', () => {
     expect(bad(() => undefined)).toBe(true);
     expect(bad((o) => (o.format = 'other'))).toBe(false);
     expect(bad((o) => ((o.designs as Record<string, unknown>[])[0]!.buildingId = 'quarry'))).toBe(false); // not designable
-    expect(bad((o) => ((o.designs as Record<string, unknown>[])[0]!.style = 'japanese'))).toBe(false); // not playable yet
+    expect(bad((o) => ((o.designs as Record<string, unknown>[])[0]!.style = 'japanese'))).toBe(true); // supported culture
+    expect(bad((o) => ((o.designs as Record<string, unknown>[])[0]!.style = 'unknown_style'))).toBe(false);
     expect(bad((o) => (((o.designs as Record<string, unknown>[])[0]!.look as Record<string, unknown>).roof = 'pagoda'))).toBe(false);
     expect(bad((o) => ((o.designs as Record<string, unknown>[])[0]!.name = '<img src=x onerror=alert(1)>'))).toBe(false);
     expect(bad((o) => ((o.designs as Record<string, unknown>[])[0]!.extra = 1))).toBe(false);
