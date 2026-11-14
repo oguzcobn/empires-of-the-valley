@@ -1691,3 +1691,15 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
  .mobile-place-actions button{flex:1;min-height:52px;border-radius:14px;border:1px solid #d4dfd4;background:#f4f6ef;color:#17251c;font-size:15px;font-weight:750;box-shadow:0 5px 20px #0004;touch-action:manipulation}
  .mobile-place-actions button:last-child{flex:2;background:#c8ed86;border-color:#8ebd50;color:#182b14}
 }
+
+/* Mobile build precision: directional adjustments, clear site validation and safe confirmation. */
+.mobile-placement-pad { display:none; }
+@media (pointer:coarse) {
+  .mobile-placement-pad { display:flex; flex-direction:column; align-items:center; gap:8px; position:absolute; z-index:31; bottom:max(12px,env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:min(440px,calc(100% - 24px)); pointer-events:auto; }
+  .mobile-placement-message { max-width:100%; padding:7px 12px; border-radius:12px; background:rgba(14,29,38,.93); color:#fff; font-size:13px; text-align:center; }
+  .mobile-placement-arrows { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .mobile-placement-arrows > div { display:flex; gap:4px; }
+  .mobile-placement-arrows button { min-width:44px; min-height:44px; padding:0; border-radius:12px; border:1px solid #9fb4a0; background:rgba(240,250,232,.95); color:#1c3922; font-size:21px; font-weight:700; touch-action:manipulation; }
+  .mobile-placement-pad .mobile-place-actions { display:flex; position:static; transform:none; width:100%; gap:10px; }
+  .mobile-placement-pad .mobile-place-actions button:disabled { opacity:.5; cursor:not-allowed; }
+}
