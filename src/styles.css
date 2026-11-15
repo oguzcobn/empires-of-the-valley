@@ -2120,3 +2120,184 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
 }
 
 .city-news-switch { margin-bottom: .6rem; }
+
+/* Brainwave-inspired charcoal surfaces, warm accents and compact command dock. */
+.game-screen .card {
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #323127 0%, #212117 58%, #171607 100%);
+  border: 1px solid #80684a;
+  border-radius: .8rem;
+  box-shadow: 0 12px 30px #070806a6, inset 0 1px 0 #ffffff1b, inset 0 -2px 0 #0000004d;
+}
+.game-screen .card .muted,
+.game-screen .card .eyebrow { color: #b7b7b6; }
+.game-screen .card-head {
+  align-items: center;
+  padding-bottom: .45rem;
+  border-bottom: 1px solid #ce954b55;
+}
+.game-screen .card-head h2,
+.game-screen .card-head h3 { color: #f0d2a3; }
+.game-screen .card .btn,
+.game-screen .card .tab {
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #3b3a30, #27271f);
+  border-color: #746044;
+}
+.game-screen .card .btn:hover:not(:disabled),
+.game-screen .card .tab:hover { background: #4a4738; }
+.game-screen .card .btn.primary,
+.game-screen .card .tab.active {
+  color: #fff4df;
+  background: linear-gradient(145deg, #d37a38, #a94320);
+  border-color: #e4a45a;
+}
+.game-screen .catalog-item {
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #33332a, #222219 75%);
+  border-color: #66543d;
+  box-shadow: 0 4px 10px #05060566, inset 0 1px 0 #ffffff12;
+}
+.game-screen .catalog-item.active {
+  background: linear-gradient(145deg, #48351f, #29251c);
+  border-color: #ce954b;
+  box-shadow: 0 0 0 1px #ce954b80, 0 8px 18px #08090680, inset 0 1px 0 #ffffff1c;
+}
+.game-screen .catalog-item.poor { background: linear-gradient(145deg, #37302a, #28231f); }
+.game-screen .catalog-item .catalog-meta { border-color: #ce954b40; }
+.game-screen .chip,
+.game-screen .hud-date {
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #29291fef, #17170ff2);
+  border: 1px solid #80684a;
+  border-radius: .65rem;
+  box-shadow: 0 6px 16px #07080680, inset 0 1px 0 #ffffff1c, inset 0 -2px 0 #00000050;
+}
+.game-screen .chip:hover { background: #39372a; }
+.game-screen .chip.warn { border-color: #ce6a42; background: #41231d; }
+.game-screen .chip.full { border-color: #ce954b; }
+.game-screen .chip-cap,
+.game-screen .chip-rate { color: #c9c1b1; }
+.game-screen .hud-time .speed-btn {
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #343329, #1c1c14);
+  border-color: #80684a;
+}
+.game-screen .hud-time .speed-btn.active {
+  color: #fff5e4;
+  background: linear-gradient(145deg, #d37a38, #a94320);
+  border-color: #e4a45a;
+}
+.game-screen .toolbar {
+  left: 50%;
+  right: auto;
+  width: auto;
+  max-width: calc(100vw - 1rem);
+  overflow: visible;
+  transform: translateX(-50%);
+  padding: .28rem;
+  background: linear-gradient(145deg, #2b2b22f2, #17170ff5);
+  border: 1px solid #8c704a;
+  border-radius: 1rem;
+  box-shadow: 0 10px 26px #050605a6, inset 0 1px 0 #ffffff20, inset 0 -2px 0 #00000066;
+  backdrop-filter: blur(12px);
+}
+.game-screen .toolbar .tool-group {
+  gap: .25rem;
+  padding: .12rem;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.game-screen .toolbar .btn {
+  min-height: 2.8rem;
+  min-width: 5rem;
+  padding: .35rem .65rem;
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #3b3a30, #27271f);
+  border: 1px solid #716044;
+  border-bottom-width: 3px;
+  border-radius: .7rem;
+  box-shadow: inset 0 1px 0 #ffffff19, 0 3px 8px #05060555;
+}
+.game-screen .toolbar .btn:hover:not(:disabled) { background: linear-gradient(145deg, #4a4738, #302d22); }
+.game-screen .toolbar .btn.primary,
+.game-screen .toolbar .btn.active {
+  color: #fff4df;
+  background: linear-gradient(145deg, #d37a38, #a94320);
+  border-color: #e1a15a;
+  box-shadow: inset 0 1px 0 #ffffff3b, 0 4px 10px #a943204d;
+}
+.game-screen .toolbar .glyph { font-size: 1.1rem; }
+.game-menu-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + .55rem);
+  width: min(34rem, calc(100vw - 1rem));
+  max-height: min(56dvh, 27rem);
+  overflow: auto;
+  padding: .85rem;
+  transform: translateX(-50%);
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #333229f7, #1d1d15fa 68%, #171607fa);
+  border: 1px solid #9a784d;
+  border-radius: 1rem;
+  box-shadow: 0 18px 44px #050605c9, inset 0 1px 0 #ffffff24, inset 0 -2px 0 #00000070;
+  backdrop-filter: blur(18px);
+  z-index: 20;
+}
+.game-menu-heading,
+.game-menu-footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.game-menu-heading {
+  margin-bottom: .7rem;
+  color: #f0d2a3;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+.game-menu-close {
+  width: 2rem;
+  height: 2rem;
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #494537, #29271e);
+  border: 1px solid #80684a;
+  border-radius: .6rem;
+  font: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+.game-menu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.game-menu-field { display: grid; gap: .3rem; color: #b7b7b6; font-size: .75rem; font-weight: 700; }
+.game-menu-field select {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: .45rem .6rem;
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #3a392f, #25251d);
+  border: 1px solid #80684a;
+  border-bottom-width: 3px;
+  border-radius: .65rem;
+  font: inherit;
+  font-weight: 700;
+}
+.game-menu-field option,
+.game-menu-field optgroup { color: #e7e6e6; background: #25251d; }
+.game-menu-footer { margin-top: .75rem; padding-top: .65rem; border-top: 1px solid #ce954b55; color: #c9c1b1; font-size: .75rem; font-weight: 800; }
+.game-camera-controls { display: flex; gap: .3rem; }
+.game-screen .game-camera-controls .btn { min-width: 2.4rem; min-height: 2.35rem; padding: .2rem .45rem; }
+.road-plan-controls {
+  color: #e7e6e6;
+  background: linear-gradient(145deg, #2b2b22f5, #17170ff5);
+  border: 1px solid #9a784d;
+  border-radius: .75rem;
+  box-shadow: 0 8px 24px #05060599, inset 0 1px 0 #ffffff1a;
+}
+@media (max-width: 560px) and (orientation: portrait) {
+  .game-screen .toolbar { max-width: calc(100vw - .6rem); bottom: max(.3rem, env(safe-area-inset-bottom)); }
+  .game-screen .toolbar .btn { min-width: 4.25rem; min-height: 2.75rem; padding-inline: .55rem; }
+  .game-menu-grid { grid-template-columns: minmax(0, 1fr); }
+  .game-menu-popover { width: calc(100vw - .75rem); max-height: 50dvh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-screen .toolbar .btn { transition: none; }
+}
