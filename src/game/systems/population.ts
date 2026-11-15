@@ -66,6 +66,12 @@ export const happinessTarget = (p: Province): number =>
 /** Frees workers (last staffed building first) when there are fewer adults than assignments. */
 export function enforceWorkerLimit(p: Province): void {
   let excess = assignedWorkers(p) - p.population.adults;
+  if (excess > 0 && p.hunt) {
+    const released = Math.min(excess, p.hunt.workers);
+    p.hunt.workers -= released;
+    excess -= released;
+    if (p.hunt.workers === 0) delete p.hunt;
+  }
   for (let i = p.buildings.length - 1; i >= 0 && excess > 0; i--) {
     const b = p.buildings[i]!;
     const take = Math.min(b.workers, excess);

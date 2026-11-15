@@ -19,6 +19,8 @@ import type {
   VesselKind,
   TaxRate,
   TechId,
+  TransitCargo,
+  TransitKind,
 } from '../core/types';
 import { CONDITION_MAX, DESIGNABLE, isPlayableStyle } from '../data/architecture';
 import { DEMOLISH_REFUND_PERMILLE, ROAD_COSTS, PAVING_COST, TERRACE_COST, TRADE_OFFERS } from '../data/balance';
@@ -26,7 +28,7 @@ import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { homeProvince, idleWorkers, isBuilt, storageCaps, totalPopulation } from './economy';
 import { logEvent } from './events';
-import { buildingById, canLink, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter } from './grid';
+import { buildingById, canLink, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter, transitOccupies } from './grid';
 import { checkRoadSite, checkSite, roadTypeFor } from './placement';
 import { investedCost, levelCost, repairCost, restyleCost, sameLook } from './architecture';
 import { lookSchema } from '../save/lookSchema';
@@ -38,8 +40,12 @@ import { WORLD_BY_ID } from '../data/worldMap';
 import { UNIT_IDS, UNITS, specialistCount } from '../data/units';
 import type { UnitId } from '../data/units';
 import { forecastBattle } from './combat';
+import { huntRoute, planTransit, routeFrom, TRANSIT_COST, transitUnlocked, wildlife } from './frontier';
 
 export type Command =
+  | { type: 'hunt'; x: number; y: number; workers: number }
+  | { type: 'buildTransit'; kind: TransitKind }
+  | { type: 'setTransitCargo'; kind: TransitKind; cargo: TransitCargo; direction?: 'export' | 'import' }
   | {
       type: 'placeBuilding';
       buildingId: BuildingId;
@@ -173,6 +179,24 @@ export interface RoadPlan {
 
 /** Trace a diagonal or axial street in orthogonal steps that the road network can join. */
 export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, bridge = false, paved = false): RoadPlan {
+  const straight = quoteRoadRoute(s, start, end, bridge, paved);
+  if (bridge || !straight.blocked || straight.error?.key === 'err.roadNotAdjacent') return straight;
+  const p = homeProvince(s);
+  const route = routeFrom([start], ({ x, y }) => x === end.x && y === end.y, (from, to) => {
+    const a = tileAt(p, from.x, from.y);
+    const b = tileAt(p, to.x, to.y);
+    if (!a || !b || b.buildingId || transitOccupies(p, to.x, to.y, true)) return false;
+    const roadType = b.road ? b.roadType : roadTypeFor(p, to.x, to.y, a);
+    if (!roadType || (!b.road && (roadType === 'bridge' || roadType === 'tunnel'))) return false;
+    const previousType = a.road ? a.roadType : roadTypeFor(p, from.x, from.y) ?? 'dirt';
+    return canLink({ height: a.height, roadType: previousType }, { height: b.height, roadType });
+  });
+  if (!route) return straight;
+  const detour = quoteRoadRoute(s, start, end, false, paved, route);
+  return detour.blocked ? straight : detour;
+}
+
+function quoteRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, bridge: boolean, paved: boolean, route?: RoadPoint[]): RoadPlan {
   const p = homeProvince(s);
   const plan: RoadPlan = { tiles: [], paveTiles: [], cost: {}, error: null, blocked: null };
   paved = paved && !bridge;
@@ -205,7 +229,9 @@ export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, br
   let movedX = 0;
   let movedY = 0;
 
-  for (let i = 0; i <= dx + dy; i++) {
+  const length = route ? route.length : dx + dy + 1;
+  for (let i = 0; i < length; i++) {
+    if (route) ({ x, y } = route[i]!);
     const index = idx(p, x, y);
     const tile = preview.tiles[index]!;
     if (!tile.road) {
@@ -259,6 +285,21 @@ function paidLandmarkCost(b: BuildingInstance): Cost {
 export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): MessageRef | null {
   const p = homeProvince(s);
   switch (cmd.type) {
+    case 'hunt':
+      if (p.hunt) return { key: 'err.huntBusy' };
+      if (!Number.isInteger(cmd.workers) || cmd.workers < 1 || cmd.workers > 4) return { key: 'err.invalid' };
+      if (idleWorkers(p) < cmd.workers) return { key: 'err.noIdleWorkers' };
+      if (!wildlife(p, s.seed, s.tick).some((animal) => animal.x === cmd.x && animal.y === cmd.y)) return { key: 'err.noAnimal' };
+      return huntRoute(p, cmd.x, cmd.y) ? null : { key: 'err.huntRoute' };
+    case 'buildTransit':
+      if (cmd.kind !== 'rail' && cmd.kind !== 'air') return { key: 'err.invalid' };
+      if (p.transit?.[cmd.kind]) return { key: 'err.invalid' };
+      if (!transitUnlocked(s, p, cmd.kind)) return { key: cmd.kind === 'air' ? 'err.airUnlock' : 'err.needTownCenter', params: { level: 2 } };
+      return missingFor(p, TRANSIT_COST[cmd.kind]) ?? (planTransit(p, cmd.kind) ? null : { key: 'err.transitSite' });
+    case 'setTransitCargo':
+      return p.transit?.[cmd.kind] && ['passengers', 'stone', 'wood', 'food', 'tools'].includes(cmd.cargo) &&
+        (cmd.direction === undefined || cmd.direction === 'export' || cmd.direction === 'import')
+        ? null : { key: 'err.invalid' };
     case 'placeBuilding':
       if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y)) return { key: 'err.outOfBounds' };
       return validatePlacement(s, cmd.buildingId, cmd.x, cmd.y, cmd.style ?? s.culture, cmd.look ?? null);
@@ -307,7 +348,7 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
     case 'buildTerrace': {
       const t = tileAt(p, cmd.x, cmd.y);
       if (!t) return { key: 'err.outOfBounds' };
-      if (t.terrain !== 'hill' || t.road || t.buildingId) return { key: 'err.notTerraceable' };
+      if (t.terrain !== 'hill' || t.road || t.buildingId || transitOccupies(p, cmd.x, cmd.y)) return { key: 'err.notTerraceable' };
       return missingFor(p, TERRACE_COST);
     }
     case 'removeRoad':
@@ -450,6 +491,24 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
 function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
   const p = homeProvince(s);
   switch (cmd.type) {
+    case 'hunt': {
+      const route = huntRoute(p, cmd.x, cmd.y)!;
+      p.hunt = { route, workers: cmd.workers, startTick: s.tick, endTick: s.tick + Math.max(12, route.length * 2 + 4) };
+      break;
+    }
+    case 'buildTransit': {
+      const route = planTransit(p, cmd.kind)!;
+      pay(p, TRANSIT_COST[cmd.kind]);
+      (p.transit ??= {})[cmd.kind] = { route, cargo: 'passengers', passengers: 0, earned: 0, shipped: 0 };
+      logEvent(s, 'success', 'event.transitBuilt', { name: cmd.kind === 'rail' ? 'Tren istasyonu' : 'Havalimanı' }, route[0]);
+      break;
+    }
+    case 'setTransitCargo': {
+      const line = p.transit![cmd.kind]!;
+      line.cargo = cmd.cargo;
+      if (cmd.direction) line.direction = cmd.direction;
+      break;
+    }
     case 'placeBuilding': {
       const def = BUILDINGS[cmd.buildingId];
       const style = cmd.style ?? s.culture;

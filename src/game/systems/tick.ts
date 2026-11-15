@@ -1,6 +1,7 @@
 import { produce } from 'immer';
 import { crimeDayEnd } from './crime';
 import { securityDayEnd } from './security';
+import { resolveHunt, transitDayEnd } from './frontier';
 import { mulPermille, portion } from '../core/fixed';
 import { TICKS_PER_DAY, calendar, daysUntilWinter } from '../core/time';
 import type { BuildingInstance, GameState, Province, ResourceId } from '../core/types';
@@ -210,6 +211,7 @@ function dayEnd(s: GameState, p: Province): void {
   questOnDayEnd(s, p);
   populationDayEnd(s, p, cal.day);
   tourismDayEnd(s, p);
+  transitDayEnd(s, p);
   securityDayEnd(s, p);
   crimeDayEnd(s, p, cal.day);
 
@@ -249,6 +251,7 @@ export function tickMut(s: GameState): void {
   constructionStep(s, p);
   economyStep(s, p, hour);
   s.tick += 1;
+  resolveHunt(s, p);
   if (s.tick % TICKS_PER_DAY === 0) dayEnd(s, p);
   evaluateQuests(s);
 }

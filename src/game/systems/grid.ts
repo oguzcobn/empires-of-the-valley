@@ -2,7 +2,12 @@ import { BUILDINGS } from '../data/buildings';
 import type { BuildingDefinition, BuildingInstance, Province, RoadType, Tile } from '../core/types';
 
 /** Minimal province shape needed by spatial helpers (lets terrain generation reuse them). */
-export type GridLike = Pick<Province, 'width' | 'height' | 'tiles' | 'buildings'>;
+export type GridLike = Pick<Province, 'width' | 'height' | 'tiles' | 'buildings' | 'transit'>;
+
+export function transitOccupies(g: GridLike, x: number, y: number, allowRailCrossing = false): boolean {
+  return !!g.transit?.air?.route.some((point) => point.x === x && point.y === y) ||
+    !!g.transit?.rail?.route.some((point, i) => (!allowRailCrossing || i === 0) && point.x === x && point.y === y);
+}
 
 export const idx = (g: Pick<Province, 'width'>, x: number, y: number): number => y * g.width + x;
 export const inBounds = (g: Pick<Province, 'width' | 'height'>, x: number, y: number): boolean =>

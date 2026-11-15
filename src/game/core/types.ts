@@ -314,6 +314,25 @@ export interface Ledger {
   consumed: ResourceMap;
 }
 
+export interface MapPoint { x: number; y: number }
+export type TransitKind = 'rail' | 'air';
+export type TransitCargo = 'passengers' | 'stone' | 'wood' | 'food' | 'tools';
+export interface TransitLine {
+  route: MapPoint[];
+  cargo: TransitCargo;
+  passengers: number;
+  shipped: number;
+  earned: number;
+  direction?: 'export' | 'import';
+  spent?: number;
+}
+export interface Hunt {
+  route: MapPoint[];
+  workers: number;
+  startTick: number;
+  endTick: number;
+}
+
 export interface Province {
   id: ProvinceId;
   name: string;
@@ -332,6 +351,9 @@ export interface Province {
   taxRate: TaxRate;
   today: Ledger;
   yesterday: Ledger;
+  hunt?: Hunt;
+  depletedHunts?: Record<string, number>;
+  transit?: Partial<Record<TransitKind, TransitLine>>;
 }
 
 export type QuestStatus = 'locked' | 'active' | 'completed';

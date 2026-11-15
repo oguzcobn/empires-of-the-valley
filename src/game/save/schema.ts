@@ -54,6 +54,17 @@ const building = z
 
 const ledger = z.object({ produced: resourceMap, consumed: resourceMap }).strict();
 
+const mapPoint = z.object({ x: nat.max(63), y: nat.max(63) }).strict();
+const journey = z.array(mapPoint).min(1).max(4096);
+const transitLine = z.object({
+  route: journey.min(2),
+  cargo: z.enum(['passengers', 'stone', 'wood', 'food', 'tools']),
+  passengers: nat,
+  shipped: nat,
+  earned: nat,
+  direction: z.enum(['export', 'import']).optional(),
+  spent: nat.optional(),
+}).strict();
 const province = z
   .object({
     id: shortText,
@@ -83,8 +94,15 @@ const province = z
     taxRate: z.enum(['low', 'normal', 'high']),
     today: ledger,
     yesterday: ledger,
+    hunt: z.object({ route: journey, workers: int.min(1).max(4), startTick: nat, endTick: nat }).strict().optional(),
+    depletedHunts: z.record(z.string().regex(/^\d{1,2},\d{1,2}$/), nat).optional(),
+    transit: z.object({ rail: transitLine.optional(), air: transitLine.optional() }).strict().optional(),
   })
-  .strict();
+  .strict()
+  .refine((p) => [p.hunt?.route, p.transit?.rail?.route, p.transit?.air?.route].every((route) =>
+    !route || route.every((point, i) => point.x < p.width && point.y < p.height &&
+      (i === 0 || Math.abs(point.x - route[i - 1]!.x) + Math.abs(point.y - route[i - 1]!.y) === 1))),
+    'Invalid hunt or transport route');
 
 const questProgress = z
   .object({

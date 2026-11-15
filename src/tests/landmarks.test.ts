@@ -222,7 +222,7 @@ describe('historic landmarks', () => {
 });
 
 describe('save format v2 -> v3', () => {
-  it('a real v2 save opens on the 32x32 map with the city intact and keeps playing', () => {
+  it('a real v2 save opens on the 40x40 map with the city intact and keeps playing', () => {
     const raw = JSON.parse(readFileSync(new URL('./fixtures/v2-scottish-chapter1.json', import.meta.url), 'utf8')) as {
       state: { schemaVersion: number; provinces: Record<string, { buildings: { id: string; x: number; y: number; style: string }[]; tiles: { road: boolean }[] }> };
     };
@@ -233,7 +233,7 @@ describe('save format v2 -> v3', () => {
     expect(loaded.state.schemaVersion).toBe(SCHEMA_VERSION);
     const p = home(loaded.state);
     const old = Object.values(raw.state.provinces)[0]!;
-    expect(p.width).toBe(32);
+    expect(p.width).toBe(40);
     expect(p.buildings.map((b) => [b.id, b.x - CORE_OFFSET, b.y - CORE_OFFSET, b.style])).toEqual(
       old.buildings.map((b) => [b.id, b.x, b.y, b.style]),
     );

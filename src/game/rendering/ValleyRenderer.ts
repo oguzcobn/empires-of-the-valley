@@ -21,7 +21,7 @@ import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
 import { COLORS, SEASON_PALETTE, VILLAGER_COLORS } from './palette';
 import type { SeasonPalette } from './palette';
 import { drawBoat, drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
-import { drawStyledBuilding, drawStyledConstruction } from './arch/buildings';
+import { buildingArtSeed, drawStyledBuilding, drawStyledConstruction } from './arch/buildings';
 import type { SpriteInfo } from './arch/buildings';
 import { CULTURES } from '../data/architecture';
 import { conditionBand } from '../systems/architecture';
@@ -33,6 +33,7 @@ import { drawCityCar, drawFootballSupporter, drawSupporterFlare } from './traffi
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
 import { WorkerScenes } from './workerScenes';
+import { FrontierScenes } from './frontierScenes';
 
 export type Tool =
   | { kind: 'select' }
@@ -42,16 +43,11 @@ export type Tool =
   | { kind: 'pave' }
   | { kind: 'terrace' }
   | { kind: 'demolish' }
-  | { kind: 'army' };
+  | { kind: 'army' }
+  | { kind: 'hunt'; workers: number };
 
 /** Detail level of procedural art: 0 flat, 1 materials, 2 fine texture. */
 export type ArtDetail = 0 | 1 | 2;
-
-const hashId = (id: string): number => {
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
-  return h >>> 0;
-};
 
 export interface RendererView {
   game: GameState;
@@ -158,8 +154,10 @@ export class ValleyRenderer {
   private ground = new Graphics();
   private waterFx = new Graphics();
   private under = new Graphics();
+  private transportGround = new Graphics();
   private objects = new Container();
   private workScenes = new WorkerScenes(this.objects);
+  private frontier = new FrontierScenes(this.transportGround, this.objects);
   private ghost = new Graphics();
   private fx = new Container();
   private drops: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
@@ -229,7 +227,7 @@ export class ValleyRenderer {
     canvas.setAttribute('aria-label', 'Vadi haritası');
     host.appendChild(canvas);
     r.objects.sortableChildren = true;
-    r.world.addChild(r.ground, r.waterFx, r.under, r.objects, r.ghost);
+    r.world.addChild(r.ground, r.waterFx, r.transportGround, r.under, r.objects, r.ghost);
     r.app.stage.addChild(r.world, r.fx);
     r.bindInput(canvas);
     r.resetCamera();
@@ -502,7 +500,14 @@ export class ValleyRenderer {
 
     if (p.tiles !== this.lastTiles || cal.season !== this.lastSeason) {
       const seasonChanged = this.lastSeason !== null && cal.season !== this.lastSeason;
-      this.syncGround(p, pal);
+      const previous = this.lastTiles;
+      const groundChanged = !previous || seasonChanged || previous.length !== p.tiles.length ||
+        p.tiles.some((tile, i) => {
+          const old = previous[i]!;
+          return tile !== old && (tile.terrain !== old.terrain || tile.variant !== old.variant ||
+            tile.height !== old.height || tile.road !== old.road || tile.roadType !== old.roadType || tile.paved !== old.paved);
+        });
+      if (groundChanged) this.syncGround(p, pal);
       this.syncProps(p, pal, cal.season);
       if (seasonChanged) this.pruneAtlas(cal.season);
       this.lastTiles = p.tiles;
@@ -516,6 +521,7 @@ export class ValleyRenderer {
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
     const workerStep = motion ? (dt / 1000) * Math.min(1.35, SPEED_FACTOR[view.game.speed] ?? 0) : 0;
     this.workScenes.update(p, cal.season, view.selectedBuildingId, workerStep, !motion);
+    this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt');
     this.updateWalkers(view, p, dt, motion);
     this.updateTraffic(view, p, dt, motion);
     this.updateMilitia(view, p, dt);
@@ -563,7 +569,12 @@ export class ValleyRenderer {
           t.roadType,
           detail,
           t.paved ?? false,
-          getPavedLinks(p, x, y),
+          t.paved ? getPavedLinks(p, x, y) : {
+            negX: !!tileAt(p, x - 1, y)?.road,
+            posX: !!tileAt(p, x + 1, y)?.road,
+            negY: !!tileAt(p, x, y - 1)?.road,
+            posY: !!tileAt(p, x, y + 1)?.road,
+          },
           t.road && t.roadType === 'bridge'
             ? Number(!!tileAt(p, x, y - 1)?.road) + Number(!!tileAt(p, x, y + 1)?.road) >
               Number(!!tileAt(p, x - 1, y)?.road) + Number(!!tileAt(p, x + 1, y)?.road)
@@ -765,7 +776,7 @@ export class ValleyRenderer {
     const { g, extra } = bv;
     g.clear();
     extra.clear();
-    const seed = hashId(b.id);
+    const seed = buildingArtSeed(b.id);
     const landmarkSite = b.state === 'construction' && !!def.landmark;
     bv.info =
       b.state === 'construction' && !landmarkSite
@@ -924,6 +935,7 @@ export class ValleyRenderer {
     this.ground.tint = tint;
     this.waterFx.tint = tint;
     this.workScenes.setTint(tint);
+    this.frontier.setTint(tint);
     for (const pv of this.propViews.values()) pv.c.tint = tint;
     for (const w of this.walkers) w.c.tint = tint;
     for (const w of this.matchFans) w.c.tint = tint;

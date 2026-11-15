@@ -2,7 +2,7 @@ import { makeRng } from '../core/rng';
 import type { LocalRng } from '../core/rng';
 import type { ArchitectureStyle, BuildingId, BuildingInstance, TerrainId, Tile } from '../core/types';
 import { CONDITION_MAX, LEGACY_STYLE } from '../data/architecture';
-import { CORE_OFFSET, CORE_SIZE, FOREST_TILE_MAX, MAP_SIZE, STONE_TILE_MAX } from '../data/balance';
+import { CORE_OFFSET, CORE_SIZE, FOREST_TILE_MAX, FRONTIER_SIZE, MAP_SIZE, STONE_TILE_MAX } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
 import { LANDMARK_IDS } from '../data/landmarks';
 import { footprintTiles } from './grid';
@@ -319,6 +319,22 @@ export interface GeneratedValley {
   tiles: Tile[];
   buildings: BuildingInstance[];
   attempts: number;
+}
+
+/** Extend the south and east borders without moving a single existing tile. */
+export function expandFrontier(seed: number, tiles: readonly Tile[]): Tile[] {
+  return Array.from({ length: FRONTIER_SIZE ** 2 }, (_, i) => {
+    const x = i % FRONTIER_SIZE;
+    const y = Math.floor(i / FRONTIER_SIZE);
+    if (x < MAP_SIZE && y < MAP_SIZE) return tiles[y * MAP_SIZE + x]!;
+    const edge = tiles[Math.min(y, MAP_SIZE - 1) * MAP_SIZE + Math.min(x, MAP_SIZE - 1)]!;
+    const depth = Math.max(x, y) - MAP_SIZE;
+    const noise = (Math.imul(seed + 19 * x + 37 * y, 0x85ebca6b) >>> 16) % 100;
+    if ((edge.terrain === 'lake' || edge.terrain === 'water') && depth < 2 + (noise % 2)) return tile('lake', noise % 4, 0);
+    const height = Math.max(0, edge.height - Math.floor((depth + 1) / 2));
+    const land = height >= 3 ? 'hill' : noise < 29 ? 'forest' : noise < 36 ? 'stone' : noise < 47 ? 'fertile' : 'grass';
+    return tile(land, noise % 4, height);
+  });
 }
 
 /** Seeded valley generation. Retries with derived seeds until the start is verified playable. */

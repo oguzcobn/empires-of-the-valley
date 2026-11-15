@@ -338,7 +338,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
           ✕
         </button>
       </header>
-      <BuildingPreview id={b.definitionId} style={b.style} level={b.level} look={b.look} condition={b.condition} />
+      <BuildingPreview id={b.definitionId} style={b.style} level={b.level} look={b.look} condition={b.condition} instanceId={b.id} />
       <p className="muted">{t(`building.${b.definitionId}.desc`)}</p>
       {b.definitionId === 'hut' && isBuilt(b) && (() => {
         const district = neighborhoodServices(p).homes.find(({ home }) => home.id === b.id);

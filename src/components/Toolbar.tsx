@@ -13,6 +13,7 @@ const PANELS: { id: PanelId; key: TKey; group: 'city' | 'world' | 'other'; campa
   { id: 'research', key: 'panel.research', group: 'city' },
   { id: 'workshop', key: 'panel.workshop', group: 'city' },
   { id: 'tourism', key: 'panel.tourism', group: 'world' },
+  { id: 'transport', key: 'panel.transport', group: 'world' },
   { id: 'atlas', key: 'panel.atlas', group: 'world' },
   { id: 'journal', key: 'panel.journal', group: 'other', campaignOnly: true },
   { id: 'world', key: 'panel.world', group: 'world' },
@@ -37,6 +38,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
       : value === 'terrace' ? { kind: 'terrace' }
       : value === 'demolish' ? { kind: 'demolish' }
       : value === 'army' ? { kind: 'army' }
+      : value === 'hunt' ? { kind: 'hunt', workers: 1 }
       : { kind: 'roadPlan' });
     toggleBuild(false);
     setMenuOpen(false);
@@ -67,6 +69,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
               <option value="terrace">Teras yap</option>
               <option value="demolish">Yıkım aracı</option>
               <option value="army" disabled={(game.militia ?? 0) === 0}>Birlik taşı</option>
+              <option value="hunt">Av ekibi gönder</option>
             </select>
           </label>
           <label className="game-menu-field"><span>Yönetim paneli</span>
