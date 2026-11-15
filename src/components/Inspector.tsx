@@ -25,6 +25,7 @@ import { BuildingPreview } from './BuildingPreview';
 import { Icon } from './icons';
 import { requestDemolish } from './ValleyCanvas';
 import { ShipyardSection } from './Heritage';
+import { workerJob } from '../game/rendering/workerScenes';
 
 function StatusLine({ b }: { b: BuildingInstance }): ReactElement {
   const spec = specOf(b);
@@ -424,6 +425,9 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
               ? t('inspector.noIdle')
               : t('inspector.idle', { n: idle })}
           </p>
+          {workerJob(b.definitionId) && b.workers === 0 && idle > 0 && (
+            <p className="muted">{t('inspector.assignForWork')}</p>
+          )}
         </section>
       )}
 
