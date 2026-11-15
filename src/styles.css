@@ -2301,3 +2301,18 @@ html, body, #root, .game-screen, .valley-canvas { width: 100%; max-width: 100%; 
 @media (prefers-reduced-motion: reduce) {
   .game-screen .toolbar .btn { transition: none; }
 }
+
+/* High contrast for building details and quest guidance on the dark game panels. */
+.game-screen .catalog-desc,
+.game-screen .catalog-rule,
+.game-screen .landmark-facts,
+.game-screen .catalog .hint,
+.game-screen .reward {
+  color: #d0cbc0;
+}
+.game-screen .landmark-facts .warn { color: #ffc15c; }
+.game-screen .landmark-facts .ok { color: #a8dda1; }
+.game-screen .catalog-warn { color: #ff8d5b; }
+.game-screen .objectives li.done { color: #a8dda1; }
+.game-screen .mira,
+.game-screen .mira p { color: #26342c; }
