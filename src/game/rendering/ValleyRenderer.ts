@@ -37,7 +37,7 @@ export type Tool =
   | { kind: 'select' }
   | { kind: 'build'; buildingId: BuildingId; style?: ArchitectureStyle; look?: BuildingLook | null }
   | { kind: 'road' }
-  | { kind: 'roadPlan'; start?: RoadPoint; end?: RoadPoint; bridge?: boolean }
+  | { kind: 'roadPlan'; start?: RoadPoint; end?: RoadPoint; bridge?: boolean; paved?: boolean }
   | { kind: 'pave' }
   | { kind: 'terrace' }
   | { kind: 'demolish' }
@@ -1007,6 +1007,7 @@ export class ValleyRenderer {
     c.addChild(g);
     const flare = fanMatch && index % 3 === 0 ? new Graphics() : undefined;
     if (flare) c.addChild(flare);
+    c.scale.set(cart ? 0.82 : fanMatch ? 0.8 : 0.66);
     c.cullable = true;
     this.objects.addChild(c);
     this.tintKey = -1;
@@ -1044,6 +1045,7 @@ export class ValleyRenderer {
       soldier.moveTo(4.4, -9).lineTo(4.4, -2).stroke({ color: 0x858c96, width: 1 });
       soldier.circle(-3.5, -6, 2.3).fill({ color: 0x65778b, alpha: 0.9 });
       c.addChild(soldier);
+      c.scale.set(0.68);
       c.cullable = true;
       this.objects.addChild(c);
       this.militiaSprites.push(c);
@@ -1385,9 +1387,14 @@ export class ValleyRenderer {
       const plan = view.roadPlan;
       if (plan) {
         const color = plan.error ? COLORS.bad : COLORS.ok;
-        for (const { x, y } of plan.tiles) {
-          this.tileFill(g, x, y, color, 0.45);
-          this.outline(g, x, y, 1, 1, color, 2, 0.92);
+        for (const { x, y, paved } of plan.tiles) {
+          const routeColor = paved ? 0x58c6ce : color;
+          this.tileFill(g, x, y, routeColor, 0.48);
+          this.outline(g, x, y, 1, 1, routeColor, 2, 0.92);
+        }
+        for (const { x, y } of plan.paveTiles) {
+          this.tileFill(g, x, y, 0x58c6ce, 0.48);
+          this.outline(g, x, y, 1, 1, 0x58c6ce, 2, 0.92);
         }
         if (plan.blocked) {
           this.tileFill(g, plan.blocked.x, plan.blocked.y, COLORS.bad, 0.6);

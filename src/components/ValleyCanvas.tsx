@@ -56,7 +56,7 @@ export function ValleyCanvas(): ReactElement {
   const roadTarget = useApp((s) => s.tool.kind === 'roadPlan' ? s.tool.end ?? s.hover : null);
   const roadPlan = useMemo(
     () => game && tool.kind === 'roadPlan' && tool.start && roadTarget
-      ? planRoadRoute(game, tool.start, roadTarget, tool.bridge) : null,
+      ? planRoadRoute(game, tool.start, roadTarget, tool.bridge, tool.paved) : null,
     [game, tool, roadTarget],
   );
   const roadPlanRef = useRef(roadPlan);
@@ -225,23 +225,27 @@ export function ValleyCanvas(): ReactElement {
               !tool.end ? (tool.bridge ? 'Aynı hizada karşı kıyıyı seç.' : 'Yolun biteceği kareyi seç.') :
               roadPlan?.error ? t(roadPlan.error.key, roadPlan.error.params) :
               roadPlan && [
-                `${roadPlan.tiles.length} yeni kare`,
+                `${roadPlan.tiles.length} yeni kare${roadPlan.paveTiles.length ? ` · ${roadPlan.paveTiles.length} kare asfaltlanacak` : ''}`,
                 ...Object.entries(roadPlan.cost).map(([id, amount]) =>
                   `${fmtAmount(amount)} ${t(`resource.${id}` as Parameters<typeof t>[0])}`,
                 ),
               ].join(' · ')}
           </p>
           <div>
+            {!tool.bridge && <label className="road-surface-toggle">
+              <input type="checkbox" checked={!!tool.paved} onChange={(event) => useApp.getState().setTool({ ...tool, paved: event.currentTarget.checked })} />
+              Asfalt yol
+            </label>}
             <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'select' })}>Kapat</button>
             {tool.start && (
-              <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'roadPlan', bridge: tool.bridge })}>Sıfırla</button>
+              <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'roadPlan', bridge: tool.bridge, paved: tool.paved })}>Sıfırla</button>
             )}
             {tool.start && tool.end && (
               <button type="button" className="btn primary" disabled={!roadPlan || !!roadPlan.error} onClick={() => {
                 const s = useApp.getState();
-                if (tool.start && tool.end && s.dispatch({ type: 'placeRoadRoute', start: tool.start, end: tool.end, bridge: tool.bridge }))
-                  s.setTool({ kind: 'roadPlan', bridge: tool.bridge });
-              }}>{tool.bridge ? 'Köprüyü İnşa Et' : 'Yolu İnşa Et'}</button>
+                if (tool.start && tool.end && s.dispatch({ type: 'placeRoadRoute', start: tool.start, end: tool.end, bridge: tool.bridge, paved: tool.paved }))
+                  s.setTool({ kind: 'roadPlan', bridge: tool.bridge, paved: tool.paved });
+              }}>{tool.bridge ? 'Köprüyü İnşa Et' : tool.paved ? 'Asfalt Yolu İnşa Et' : 'Yolu İnşa Et'}</button>
             )}
           </div>
         </div>

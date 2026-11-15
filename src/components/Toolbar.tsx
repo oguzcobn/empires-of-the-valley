@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import type { PanelId } from '../app/store';
@@ -6,166 +7,106 @@ import { t } from '../i18n';
 import type { TKey } from '../i18n';
 import { getRenderer } from './ValleyCanvas';
 
-const PANELS: { id: PanelId; key: TKey; hint?: string; campaignOnly?: boolean }[] = [
-  { id: 'economy', key: 'panel.economy' },
-  { id: 'population', key: 'panel.population' },
-  { id: 'research', key: 'panel.research' },
-  { id: 'workshop', key: 'panel.workshop' },
-  { id: 'tourism', key: 'panel.tourism' },
-  { id: 'atlas', key: 'panel.atlas' },
-  { id: 'journal', key: 'panel.journal', campaignOnly: true },
-  { id: 'world', key: 'panel.world', hint: 'M' },
-  { id: 'army', key: 'panel.army' },
-  { id: 'log', key: 'panel.log' },
-  { id: 'help', key: 'panel.help' },
+const PANELS: { id: PanelId; key: TKey; group: 'city' | 'world' | 'other'; campaignOnly?: boolean }[] = [
+  { id: 'economy', key: 'panel.economy', group: 'city' },
+  { id: 'population', key: 'panel.population', group: 'city' },
+  { id: 'research', key: 'panel.research', group: 'city' },
+  { id: 'workshop', key: 'panel.workshop', group: 'city' },
+  { id: 'tourism', key: 'panel.tourism', group: 'world' },
+  { id: 'atlas', key: 'panel.atlas', group: 'world' },
+  { id: 'journal', key: 'panel.journal', group: 'other', campaignOnly: true },
+  { id: 'world', key: 'panel.world', group: 'world' },
+  { id: 'army', key: 'panel.army', group: 'world' },
+  { id: 'log', key: 'panel.log', group: 'other' },
+  { id: 'help', key: 'panel.help', group: 'other' },
 ];
 
 export function Toolbar({ game }: { game: GameState }): ReactElement {
   const tool = useApp((s) => s.tool);
   const buildOpen = useApp((s) => s.buildOpen);
   const panel = useApp((s) => s.panel);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { setTool, toggleBuild, openPanel } = useApp.getState();
+  const selectedTool = tool.kind === 'roadPlan' ? (tool.bridge ? 'bridge' : 'roadPlan') : tool.kind;
+
+  const chooseTool = (value: string): void => {
+    setTool(value === 'select' ? { kind: 'select' }
+      : value === 'road' ? { kind: 'road' }
+      : value === 'bridge' ? { kind: 'roadPlan', bridge: true }
+      : value === 'pave' ? { kind: 'pave' }
+      : value === 'terrace' ? { kind: 'terrace' }
+      : value === 'demolish' ? { kind: 'demolish' }
+      : value === 'army' ? { kind: 'army' }
+      : { kind: 'roadPlan' });
+    toggleBuild(false);
+    setMenuOpen(false);
+  };
+
+  const choosePanel = (value: string): void => {
+    if (!value) {
+      openPanel(null);
+    } else {
+      const id = value as PanelId;
+      if (id === 'workshop') useApp.getState().openWorkshop();
+      else openPanel(id);
+    }
+    setMenuOpen(false);
+  };
 
   return (
-    <nav className="toolbar" aria-label={t('toolbar.label')}>
-      <div className="tool-group">
-        <button
-          className={`btn tool ${tool.kind === 'select' && !buildOpen ? 'active' : ''}`}
-          aria-pressed={tool.kind === 'select'}
-          onClick={() => {
-            setTool({ kind: 'select' });
-            toggleBuild(false);
-          }}
-          title={`${t('tool.select')} (Esc)`}
-        >
-          <span className="glyph">➤</span>
-          {t('tool.select')}
+    <nav className="toolbar game-toolbar" aria-label={t('toolbar.label')}>
+      {menuOpen && <div className="game-menu-popover" aria-label="Oyun menüsü">
+        <div className="game-menu-heading"><span>OYUN MENÜSÜ</span><button type="button" className="game-menu-close" onClick={() => setMenuOpen(false)} aria-label="Menüyü kapat">×</button></div>
+        <div className="game-menu-grid">
+          <label className="game-menu-field"><span>Harita aracı</span>
+            <select value={selectedTool} onChange={(event) => chooseTool(event.currentTarget.value)}>
+              <option value="select">Seç ve incele</option>
+              <option value="road">Tek kare yol</option>
+              <option value="bridge">Köprü güzergâhı</option>
+              <option value="pave">Asfalt fırçası</option>
+              <option value="terrace">Teras yap</option>
+              <option value="demolish">Yıkım aracı</option>
+              <option value="army" disabled={(game.militia ?? 0) === 0}>Birlik taşı</option>
+            </select>
+          </label>
+          <label className="game-menu-field"><span>Yönetim paneli</span>
+            <select value={panel ?? ''} onChange={(event) => choosePanel(event.currentTarget.value)}>
+              <option value="">Panel seç</option>
+              <optgroup label="Şehir">
+                {PANELS.filter((x) => x.group === 'city').map(({ id, key }) => <option key={id} value={id}>{t(key)}</option>)}
+              </optgroup>
+              <optgroup label="Dünya">
+                {PANELS.filter((x) => x.group === 'world').map(({ id, key }) => <option key={id} value={id}>{t(key)}</option>)}
+              </optgroup>
+              <optgroup label="Diğer">
+                {PANELS.filter((x) => x.group === 'other' && (!x.campaignOnly || game.mode === 'campaign')).map(({ id, key }) => <option key={id} value={id}>{t(key)}</option>)}
+              </optgroup>
+            </select>
+          </label>
+        </div>
+        <div className="game-menu-footer">
+          <span>Kamera</span>
+          <div className="game-camera-controls">
+            <button type="button" className="btn icon-btn" onClick={() => getRenderer()?.zoomBy(1.2)} title={t('camera.zoomIn')} aria-label={t('camera.zoomIn')}>＋</button>
+            <button type="button" className="btn icon-btn" onClick={() => getRenderer()?.zoomBy(1 / 1.2)} title={t('camera.zoomOut')} aria-label={t('camera.zoomOut')}>－</button>
+            <button type="button" className="btn icon-btn" onClick={() => getRenderer()?.resetCamera()} title={t('camera.reset')} aria-label={t('camera.reset')}>◎</button>
+          </div>
+        </div>
+      </div>}
+
+      <div className="tool-group game-toolbar-main">
+        <button className={`btn tool primary ${buildOpen || tool.kind === 'build' ? 'active' : ''}`} aria-pressed={buildOpen}
+          onClick={() => { toggleBuild(); setTool({ kind: 'select' }); }} title={`${t('tool.build')} (B)`} data-testid="tool-build">
+          <span className="glyph">⌂</span><span>{t('tool.build')}</span>
         </button>
-        <button
-          className={`btn tool primary ${buildOpen || tool.kind === 'build' ? 'active' : ''}`}
-          aria-pressed={buildOpen}
-          onClick={() => toggleBuild()}
-          title={`${t('tool.build')} (B)`}
-          data-testid="tool-build"
-        >
-          <span className="glyph">⌂</span>
-          {t('tool.build')}
+        <button className={`btn tool ${tool.kind === 'roadPlan' && !tool.bridge ? 'active' : ''}`} aria-pressed={tool.kind === 'roadPlan' && !tool.bridge}
+          onClick={() => { toggleBuild(false); setTool(tool.kind === 'roadPlan' && !tool.bridge ? { kind: 'select' } : { kind: 'roadPlan' }); }}
+          title="Güzergâh çiz ve yol önizle" data-testid="tool-road-plan">
+          <span className="glyph">⌁</span><span>Yol</span>
         </button>
-        <button
-          className={`btn tool ${tool.kind === 'road' ? 'active' : ''}`}
-          aria-pressed={tool.kind === 'road'}
-          onClick={() => setTool(tool.kind === 'road' ? { kind: 'select' } : { kind: 'road' })}
-          title={`${t('tool.road')} (R)`}
-          data-testid="tool-road"
-        >
-          <span className="glyph">▤</span>
-          {t('tool.road')}
-        </button>
-        <button
-          className={`btn tool ${tool.kind === 'roadPlan' && !tool.bridge ? 'active' : ''}`}
-          aria-pressed={tool.kind === 'roadPlan' && !tool.bridge}
-          onClick={() => {
-            toggleBuild(false);
-            setTool(tool.kind === 'roadPlan' && !tool.bridge ? { kind: 'select' } : { kind: 'roadPlan' });
-          }}
-          data-testid="tool-road-plan"
-        >
-          <span className="glyph" aria-hidden="true">⌁</span>
-          Yol Planla
-        </button>
-        <button
-          className={`btn tool ${tool.kind === 'roadPlan' && tool.bridge ? 'active' : ''}`}
-          aria-pressed={tool.kind === 'roadPlan' && tool.bridge === true}
-          onClick={() => {
-            toggleBuild(false);
-            setTool(tool.kind === 'roadPlan' && tool.bridge ? { kind: 'select' } : { kind: 'roadPlan', bridge: true });
-          }}
-          data-testid="tool-bridge"
-        >
-          <span className="glyph" aria-hidden="true">╭─╮</span>
-          Köprü
-        </button>
-        <button
-          className={`btn tool ${tool.kind === 'pave' ? 'active' : ''}`}
-          aria-pressed={tool.kind === 'pave'}
-          onClick={() => setTool(tool.kind === 'pave' ? { kind: 'select' } : { kind: 'pave' })}
-          title="Asfaltla (P): toprak yola tıkla veya sürükle. Her karo 2 taş + 1 altın."
-          data-testid="tool-pave"
-        >
-          <span className="glyph">▥</span>
-          Asfaltla
-        </button>
-        <button
-          className={`btn tool ${tool.kind === 'terrace' ? 'active' : ''}`}
-          aria-pressed={tool.kind === 'terrace'}
-          onClick={() => setTool(tool.kind === 'terrace' ? { kind: 'select' } : { kind: 'terrace' })}
-          title={`${t('tool.terrace')} (T)`}
-          data-testid="tool-terrace"
-        >
-          <span className="glyph">≋</span>
-          {t('tool.terrace')}
-        </button>
-        <button
-          className={`btn tool ${tool.kind === 'demolish' ? 'active danger' : ''}`}
-          aria-pressed={tool.kind === 'demolish'}
-          onClick={() => setTool(tool.kind === 'demolish' ? { kind: 'select' } : { kind: 'demolish' })}
-          title={`${t('tool.demolish')} (X)`}
-        >
-          <span className="glyph">✖</span>
-          {t('tool.demolish')}
-        </button>
-      </div>
-      <div className="tool-group">
-        <button
-          className={`btn tool ${tool.kind === 'army' ? 'active' : ''}`}
-          aria-pressed={tool.kind === 'army'}
-          disabled={(game.militia ?? 0) === 0}
-          onClick={() => setTool(tool.kind === 'army' ? { kind: 'select' } : { kind: 'army' })}
-          title="Birlik Taşı (G) · Yol üzerinde hedef seç"
-          data-testid="tool-army"
-        >
-          <span className="glyph">⚔</span> Birlik Taşı
-        </button>
-      </div>
-      <div className="tool-group">
-        {PANELS.filter((x) => !x.campaignOnly || game.mode === 'campaign').map(({ id, key, hint }) => (
-          <button
-            key={id}
-            className={`btn tool small ${panel === id ? 'active' : ''}`}
-            onClick={() =>
-              panel === id ? openPanel(null) : id === 'workshop' ? useApp.getState().openWorkshop() : openPanel(id)
-            }
-            title={hint ? `${t(key)} (${hint})` : t(key)}
-            data-testid={`panel-${id}`}
-          >
-            {t(key)}
-          </button>
-        ))}
-      </div>
-      <div className="tool-group camera">
-        <button
-          className="btn icon-btn"
-          onClick={() => getRenderer()?.zoomBy(1.2)}
-          title={`${t('camera.zoomIn')} (+)`}
-          aria-label={t('camera.zoomIn')}
-        >
-          ＋
-        </button>
-        <button
-          className="btn icon-btn"
-          onClick={() => getRenderer()?.zoomBy(1 / 1.2)}
-          title={`${t('camera.zoomOut')} (−)`}
-          aria-label={t('camera.zoomOut')}
-        >
-          －
-        </button>
-        <button
-          className="btn icon-btn"
-          onClick={() => getRenderer()?.resetCamera()}
-          title={`${t('camera.reset')} (Home)`}
-          aria-label={t('camera.reset')}
-        >
-          ◎
+        <button className={`btn tool game-menu-trigger ${menuOpen ? 'active' : ''}`} aria-expanded={menuOpen} aria-haspopup="true"
+          onClick={() => setMenuOpen((open) => !open)}>
+          <span className="glyph">☰</span><span>Menü</span>
         </button>
       </div>
     </nav>

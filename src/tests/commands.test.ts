@@ -87,6 +87,21 @@ describe('roads and connectivity', () => {
     expectValid(next);
   });
 
+  it('builds an asphalt route and upgrades existing dirt tiles in its preview', () => {
+    const s = newCampaign();
+    const first = must(s, { type: 'placeRoadRoute', start: { x: 11, y: 17 }, end: { x: 9, y: 17 } });
+    const plan = planRoadRoute(first, { x: 11, y: 17 }, { x: 8, y: 17 }, false, true);
+    expect(plan.error).toBeNull();
+    expect(plan.tiles).toEqual([{ x: 8, y: 17, type: 'dirt', paved: true }]);
+    expect(plan.paveTiles).toEqual([{ x: 11, y: 17 }, { x: 10, y: 17 }, { x: 9, y: 17 }]);
+
+    const next = must(first, { type: 'placeRoadRoute', start: { x: 11, y: 17 }, end: { x: 8, y: 17 }, paved: true });
+    for (const x of [8, 9, 10, 11]) expect(home(next).tiles[17 * home(next).width + x]?.paved).toBe(true);
+    expect(home(next).stocks.stone).toBe(home(first).stocks.stone - 8000);
+    expect(home(next).stocks.gold).toBe(home(first).stocks.gold - 4000);
+    expectValid(next);
+  });
+
   it('refuses the entire street if any segment is blocked or its total is unaffordable', () => {
     const s = newCampaign();
     const start = { x: 11, y: 17 };
