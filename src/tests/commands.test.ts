@@ -3,7 +3,8 @@ import { BUILDINGS } from '../game/data/buildings';
 import { executeCommand, planRoadRoute } from '../game/systems/commands';
 import { applyTick, applyTicks } from '../game/systems/tick';
 import { housingCapacity, storageCaps } from '../game/systems/economy';
-import { findSite } from '../game/systems/placement';
+import { checkSite, findSite, terrainSiteError } from '../game/systems/placement';
+import { tileAt } from '../game/systems/grid';
 import { investedCost, levelCost } from '../game/systems/architecture';
 import { build, buildAndStaff, days, expectValid, home, must, newCampaign, tweak } from './helpers';
 
@@ -128,13 +129,26 @@ describe('roads and connectivity', () => {
     expectValid(s);
   });
 
-  it('a roadless construction site can finish normally', () => {
+  it('requires an adjacent road connected to the town center before placing a building', () => {
     const s = newCampaign();
-    const result = executeCommand(s, { type: 'placeBuilding', buildingId: 'hut', x: 11, y: 14 });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    const later = days(result.state, 5);
-    expect(home(later).buildings.at(-1)).toMatchObject({ state: 'active', connected: true });
+    const cmd = { type: 'placeBuilding', buildingId: 'hut', x: 11, y: 14 } as const;
+    expect(terrainSiteError(home(s), BUILDINGS.hut, cmd.x, cmd.y)).toBeNull();
+    const noRoad = { ok: false, error: { key: 'err.noRoad' } };
+    expect(executeCommand(s, cmd)).toEqual(noRoad);
+    const disconnected = tweak(s, (draft) => {
+      const tile = tileAt(home(draft), 11, 15)!;
+      tile.road = true;
+      tile.roadType = 'dirt';
+      tile.height = 0;
+    });
+    expect(executeCommand(disconnected, cmd)).toEqual(noRoad);
+
+    const plan = findSite(home(s), BUILDINGS.lumber_camp)!;
+    let connected = s;
+    for (const [x, y] of plan.roads) connected = must(connected, { type: 'placeRoad', x, y });
+    expect(checkSite(home(connected), BUILDINGS.lumber_camp, plan.x, plan.y)).toBeNull();
+    const placed = must(connected, { type: 'placeBuilding', buildingId: 'lumber_camp', x: plan.x, y: plan.y });
+    expect(home(placed).buildings.at(-1)).toMatchObject({ state: 'construction', connected: true });
   });
 
 });

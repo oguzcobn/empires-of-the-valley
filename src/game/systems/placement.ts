@@ -9,6 +9,7 @@ import {
   perimeterPairs,
   tileAt,
   tilesInRange,
+  touchesRoads,
   townCenter,
   transitOccupies,
 } from './grid';
@@ -122,17 +123,16 @@ export function checkSite(
   def: BuildingDefinition,
   x: number,
   y: number,
-  roads: Set<number> = connectedRoads(g),
+  roads?: Set<number>,
 ): MessageRef | null {
   const terrain = terrainSiteError(g, def, x, y);
   if (terrain) return terrain;
   if (def.harvests && !tilesInRange(g, def, x, y).some((i) => g.tiles[i]!.deposit > 0)) {
     return { key: def.harvests.terrain === 'forest' ? 'err.needForest' : 'err.needStone' };
   }
-  // Roads are optional for buildings; terrain, collisions and resources still constrain placement.
-  // Kept road-related arguments for compatibility with route-planning callers.
-  void roads;
-  return null;
+  return touchesRoads(g, def, x, y, roads ?? connectedRoads(g))
+    ? null
+    : { key: 'err.noRoad' };
 }
 
 /**
