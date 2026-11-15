@@ -36,6 +36,7 @@ import {
 import type { DrawCtx, RoofResult } from './kit';
 import { drawLandmark } from './landmarks';
 import { turkishHutRailing } from './turkishHousing';
+import { turkishFacade } from './turkishFacade';
 
 /**
  * Culture-aware building compositions. Each building type is assembled from the kit using its
@@ -397,6 +398,35 @@ function house(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level
           const u = a + (b - a) * t;
           line(ctx, P(u, front, z), P(u, front, z + 3.8), rail, 0.9);
         }
+      }
+    }
+  }
+  // Modern Turkish neighbourhood details inspired by real apartment streets.
+  // Purely cosmetic: uses the existing seed, level and render-quality setting.
+  if (style === 'turkish' && ctx.detail >= 1 && look.floors >= 2) {
+    const facade = turkishFacade(ctx.seed, level);
+    const frontFace = faceL(u0, u1, v1);
+    const rearFace = faceR(v0, v1, u1);
+    const floorCount = Math.min(look.floors - 1, 6);
+    for (let floor = 1; floor <= floorCount; floor++) {
+      const z = floor * FLOOR_H + 0.7;
+      // Blue-tinted glazed balcony screens, separated by slim mullions.
+      quad(ctx, frontFace, u0 + 0.13, u1 - 0.13, z, z + 4.2, facade.glazing, 0.62);
+      line(ctx, fp(frontFace, u0 + 0.13, z + 4.2), fp(frontFace, u1 - 0.13, z + 4.2), 0xe5e9e5, 0.9);
+      if (ctx.detail === 2) {
+        for (let i = 1; i < facade.panels; i++) {
+          const u = u0 + 0.13 + ((u1 - u0 - 0.26) * i) / facade.panels;
+          line(ctx, fp(frontFace, u, z), fp(frontFace, u, z + 4.2), 0xe5e9e5, 0.65);
+        }
+      }
+    }
+    // Upper levels remain residential; some upgraded buildings gain a tiny
+    // street-facing shop window and coloured awning at ground level.
+    if (facade.shopfront) {
+      quad(ctx, frontFace, u0 + 0.08, u0 + 0.28, 1.5, 7.2, 0x426575, 0.92);
+      quad(ctx, frontFace, u0 + 0.07, u0 + 0.3, 7.4, 8.7, facade.awning);
+      if (ctx.detail === 2) {
+        line(ctx, fp(rearFace, v0 + 0.12, 8), fp(rearFace, v0 + 0.34, 8), facade.awning, 1.2);
       }
     }
   }
