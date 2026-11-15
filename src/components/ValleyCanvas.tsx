@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import { DEMOLISH_REFUND_PERMILLE } from '../game/data/balance';
 import { ValleyRenderer } from '../game/rendering/ValleyRenderer';
-import { homeProvince } from '../game/systems/economy';
+import { homeProvince, idleWorkers } from '../game/systems/economy';
 import { planRoadRoute, validatePlacement } from '../game/systems/commands';
 import { buildingById, tileAt } from '../game/systems/grid';
 import { fmtAmount, t } from '../i18n';
@@ -148,6 +148,8 @@ export function ValleyCanvas(): ReactElement {
             s.toggleBuild(false);
             s.select(placed.id);
           }
+        } else if (tool.kind === 'hunt') {
+          if (s.dispatch({ type: 'hunt', x, y, workers: tool.workers })) s.setTool({ kind: 'select' });
         } else if (tool.kind === 'army') {
           s.dispatch({ type: 'moveMilitia', x, y });
         } else if (tool.kind === 'terrace') {
@@ -156,6 +158,11 @@ export function ValleyCanvas(): ReactElement {
           if (buildingId) requestDemolish(buildingId);
           else if (tileAt(homeProvince(s.game), x, y)?.road) s.dispatch({ type: 'removeRoad', x, y });
         } else if (tool.kind === 'select') {
+          const transit = homeProvince(s.game).transit;
+          if ([transit?.rail, transit?.air].some((line) => line?.route[0]?.x === x && line.route[0].y === y)) {
+            s.openPanel('transport');
+            return;
+          }
           s.select(buildingId);
         }
       },
@@ -191,6 +198,23 @@ export function ValleyCanvas(): ReactElement {
     useApp.getState().setHover({ x, y });
   };
 
+  const findNearbyPlacement = () => {
+    if (!placement || !game || tool.kind !== 'build') return;
+    for (let distance = 1; distance <= 4; distance++) {
+      for (let dx = -distance; dx <= distance; dx++) {
+        const dy = distance - Math.abs(dx);
+        for (const sign of dy > 0 ? [-1, 1] : [1]) {
+          const spot = { x: placement.x + dx, y: placement.y + sign * dy };
+          if (validatePlacement(game, tool.buildingId, spot.x, spot.y, tool.style, tool.look)) continue;
+          setPlacement(spot);
+          useApp.getState().setHover(spot);
+          return;
+        }
+      }
+    }
+    useApp.getState().toast('info', 'Yakında inşa edilebilecek bir yer bulunamadı.');
+  };
+
   const confirmPlacement = () => {
     if (!placement || tool.kind !== 'build' || placementError) return;
     const s = useApp.getState();
@@ -216,8 +240,23 @@ export function ValleyCanvas(): ReactElement {
           <button type="button" aria-label="Bir kare yukarı" onClick={() => nudgePlacement(0,-1)}>↑</button>
           <div><button type="button" aria-label="Bir kare sola" onClick={() => nudgePlacement(-1,0)}>←</button><button type="button" aria-label="Bir kare aşağı" onClick={() => nudgePlacement(0,1)}>↓</button><button type="button" aria-label="Bir kare sağa" onClick={() => nudgePlacement(1,0)}>→</button></div>
         </div>
-        <div className="mobile-place-actions"><button type="button" onClick={() => {setPlacement(null);useApp.getState().setHover(null);}}>İptal</button><button type="button" disabled={!!placementError} onClick={confirmPlacement}>✓ Buraya inşa et</button></div>
+        <div className="mobile-place-actions">
+          <button type="button" onClick={() => { setPlacement(null); useApp.getState().setHover(null); }}>İptal</button>
+          {placementError ? <button type="button" onClick={findNearbyPlacement}>Yakında yer bul</button>
+            : <button type="button" onClick={confirmPlacement}>✓ Buraya inşa et</button>}
+        </div>
       </div>}
+      {tool.kind === 'hunt' && game && (
+        <div className="road-plan-controls">
+          <p>Avcı sayısını seç, sonra haritada işaretli bir hayvana dokun. Boşta işçi: {idleWorkers(homeProvince(game))}</p>
+          <div>
+            <label>Avcı sayısı <select value={tool.workers} onChange={(event) => useApp.getState().setTool({ kind: 'hunt', workers: Number(event.currentTarget.value) })}>
+              {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select></label>
+            <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'select' })}>Kapat</button>
+          </div>
+        </div>
+      )}
       {tool.kind === 'roadPlan' && (
         <div className="road-plan-controls" aria-label={tool.bridge ? 'Köprü planı' : 'Yol planı'}>
           <p role="status">

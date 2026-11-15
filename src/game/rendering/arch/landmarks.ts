@@ -406,74 +406,76 @@ function selimiye(ctx: DrawCtx): void {
 }
 
 function stadium(ctx: DrawCtx, pal: SeasonPalette): void {
-  // an oval bowl: outer facade, claret-and-blue stands, a green pitch and a white roof ring
-  const c = P(2, 2, 0);
-  const R = 1.85;
-  const ring = (r: number, z: number, n = 40): Pt[] => {
-    const out: Pt[] = [];
-    for (let i = 0; i < n; i++) {
-      const a = (Math.PI * 2 * i) / n;
-      const p = P(2 + r * Math.cos(a), 2 + r * Math.sin(a), z);
-      out.push(p);
-    }
-    return out;
-  };
-  void c;
-  const facadeH = 22;
-  const outerTop = ring(R, facadeH);
-  const outerBase = ring(R, 0);
-  // facade: only the half facing the viewer is visible
-  for (let i = 0; i < 40; i++) {
-    const j = (i + 1) % 40;
-    const a = (Math.PI * 2 * (i + 0.5)) / 40;
-    const facing = Math.cos(a) + Math.sin(a) > -0.2;
-    if (!facing) continue;
-    const light = 0.85 + 0.15 * Math.cos(a - Math.PI * 0.75 + Math.PI);
-    poly(ctx, [outerBase[i]!, outerBase[j]!, outerTop[j]!, outerTop[i]!], shade(0xe8e4dc, light));
-    if (ctx.detail >= 1 && i % 2 === 0) line(ctx, outerBase[i]!, outerTop[i]!, shade(0xb9b4aa, light), 0.8, 0.8);
-  }
-  const claret = 0x7b1e3a;
-  const blue = 0x5aa7d8;
-  const inner = ring(1.1, 4);
-  const seatsTop = ring(1.75, facadeH - 1);
-  for (let i = 0; i < 40; i++) {
-    const j = (i + 1) % 40;
-    const sector = Math.floor(i / 5) % 2 === 0;
-    poly(ctx, [inner[i]!, inner[j]!, seatsTop[j]!, seatsTop[i]!], sector ? claret : blue);
-    if (ctx.detail >= 2) {
-      const mid = [lerpPt(inner[i]!, seatsTop[i]!, 0.5), lerpPt(inner[j]!, seatsTop[j]!, 0.5)] as const;
-      line(ctx, mid[0], mid[1], shade(sector ? claret : blue, 1.3), 0.5, 0.6);
+  // Akyazı's chamfered bowl, exposed plinth and faceted white membrane shell.
+  const outline: Pt[] = [[0.4, 0.22], [3.6, 0.22], [3.88, 0.55], [3.88, 3.45],
+    [3.6, 3.78], [0.4, 3.78], [0.12, 3.45], [0.12, 0.55]];
+  const at = ([u, v]: Pt, scale: number, z: number): Pt => P(2 + (u - 2) * scale, 2 + (v - 2) * scale, z);
+  const lerp = ([x, y]: Pt, [u, v]: Pt, t: number): Pt => [x + (u - x) * t, y + (v - y) * t];
+  poly(ctx, [P(0, 0), P(4, 0), P(4, 4), P(0, 4)], 0xb4b2a8);
+  for (let i = 0; i < outline.length; i++) {
+    const a = outline[i]!, b = outline[(i + 1) % outline.length]!;
+    if (i < 1 || i > 5) continue;
+    poly(ctx, [at(a, 1, 0), at(b, 1, 0), at(b, 1, 23), at(a, 1, 23)], 0x68777f);
+    const count = i % 2 === 0 ? 9 : 1;
+    for (let j = 0; j < count; j++) {
+      const u = lerp(a, b, j / count);
+      const v = lerp(a, b, (j + 1) / count);
+      const m = lerp(u, v, 0.5);
+      poly(ctx, [at(u, 1, 4), at(v, 1, 4), at(m, 1.035, 16)], 0xa7b9bc);
+      poly(ctx, [at(u, 1, 22), at(v, 1, 22), at(m, 1.035, 16)], 0xe0e7e8);
+      line(ctx, at(u, 1, 4), at(m, 1.035, 16), 0xe9f0ed, 1.25);
     }
   }
-  // pitch
-  const pitch: Pt[] = [P(1.3, 1.5, 4), P(2.7, 1.5, 4), P(2.7, 2.5, 4), P(1.3, 2.5, 4)];
-  poly(ctx, pitch, pal.snow ? 0xdfe8e4 : 0x3f9a4a);
-  for (let k = 1; k < 6; k++) poly(ctx, [P(1.3 + k * 0.233, 1.5, 4), P(1.3 + k * 0.233 + 0.117, 1.5, 4), P(1.3 + k * 0.233 + 0.117, 2.5, 4), P(1.3 + k * 0.233, 2.5, 4)], 0x4aa956, pal.snow ? 0 : 0.6);
-  const w = 0xffffff;
-  line(ctx, P(2, 1.5, 4), P(2, 2.5, 4), w, 1);
-  line(ctx, P(1.3, 1.5, 4), P(2.7, 1.5, 4), w, 1);
-  line(ctx, P(1.3, 2.5, 4), P(2.7, 2.5, 4), w, 1);
-  line(ctx, P(1.3, 1.5, 4), P(1.3, 2.5, 4), w, 1);
-  line(ctx, P(2.7, 1.5, 4), P(2.7, 2.5, 4), w, 1);
-  const mid = P(2, 2, 4);
-  ctx.g.ellipse(mid[0], mid[1], 9, 4.5).stroke({ color: w, width: 1 });
-  // roof ring over the stands
-  const roofOut = ring(R + 0.05, facadeH + 6);
-  const roofIn = ring(1.45, facadeH + 4);
-  for (let i = 0; i < 40; i++) {
-    const j = (i + 1) % 40;
-    poly(ctx, [roofIn[i]!, roofIn[j]!, roofOut[j]!, roofOut[i]!], 0xf4f4f2, 0.92);
-  }
-  for (let i = 0; i < 40; i += 4) line(ctx, roofIn[i]!, roofOut[i]!, 0xc9ccd0, 0.8);
-  // floodlight glow at night along the roof edge
-  for (let i = 0; i < 40; i += 5) {
-    const p = roofIn[i]!;
-    ctx.lights.push([[p[0] - 2, p[1] - 1], [p[0] + 2, p[1] - 1], [p[0] + 2, p[1] + 1], [p[0] - 2, p[1] + 1]]);
-  }
-  for (const p of roofOut) if (p[1] < ctx.topY) ctx.topY = p[1];
-}
 
-const lerpPt = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  const seats: Pt[] = [[0.81, 0.66], [3.19, 0.66], [3.43, 0.9], [3.43, 3.10],
+    [3.19, 3.34], [0.81, 3.34], [0.57, 3.10], [0.57, 0.9]];
+  for (let i = 0; i < seats.length; i++) {
+    const a = seats[i]!, b = seats[(i + 1) % seats.length]!;
+    const color = i % 2 ? 0x7e2d4b : 0x629ec3;
+    poly(ctx, [at(a, 0.67, 4), at(b, 0.67, 4), at(b, 1, 23), at(a, 1, 23)], color);
+    for (const row of [0.74, 0.8, 0.86, 0.92, 0.98]) {
+      const altitude = 4 + (row - 0.67) * 57;
+      line(ctx, at(a, row, altitude), at(b, row, altitude), shade(color, 1.34), 0.65);
+    }
+  }
+  const minX = 0.96, maxX = 3.04, minY = 1.32, maxY = 2.68;
+  const pitch = (u: number, v: number): Pt => P(u, v, 5);
+  const turf = pal.snow ? 0xdfe8e4 : 0x3f9654;
+  for (let i = 0; i < 10; i++) {
+    const x = minX + (maxX - minX) * i / 10;
+    const right = minX + (maxX - minX) * (i + 1) / 10;
+    poly(ctx, [pitch(x, minY), pitch(right, minY), pitch(right, maxY), pitch(x, maxY)], shade(turf, i % 2 ? 1.1 : 0.93));
+  }
+  const white = 0xfffef2;
+  const paint = (u: number, v: number, x: number, y: number): void => line(ctx, pitch(u, v), pitch(x, y), white, 0.85);
+  paint(minX, minY, maxX, minY); paint(minX, maxY, maxX, maxY);
+  paint(minX, minY, minX, maxY); paint(maxX, minY, maxX, maxY);
+  paint(2, minY, 2, maxY);
+  const [mx, my] = pitch(2, 2);
+  ctx.g.ellipse(mx, my, 7, 3.5).stroke({ color: white, width: 0.8 });
+  for (const [x, inside] of [[minX, minX + 0.33], [maxX, maxX - 0.33]] as const) {
+    paint(x, 1.65, inside, 1.65); paint(x, 2.35, inside, 2.35); paint(inside, 1.65, inside, 2.35);
+  }
+
+  for (let i = 0; i < outline.length; i++) {
+    const a = outline[i]!, b = outline[(i + 1) % outline.length]!;
+    const count = i % 2 === 0 ? 9 : 2;
+    for (let j = 0; j < count; j++) {
+      const left = lerp(a, b, j / count), right = lerp(a, b, (j + 1) / count);
+      const tip = lerp(left, right, 0.5);
+      const outerL = at(left, 1.02, 23), outerR = at(right, 1.02, 23);
+      const innerL = at(left, 0.73, 28), innerR = at(right, 0.73, 28);
+      const fold = at(tip, 0.89, 34);
+      poly(ctx, [outerL, outerR, fold], 0xd5dee3);
+      poly(ctx, [outerL, fold, innerL], 0xf1f3f2);
+      poly(ctx, [fold, outerR, innerR], 0xfafbf5);
+      poly(ctx, [innerL, fold, innerR], 0xe6eced);
+      ctx.topY = Math.min(ctx.topY, outerL[1], innerL[1], fold[1]);
+    }
+    const [x, y] = at(a, 0.73, 28);
+    ctx.lights.push([[x - 2, y - 1], [x + 2, y - 1], [x + 2, y + 1], [x - 2, y + 1]]);
+  }
+}
 
 export function drawLandmark(ctx: DrawCtx, id: LandmarkId, pal: SeasonPalette): void {
   switch (id) {

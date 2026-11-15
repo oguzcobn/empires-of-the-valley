@@ -28,7 +28,7 @@ export const homeProvince = (s: GameState): Province => s.provinces[s.homeProvin
 export const totalPopulation = (p: Province): number =>
   p.population.children + p.population.adults + p.population.elders;
 export const isBuilt = (b: BuildingInstance): boolean => b.state !== 'construction';
-export const assignedWorkers = (p: Province): number => p.buildings.reduce((sum, b) => sum + b.workers, 0);
+export const assignedWorkers = (p: Province): number => p.buildings.reduce((sum, b) => sum + b.workers, p.hunt?.workers ?? 0);
 export const idleWorkers = (p: Province): number => p.population.adults - assignedWorkers(p);
 
 export function housingCapacity(p: Province): number {

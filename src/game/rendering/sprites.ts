@@ -301,6 +301,20 @@ function drawRoad(
     }
     return;
   }
+  if (type === 'dirt') {
+    const y = oy + 16;
+    const color = pal.snow ? 0xd8c9a8 : COLORS.road;
+    g.ellipse(ox, y, 7.7, 4.8).fill(color);
+    const edges = [[links.negX, -16, -8], [links.posX, 16, 8], [links.negY, 16, -8], [links.posY, -16, 8]] as const;
+    for (const [connected, dx, dy] of edges) {
+      if (!connected) continue;
+      g.moveTo(ox, y).lineTo(ox + dx, y + dy)
+        .stroke({ color, width: 8, cap: 'round' });
+      if (detail >= 2) g.moveTo(ox + dx * 0.27, y + dy * 0.27 + 1).lineTo(ox + dx * 0.88, y + dy * 0.88 + 1)
+        .stroke({ color: COLORS.roadEdge, width: 0.85, alpha: 0.38 });
+    }
+    return;
+  }
   if (type === 'bridge') {
     const point = (u: number, v: number, z = 0): Pt => {
       const [x, y] = bridgeAlongY ? [v, u] : [u, v];

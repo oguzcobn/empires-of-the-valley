@@ -10,6 +10,7 @@ import {
   tileAt,
   tilesInRange,
   townCenter,
+  transitOccupies,
 } from './grid';
 import type { GridLike } from './grid';
 
@@ -93,7 +94,7 @@ export function terrainSiteError(g: GridLike, def: BuildingDefinition, x: number
   for (const [tx, ty] of footprintTiles(def, x, y)) {
     const t = tileAt(g, tx, ty);
     if (!t) return { key: 'err.outOfBounds' };
-    if (t.buildingId) return { key: 'err.occupied' };
+    if (t.buildingId || transitOccupies(g, tx, ty)) return { key: 'err.occupied' };
     if (t.road) return { key: 'err.onRoad' };
     if (!def.validTerrains.includes(t.terrain)) {
       if (def.id === 'farm') return { key: 'err.needFertile' };
@@ -157,14 +158,14 @@ export function roadTypeFor(g: GridLike, x: number, y: number, from?: { height: 
 
 export function canHoldRoad(g: GridLike, x: number, y: number): boolean {
   const t = tileAt(g, x, y);
-  return !!t && !t.road && !t.buildingId && roadTypeFor(g, x, y) !== null;
+  return !!t && !t.road && !t.buildingId && !transitOccupies(g, x, y, true) && roadTypeFor(g, x, y) !== null;
 }
 
 export function checkRoadSite(g: GridLike, x: number, y: number): MessageRef | null {
   const t = tileAt(g, x, y);
   if (!t) return { key: 'err.outOfBounds' };
   if (t.road) return { key: 'err.alreadyRoad' };
-  if (t.buildingId) return { key: 'err.occupied' };
+  if (t.buildingId || transitOccupies(g, x, y, true)) return { key: 'err.occupied' };
   if (t.terrain === 'lake') return { key: 'err.lakeRoad' };
   const type = roadTypeFor(g, x, y);
   if (!type) return { key: `err.terrain.${t.terrain}` };

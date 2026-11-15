@@ -1,7 +1,7 @@
 import { CONDITION_MAX, LEGACY_STYLE } from '../data/architecture';
-import { CORE_OFFSET, CORE_SIZE, MAP_SIZE, SCHEMA_VERSION } from '../data/balance';
+import { CORE_OFFSET, CORE_SIZE, FRONTIER_SIZE, MAP_SIZE, SCHEMA_VERSION } from '../data/balance';
 import type { Tile } from '../core/types';
-import { surroundValley } from '../systems/terrain';
+import { expandFrontier, surroundValley } from '../systems/terrain';
 
 /** A migration upgrades raw save data from version N to N+1. Register new ones by source version. */
 export type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
@@ -86,7 +86,18 @@ function v3ToV4(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 /** Registry of format upgrades, keyed by source version. Chains run in order (1 -> 2 -> ...). */
-export const MIGRATIONS: Record<number, Migration> = { 1: v1ToV2, 2: v2ToV3, 3: v3ToV4 };
+const v4ToV5: Migration = (data) => {
+  if (!isObj(data.provinces) || typeof data.homeProvinceId !== 'string') return data;
+  const id = data.homeProvinceId;
+  const p = data.provinces[id];
+  if (!isObj(p) || p.width !== MAP_SIZE || p.height !== MAP_SIZE || !Array.isArray(p.tiles) ||
+      p.tiles.length !== MAP_SIZE ** 2 || !p.tiles.every(isObj)) return data;
+  const tiles = expandFrontier(typeof data.seed === 'number' ? data.seed : 0, p.tiles as unknown as Tile[]);
+  const home = { ...p, width: FRONTIER_SIZE, height: FRONTIER_SIZE, tiles };
+  return { ...data, provinces: { ...data.provinces, [id]: home } };
+};
+
+export const MIGRATIONS: Record<number, Migration> = { 1: v1ToV2, 2: v2ToV3, 3: v3ToV4, 4: v4ToV5 };
 
 export type MigrationResult =
   | { ok: true; data: Record<string, unknown> }

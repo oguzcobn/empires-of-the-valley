@@ -4,7 +4,7 @@ import { LEGACY_STYLE, isPlayableStyle } from '../data/architecture';
 import { cityForCulture, CITIES } from '../data/cities';
 import {
   GAME_VERSION,
-  MAP_SIZE,
+  FRONTIER_SIZE,
   SCHEMA_VERSION,
   START_HAPPINESS,
   START_POPULATION,
@@ -15,7 +15,7 @@ import { emptyResourceMap } from '../systems/economy';
 import { logEvent } from '../systems/events';
 import { refreshConnectivity } from '../systems/grid';
 import { initialQuestProgress } from '../systems/quests';
-import { generateValley } from '../systems/terrain';
+import { expandFrontier, generateValley } from '../systems/terrain';
 import { emptyShipyard, emptyTourism } from '../systems/tourism';
 
 export interface NewGameOptions {
@@ -58,9 +58,9 @@ export function createNewGame({ seed, mode, culture = LEGACY_STYLE, difficulty =
         ownerFactionId: 'player',
         loyalty: 100,
         unrest: 0,
-        width: MAP_SIZE,
-        height: MAP_SIZE,
-        tiles: valley.tiles,
+        width: FRONTIER_SIZE,
+        height: FRONTIER_SIZE,
+        tiles: expandFrontier(safeSeed, valley.tiles),
         buildings: valley.buildings,
         stocks: { ...START_STOCKS },
         population: {

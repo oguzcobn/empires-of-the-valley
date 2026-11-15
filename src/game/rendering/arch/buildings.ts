@@ -835,6 +835,26 @@ function shipyard(ctx: DrawCtx, look: BuildingLook, level: number): void {
 
 export const FOOTPRINT_PX_TOP = 0;
 
+export function buildingArtSeed(id: string): number {
+  let value = 2166136261;
+  for (let i = 0; i < id.length; i++) value = Math.imul(value ^ id.charCodeAt(i), 16777619);
+  return value >>> 0;
+}
+
+function houseDesign(look: BuildingLook, seed: number, worn: boolean): BuildingLook {
+  const facades = [look.facade, 'cream', 'ochre', 'sage', 'rose', 'sky', 'honey'] as const;
+  const gardens = ['none', 'hedge', 'flowers', 'orchard'] as const;
+  const roofs = [look.roof, look.roof, 'gable', 'hip', 'crow_step'] as const;
+  const windows = [look.windows, 'small', 'arched', 'sash'] as const;
+  return {
+    ...look,
+    facade: worn ? look.facade : facades[seed % facades.length]!,
+    garden: gardens[(seed >>> 4) % gardens.length]!,
+    roof: look.floors >= 3 ? look.roof : roofs[(seed >>> 9) % roofs.length]!,
+    windows: windows[(seed >>> 15) % windows.length]!,
+  };
+}
+
 /**
  * Draws a building into `g` (local tile space, origin at the footprint's top vertex) and returns
  * the anchors the renderer animates. Pure function of its inputs: same data, same picture.
@@ -852,7 +872,7 @@ export function drawStyledBuilding(
   const look = renderLook(b);
   switch (b.definitionId) {
     case 'hut':
-      house(ctx, look, b.style, b.level, pal);
+      house(ctx, b.look ? look : houseDesign(look, seed, wear > 0), b.style, b.level, pal);
       break;
     case 'town_center':
       townCenter(ctx, look, b.style, b.level, pal);

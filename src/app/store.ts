@@ -42,6 +42,7 @@ export type PanelId =
   | 'credits'
   | 'workshop'
   | 'tourism'
+  | 'transport'
   | 'atlas';
 
 export interface Toast {

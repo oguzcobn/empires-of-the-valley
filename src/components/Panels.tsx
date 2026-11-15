@@ -6,7 +6,7 @@ import { SLOT_IDS, useApp } from '../app/store';
 import type { SlotId } from '../app/store';
 import { UNIT_IDS, UNITS, specialistCount } from '../game/data/units';
 import { calendar } from '../game/core/time';
-import type { GameState, ResourceId, TechId } from '../game/core/types';
+import type { GameState, ResourceId, TechId, TransitCargo } from '../game/core/types';
 import { GAME_VERSION } from '../game/data/balance';
 import { QUESTS } from '../game/data/quests';
 import { TECHNOLOGIES, TECH_IDS } from '../game/data/technologies';
@@ -15,6 +15,7 @@ import { cityOf, districtName } from '../game/data/cities';
 import { citizens } from '../game/data/citizens';
 import type { WorldProvince } from '../game/data/worldMap';
 import { PACT_PRICES, validateCommand } from '../game/systems/commands';
+import { TRANSIT_COST, transitUnlocked } from '../game/systems/frontier';
 import { neighborhoodServices } from '../game/systems/crime';
 import { forecastBattle } from '../game/systems/combat';
 import {
@@ -29,7 +30,7 @@ import {
 } from '../game/systems/economy';
 import { growthBlocker, happinessFactors, happinessTarget } from '../game/systems/population';
 import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
-import { Bar, Modal, Row } from './common';
+import { Bar, CostList, Modal, Row } from './common';
 import { GRAPHICS_SETTINGS, UI_SCALES, effectiveQuality } from '../app/settings';
 import { Icon } from './icons';
 import { ObjectiveList, rewardLabel } from './QuestTracker';
@@ -37,6 +38,47 @@ import { WorkshopPanel } from './Workshop';
 import { AtlasPanel, TourismPanel } from './Heritage';
 
 const RESOURCES: ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
+
+function TransportPanel({ game }: { game: GameState }): ReactElement {
+  const p = homeProvince(game);
+  const { dispatch, focusOn, openPanel } = useApp.getState();
+  return <>
+    <p className="hint">Yolcu seferleri bilet geliri sağlar. Satışta depoda 20 birim kalır. Alım miktarı depo kapasitesine ve altına bağlıdır.</p>
+    {(['rail', 'air'] as const).map((kind) => {
+      const title = kind === 'rail' ? 'Tren istasyonu' : 'Havalimanı';
+      const line = p.transit?.[kind];
+      const cmd = { type: 'buildTransit', kind } as const;
+      const error = line ? null : validateCommand(game, cmd);
+      return <section className="section" key={kind}>
+        <h3>{title}</h3>
+        {line ? <>
+          <label>Sefer türü <select className="input" value={line.cargo} onChange={(e) => dispatch({ type: 'setTransitCargo', kind, cargo: e.currentTarget.value as TransitCargo })}>
+            <option value="passengers">Yolcu</option>
+            {(['stone', 'wood', 'food', 'tools'] as const).map((cargo) => <option value={cargo} key={cargo}>{t(`resource.${cargo}`)}</option>)}
+          </select></label>
+          {line.cargo !== 'passengers' && <label> Ticaret <select className="input" value={line.direction ?? 'export'} onChange={(e) =>
+            dispatch({ type: 'setTransitCargo', kind, cargo: line.cargo, direction: e.currentTarget.value === 'import' ? 'import' : 'export' })}>
+            <option value="export">Sat</option><option value="import">Satın al</option>
+          </select></label>}
+          <p>{line.passengers} yolcu · {fmtAmount(line.shipped)} yük · {fmtAmount(line.earned)} altın gelir</p>
+          {!!line.spent && <p>Alım gideri: {fmtAmount(line.spent)} altın</p>}
+          <button type="button" className="btn" onClick={() => {
+            const site = line.route[0]!;
+            openPanel(null);
+            focusOn(site.x, site.y);
+          }}>Haritada göster</button>
+        </> : <>
+          <p>{transitUnlocked(game, p, kind)
+            ? 'Şehre yakın boş alan ve güzergâh otomatik seçilir.'
+            : kind === 'rail' ? 'Köy Meydanı 2. seviyede açılır.' : 'Köy Meydanı 2. seviyede ve Mimarlık araştırmasından sonra açılır.'}</p>
+          <CostList cost={TRANSIT_COST[kind]} stocks={p.stocks} />
+          <button type="button" className="btn primary" disabled={!!error} onClick={() => dispatch(cmd)}>{title} inşa et</button>
+          {error && transitUnlocked(game, p, kind) && <p className="hint">{tm(error)}</p>}
+        </>}
+      </section>;
+    })}
+  </>;
+}
 
 function EconomyPanel({ game }: { game: GameState }): ReactElement {
   const p = homeProvince(game);
@@ -970,6 +1012,8 @@ export function PanelHost({ game }: { game: GameState | null }): ReactElement | 
     );
   if (!game) return null;
   switch (panel) {
+    case 'transport':
+      return <Modal title={t('panel.transport')} onClose={close}><TransportPanel game={game} /></Modal>;
     case 'economy':
       return (
         <Modal title={t('panel.economy')} onClose={close} wide>
