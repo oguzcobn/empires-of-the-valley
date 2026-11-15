@@ -397,8 +397,7 @@ export const tr = {
   'catalog.buildTime': 'İnşa süresi',
   'catalog.workers': 'İşçi kadrosu',
   'catalog.cannotAfford': 'Şu an kaynak yetmiyor',
-  'catalog.hint':
-    'Bir yapı seç, sonra haritada yeşil görünen bir yere tıkla. Kırmızı alan uygun değildir; nedeni sol altta yazar.',
+  'catalog.hint': 'Yapıyı Köy Meydanı’na bağlı bir yolun kenarına yerleştir.',
 
   // ------------------------------------------------------------ yapı penceresi
   'inspector.title': 'Yapı bilgisi',

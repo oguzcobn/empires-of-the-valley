@@ -58,6 +58,7 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
           ✕
         </button>
       </header>
+      <p className="hint">{t('catalog.hint')}</p>
       <div className="catalog-style" data-testid="catalog-style">
         <div className="spread">
           <span className="muted">{t('catalog.style')}</span>
@@ -173,7 +174,6 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
           );
         })}
       </div>
-      <p className="hint">{t('catalog.hint')}</p>
     </aside>
   );
 }
