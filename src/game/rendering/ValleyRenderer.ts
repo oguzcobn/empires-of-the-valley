@@ -32,6 +32,7 @@ import type { MatchDay } from '../data/matchDays';
 import { drawCityCar, drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
+import { WorkerScenes } from './workerScenes';
 
 export type Tool =
   | { kind: 'select' }
@@ -158,6 +159,7 @@ export class ValleyRenderer {
   private waterFx = new Graphics();
   private under = new Graphics();
   private objects = new Container();
+  private workScenes = new WorkerScenes(this.objects);
   private ghost = new Graphics();
   private fx = new Container();
   private drops: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
@@ -240,6 +242,7 @@ export class ValleyRenderer {
     for (const fn of this.cleanup) fn();
     if (this.ready) {
       this.app.ticker.remove(this.frame);
+      this.workScenes.destroy();
       for (const a of this.atlas.values()) a.tex.destroy(true);
       this.atlas.clear();
       // Never pass `true` as the first argument: it releases Pixi's global resources and breaks the
@@ -256,7 +259,7 @@ export class ValleyRenderer {
       textures: this.atlas.size,
       buildings: this.buildingViews.size,
       props: this.propViews.size,
-      walkers: this.walkers.length,
+      walkers: this.walkers.length + this.workScenes.count,
       particles: this.particles.length,
     };
   }
@@ -511,6 +514,8 @@ export class ValleyRenderer {
     this.updateWeather(view, cal.day, cal.season, dt, motion);
     this.watchFps(view);
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
+    const workerStep = motion ? (dt / 1000) * Math.min(1.35, SPEED_FACTOR[view.game.speed] ?? 0) : 0;
+    this.workScenes.update(p, cal.season, view.selectedBuildingId, workerStep, !motion);
     this.updateWalkers(view, p, dt, motion);
     this.updateTraffic(view, p, dt, motion);
     this.updateMilitia(view, p, dt);
@@ -918,6 +923,7 @@ export class ValleyRenderer {
     if (this.dropKind === 'overcast' || this.dropKind === 'rain') tint = mix(tint, 0xb8c0c8, 0.25);
     this.ground.tint = tint;
     this.waterFx.tint = tint;
+    this.workScenes.setTint(tint);
     for (const pv of this.propViews.values()) pv.c.tint = tint;
     for (const w of this.walkers) w.c.tint = tint;
     for (const w of this.matchFans) w.c.tint = tint;
@@ -1143,7 +1149,7 @@ export class ValleyRenderer {
 
   /** Visual-only villagers and carts wandering the road network. The economy never reads them. */
   private updateWalkers(view: RendererView, p: Province, dt: number, motion: boolean): void {
-    const wantVillagers = Math.min(10, Math.floor(totalPopulation(p) / 2));
+    const wantVillagers = Math.min(10, Math.max(0, Math.floor(totalPopulation(p) / 2) - this.workScenes.count));
     const wantCarts = Math.min(3, p.buildings.filter((b) => specOf(b).produces && isOperating(b)).length);
     const count = (cart: boolean): number => this.walkers.filter((w) => w.cart === cart).length;
     for (const cart of [false, true]) {

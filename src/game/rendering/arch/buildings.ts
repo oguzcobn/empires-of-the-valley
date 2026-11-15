@@ -572,6 +572,10 @@ function farm(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level:
     if (z > 0) {
       poly(ctx, [P(uStart, v + 0.14, 0), P(uEnd, v + 0.14, 0), P(uEnd, v + 0.14, z), P(uStart, v + 0.14, z)], shade(pal.crop, 0.85));
       poly(ctx, [P(uStart, v, z), P(uEnd, v, z), P(uEnd, v + 0.14, z), P(uStart, v + 0.14, z)], pal.crop);
+      if (ctx.detail >= 1) {
+        line(ctx, P(uStart, v + 0.02, z), P(uEnd, v + 0.02, z), shade(pal.crop, 1.22), 0.8);
+        line(ctx, P(uStart, v + 0.17), P(uEnd, v + 0.17), shade(pal.furrow, 0.74), 1);
+      }
       if (ctx.detail >= 2)
         for (let u = uStart + 0.05; u < uEnd; u += 0.09) {
           const p = P(u, v + 0.07, z + 1);
@@ -605,6 +609,17 @@ function quarry(ctx: DrawCtx, look: BuildingLook, level: number): void {
   poly(ctx, [P(0.9, 0.9), P(1.8, 0.9), P(1.8, 1.8), P(0.9, 1.8)], 0x6f726e);
   box(ctx, 0.1, 0.1, 1.2, 0.8, 0, 12, COLORS.rock);
   box(ctx, 0.1, 0.1, 0.8, 0.5, 12, 22, shade(COLORS.rock, 1.05));
+  if (ctx.detail >= 1) {
+    line(ctx, P(0.1, 0.8, 8), P(1.2, 0.8, 8), shade(COLORS.rock, 1.14), 0.95);
+    line(ctx, P(0.3, 0.8, 0), P(0.47, 0.8, 7), shade(COLORS.rock, 0.73), 1.1);
+    line(ctx, P(0.84, 0.8, 6), P(0.8, 0.8, 12), shade(COLORS.rock, 0.75), 1.05);
+    for (let i = 0; i < 8; i++) {
+      const u = 0.84 + ((i * 17) % 11) * 0.07;
+      const v = 0.89 + ((i * 23) % 10) * 0.072;
+      const [px, py] = P(u, v);
+      ctx.g.ellipse(px, py, 1.6, 0.75).fill(i % 2 ? 0xc2c3b8 : 0x565d59);
+    }
+  }
   if (level >= 2) box(ctx, 0.1, 0.1, 0.45, 0.32, 22, 30, shade(COLORS.rock, 1.1));
   box(ctx, 1.2, 1.3, 1.5, 1.6, 0, 7, 0xc9cdd2);
   box(ctx, 1.55, 1.05, 1.78, 1.28, 0, 5, 0xb9bdc2);

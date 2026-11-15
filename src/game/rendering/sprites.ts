@@ -36,7 +36,11 @@ export function drawTree(g: Graphics, pal: SeasonPalette, kind: number, scale: n
     for (let i = 0; i < 3; i++) {
       const y = -6 * scale - i * 8 * scale;
       const w = (11 - i * 2.5) * scale;
-      g.poly([-w, y, w, y, 0, y - 13 * scale]).fill(shade(pal.pine, 1 + i * 0.08));
+      const top = y - 13 * scale;
+      const foliage = shade(pal.pine, 0.88 + i * 0.12);
+      g.poly([-w, y - scale, -w * 0.35, y, w * 0.35, y + scale, w, y, w * 0.54, y - 4 * scale, 0, top]).fill(foliage);
+      g.poly([-w, y - scale, 0, top, -w * 0.28, y - scale, -w * 0.6, y - 3 * scale]).fill(shade(foliage, 1.24));
+      g.poly([0, top, w, y, w * 0.28, y - scale]).fill(shade(foliage, 0.73));
       if (pal.snow)
         g.poly([-w * 0.45, y - 7 * scale, w * 0.45, y - 7 * scale, 0, y - 13 * scale]).fill(0xf7fafc);
     }
@@ -50,11 +54,13 @@ export function drawTree(g: Graphics, pal: SeasonPalette, kind: number, scale: n
       g.ellipse(4 * scale, -23 * scale, 4 * scale, 1.6 * scale).fill(0xf7fafc);
     } else {
       const c = pal.leaf[kind % pal.leaf.length]!;
-      const base = pal.leaf[0]!;
-      g.circle(-5 * scale, -17 * scale, 8 * scale).fill(shade(base, 0.9));
-      g.circle(5 * scale, -18 * scale, 8 * scale).fill(shade(base, 0.82));
-      g.circle(0, -24 * scale, 9 * scale).fill(base);
-      g.circle(-3 * scale, -26 * scale, 4 * scale).fill(shade(c, 1.1));
+      g.ellipse(1.5 * scale, -17 * scale, 12 * scale, 8 * scale).fill(shade(c, 0.64));
+      g.ellipse(6 * scale, -21 * scale, 7.6 * scale, 7 * scale).fill(shade(c, 0.79));
+      g.ellipse(-5 * scale, -20 * scale, 7.8 * scale, 7 * scale).fill(shade(c, 0.92));
+      g.ellipse(-0.5 * scale, -25 * scale, 8.8 * scale, 8.1 * scale).fill(c);
+      g.ellipse(-4 * scale, -27 * scale, 5.3 * scale, 3.7 * scale).fill(shade(c, 1.15));
+      g.ellipse(1.4 * scale, -29 * scale, 3.2 * scale, 2.1 * scale).fill(shade(c, 1.12));
+      line(g, [0, -4 * scale], [-1.1 * scale, -12 * scale], shade(COLORS.trunk, 1.25), scale);
     }
   }
 }
