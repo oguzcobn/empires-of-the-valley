@@ -212,7 +212,7 @@ export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, br
       const quote = roadQuote(s, x, y, preview);
       if ('error' in quote) return { ...plan, error: quote.error, blocked: { x, y } };
       const pave = paved && quote.type === 'dirt';
-      plan.tiles.push({ x, y, type: quote.type, paved: pave });
+      plan.tiles.push({ x, y, type: quote.type, ...(pave ? { paved: true } : {}) });
       for (const id of COST_KEYS(quote.cost)) plan.cost[id] = (plan.cost[id] ?? 0) + (quote.cost[id] ?? 0);
       if (pave) for (const id of COST_KEYS(PAVING_COST)) plan.cost[id] = (plan.cost[id] ?? 0) + (PAVING_COST[id] ?? 0);
       preview.tiles[index] = { ...tile, road: true, roadType: quote.type };
