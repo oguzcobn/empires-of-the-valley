@@ -57,7 +57,7 @@ export type Command =
   | { type: 'cancelVessel'; orderId: number }
   | { type: 'sellYacht' }
   | { type: 'placeRoad'; x: number; y: number }
-  | { type: 'placeRoadRoute'; start: RoadPoint; end: RoadPoint; bridge?: boolean }
+  | { type: 'placeRoadRoute'; start: RoadPoint; end: RoadPoint; bridge?: boolean; paved?: boolean }
   | { type: 'paveRoad'; x: number; y: number }
   | { type: 'buildTerrace'; x: number; y: number }
   | { type: 'removeRoad'; x: number; y: number }
@@ -164,16 +164,18 @@ export interface RoadPoint {
 }
 
 export interface RoadPlan {
-  tiles: (RoadPoint & { type: RoadType })[];
+  tiles: (RoadPoint & { type: RoadType; paved?: boolean })[];
+  paveTiles: RoadPoint[];
   cost: Cost;
   error: MessageRef | null;
   blocked: RoadPoint | null;
 }
 
 /** Trace a diagonal or axial street in orthogonal steps that the road network can join. */
-export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, bridge = false): RoadPlan {
+export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, bridge = false, paved = false): RoadPlan {
   const p = homeProvince(s);
-  const plan: RoadPlan = { tiles: [], cost: {}, error: null, blocked: null };
+  const plan: RoadPlan = { tiles: [], paveTiles: [], cost: {}, error: null, blocked: null };
+  paved = paved && !bridge;
   for (const point of [start, end]) {
     if (!Number.isInteger(point.x) || !Number.isInteger(point.y) || !inBounds(p, point.x, point.y))
       return { ...plan, error: { key: 'err.outOfBounds' } };
@@ -209,9 +211,14 @@ export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, br
     if (!tile.road) {
       const quote = roadQuote(s, x, y, preview);
       if ('error' in quote) return { ...plan, error: quote.error, blocked: { x, y } };
-      plan.tiles.push({ x, y, type: quote.type });
+      const pave = paved && quote.type === 'dirt';
+      plan.tiles.push({ x, y, type: quote.type, paved: pave });
       for (const id of COST_KEYS(quote.cost)) plan.cost[id] = (plan.cost[id] ?? 0) + (quote.cost[id] ?? 0);
+      if (pave) for (const id of COST_KEYS(PAVING_COST)) plan.cost[id] = (plan.cost[id] ?? 0) + (PAVING_COST[id] ?? 0);
       preview.tiles[index] = { ...tile, road: true, roadType: quote.type };
+    } else if (paved && tile.roadType === 'dirt' && !tile.paved) {
+      plan.paveTiles.push({ x, y });
+      for (const id of COST_KEYS(PAVING_COST)) plan.cost[id] = (plan.cost[id] ?? 0) + (PAVING_COST[id] ?? 0);
     }
     if (movedX < dx && (movedY === dy || (2 * movedX + 1) * dy <= (2 * movedY + 1) * dx)) {
       x += stepX;
@@ -233,7 +240,7 @@ export function planRoadRoute(s: GameState, start: RoadPoint, end: RoadPoint, br
     }
   }
 
-  plan.error = plan.tiles.length ? missingFor(p, plan.cost) : { key: 'err.routeNoNewRoad' };
+  plan.error = plan.tiles.length || plan.paveTiles.length ? missingFor(p, plan.cost) : { key: 'err.routeNoNewRoad' };
   return plan;
 }
 
@@ -290,7 +297,7 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       return 'error' in quote ? quote.error : missingFor(p, quote.cost);
     }
     case 'placeRoadRoute':
-      return (roadPlan ?? planRoadRoute(s, cmd.start, cmd.end, cmd.bridge)).error;
+      return (roadPlan ?? planRoadRoute(s, cmd.start, cmd.end, cmd.bridge, cmd.paved)).error;
     case 'paveRoad': {
       if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y)) return { key: 'err.invalid' };
       const road = tileAt(p, cmd.x, cmd.y);
@@ -481,11 +488,13 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
     case 'placeRoadRoute': {
       const plan = roadPlan!;
       pay(p, plan.cost);
-      for (const { x, y, type } of plan.tiles) {
+      for (const { x, y, type, paved } of plan.tiles) {
         const tile = p.tiles[idx(p, x, y)]!;
         tile.road = true;
         tile.roadType = type;
+        tile.paved = !!paved;
       }
+      for (const { x, y } of plan.paveTiles) p.tiles[idx(p, x, y)]!.paved = true;
       refreshConnectivity(p);
       break;
     }
@@ -684,7 +693,7 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
  * state together with a user-facing reason; an accepted one returns a new state.
  */
 export function executeCommand(state: GameState, cmd: Command): CommandResult {
-  const roadPlan = cmd.type === 'placeRoadRoute' ? planRoadRoute(state, cmd.start, cmd.end, cmd.bridge) : undefined;
+  const roadPlan = cmd.type === 'placeRoadRoute' ? planRoadRoute(state, cmd.start, cmd.end, cmd.bridge, cmd.paved) : undefined;
   const error = validateCommand(state, cmd, roadPlan);
   if (error) return { ok: false, error };
   return {
