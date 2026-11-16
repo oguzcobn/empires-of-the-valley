@@ -3,6 +3,8 @@ import type { ReactElement } from 'react';
 import { useApp } from '../app/store';
 import { DEMOLISH_REFUND_PERMILLE } from '../game/data/balance';
 import { ValleyRenderer } from '../game/rendering/ValleyRenderer';
+import type { RendererHost } from '../game/rendering/ValleyRenderer';
+import type { ValleyView } from '../game/rendering/view';
 import { homeProvince, idleWorkers } from '../game/systems/economy';
 import { planRoadRoute, validatePlacement } from '../game/systems/commands';
 import { buildingById, tileAt } from '../game/systems/grid';
@@ -10,8 +12,8 @@ import { fmtAmount, t } from '../i18n';
 import { artDetail, effectiveQuality, lowerQuality, setAutoCap } from '../app/settings';
 
 /** The live renderer, for camera buttons and keyboard shortcuts. Null while not mounted. */
-let current: ValleyRenderer | null = null;
-export const getRenderer = (): ValleyRenderer | null => current;
+let current: ValleyView | null = null;
+export const getRenderer = (): ValleyView | null => current;
 
 /** Asks for confirmation, then demolishes a building or cancels its construction site. */
 export function requestDemolish(buildingId: string): void {
@@ -64,6 +66,7 @@ export function ValleyCanvas(): ReactElement {
   useEffect(() => { setPlacement(null); }, [tool]);
   const focus = useApp((s) => s.focus);
   const graphics = useApp((s) => s.settings.graphics);
+  const view3d = useApp((s) => s.settings.view3d);
   const [capNonce, setCapNonce] = useState(0);
   const quality = effectiveQuality({ graphics });
 
@@ -75,8 +78,8 @@ export function ValleyCanvas(): ReactElement {
       cacheBodies: quality === 'low' || quality === 'medium',
     };
     let disposed = false;
-    let renderer: ValleyRenderer | null = null;
-    ValleyRenderer.create(host, {
+    let renderer: ValleyView | null = null;
+    const callbacks: RendererHost = {
       getView() {
         const s = useApp.getState();
         return s.game
@@ -166,7 +169,12 @@ export function ValleyCanvas(): ReactElement {
           s.select(buildingId);
         }
       },
-    }, opts)
+    };
+    // The 3D view (and three.js with it) is only downloaded when the player switches it on.
+    const created: Promise<ValleyView> = view3d
+      ? import('../game/rendering3d/Valley3D').then((m) => m.Valley3D.create(host, callbacks, opts))
+      : ValleyRenderer.create(host, callbacks, opts);
+    created
       .then((r) => {
         if (disposed) r.destroy();
         else {
@@ -180,7 +188,7 @@ export function ValleyCanvas(): ReactElement {
       renderer?.destroy();
       if (current === renderer) current = null;
     };
-  }, [quality, capNonce]);
+  }, [quality, capNonce, view3d]);
 
   useEffect(() => {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);

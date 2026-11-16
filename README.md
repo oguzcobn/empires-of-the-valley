@@ -90,3 +90,10 @@ Known Phase 1 limitations are listed in `docs/TEST_PLAN.md`.
 - No licence file is included yet. Choose one before publishing the repository publicly (for example MIT
   for code); until then the default is "all rights reserved".
 - The design takes genre-level inspiration only. No art, maps, text, sounds or UI from other games are used.
+
+## 3D görünüm (beta)
+
+Ayarlar → **3D görünüm (beta)** ile (ya da adrese `?view=3d` ekleyerek) Three.js tabanlı görünüm açılır:
+gerçek güneş gölgeleri, tilt-shift alan derinliği, kıvrımlı yollar, sokak lambaları ve şerit takip eden
+araçlar. Oyun kuralları, kayıtlar ve arayüz iki görünümde de aynıdır; ayrıntı için
+`docs/ADR-002-3d-view.md`.

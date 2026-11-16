@@ -811,6 +811,16 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
         />
         <span>{t('graphics.weather')}</span>
       </label>
+      <label className="check-field">
+        <input
+          type="checkbox"
+          checked={settings.view3d}
+          onChange={(e) => updateSettings({ view3d: e.target.checked })}
+          data-testid="view-3d"
+        />
+        <span>{t('graphics.view3d')}</span>
+      </label>
+      <p className="hint">{t('graphics.view3dHint')}</p>
       {game && (
         <fieldset className="field plain" data-testid="settings-cheat">
           <legend>Hile Kodu</legend>
