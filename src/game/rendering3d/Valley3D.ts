@@ -1,3 +1,4 @@
+import { CityActors3D } from './cityActors3d';
 import * as THREE from 'three';
 import type { BuildingId, BuildingInstance, Province, Tile } from '../core/types';
 import { calendar, clockHour } from '../core/time';
@@ -102,6 +103,7 @@ export class Valley3D implements ValleyView {
   private fog = new THREE.Fog(0xbfe3f2, 30, 200);
   private terrain = new Terrain3D();
   private actors = new Actors3D();
+  private cityActors = new CityActors3D();
   private post: TiltShift | null = null;
   /** Countryside beyond the playable map, so the valley does not float in the sky. */
   private apron = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshLambertMaterial({ color: 0x6fae4a }));
@@ -152,15 +154,15 @@ export class Valley3D implements ValleyView {
     const r = new Valley3D(cb);
     r.opts = { ...r.opts, ...opts };
     r.host = host;
-    // Low quality draws straight to the screen; everything else goes through the tilt-shift pass.
-    const usePost = r.opts.resolution > 1;
-    r.shadows = usePost;
+    // Expensive depth-of-field is reserved for Ultra; medium draws without shadows.
+    const usePost = r.opts.resolution > 2;
+    r.shadows = r.opts.resolution >= 2;
     const renderer = new THREE.WebGLRenderer({ antialias: r.opts.antialias && !usePost, powerPreference: 'high-performance' });
     r.renderer = renderer;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, r.opts.resolution, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, r.opts.resolution, 1.5));
     renderer.shadowMap.enabled = r.shadows;
     renderer.shadowMap.type = THREE.PCFShadowMap;
-    if (usePost) r.post = new TiltShift(r.opts.antialias && r.opts.resolution >= 2 ? 4 : 0);
+    if (usePost) r.post = new TiltShift(0);
     const canvas = renderer.domElement;
     canvas.style.touchAction = 'none';
     canvas.style.display = 'block';
@@ -172,7 +174,7 @@ export class Valley3D implements ValleyView {
     r.scene.fog = r.fog;
     r.scene.background = new THREE.Color(0xbfe3f2);
     r.sun.castShadow = r.shadows;
-    const mapSize = r.opts.resolution >= 2 ? 2048 : 1024;
+    const mapSize = r.opts.resolution > 2 ? 2048 : 1024;
     r.sun.shadow.mapSize.set(mapSize, mapSize);
     r.sun.shadow.bias = -0.0006;
     r.sun.shadow.normalBias = 0.03;
@@ -184,7 +186,7 @@ export class Valley3D implements ValleyView {
     r.ghost.visible = false;
     r.terrain.setShadows(r.shadows);
     r.actors.setShadows(r.shadows);
-    r.scene.add(r.hemi, r.sun, r.sun.target, r.apron, r.terrain.group, r.buildings, r.actors.group, r.overlay, r.ghost);
+    r.scene.add(r.hemi, r.sun, r.sun.target, r.apron, r.terrain.group, r.buildings, r.actors.group, r.cityActors.group, r.overlay, r.ghost);
 
     r.bindInput(canvas);
     r.resize();
@@ -206,6 +208,7 @@ export class Valley3D implements ValleyView {
     this.buildingViews.clear();
     this.terrain.dispose();
     this.actors.dispose();
+    this.cityActors.dispose();
     this.post?.dispose();
     this.overlay.geometry.dispose();
     this.ghost.geometry.dispose();
@@ -494,6 +497,7 @@ export class Valley3D implements ValleyView {
     }
     this.updateLight(view, pal, cal.day, cal.season, dt);
     this.syncBuildings(p);
+    this.cityActors.update(view.game, p, dt, !motion);
     this.terrain.update(this.night, dt, motion);
     this.actors.update(
       {
@@ -513,7 +517,7 @@ export class Valley3D implements ValleyView {
   private watchFps(view: RendererView): void {
     if (!view.autoQuality) return;
     this.fpsSamples.push(this.fps);
-    if (this.fpsSamples.length < 300) return;
+    if (this.fpsSamples.length < 120) return;
     const avg = this.fpsSamples.reduce((a, b) => a + b, 0) / this.fpsSamples.length;
     this.fpsSamples = [];
     if (avg < 30 && this.time - this.lowFpsAt > 20000) {

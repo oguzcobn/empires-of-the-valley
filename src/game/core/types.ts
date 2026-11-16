@@ -1,3 +1,4 @@
+import type { CityLifeState } from '../systems/cityLife';
 import type { UnitId } from '../data/units';
 import type { TKey } from '../../i18n/tr';
 import type { CityId } from '../data/cities';
@@ -34,6 +35,12 @@ export type BuildingId =
   | 'theatre'
   | 'police_station'
   | 'shipyard'
+  | 'hospital'
+  | 'factory'
+  | 'hotel'
+  | 'club'
+  | 'restaurant'
+  | 'airport'
   | LandmarkId;
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';
@@ -453,6 +460,7 @@ export interface GameState {
   settings: GameSettings;
   tourism: TourismState;
   shipyard: ShipyardState;
+  cityLife?: CityLifeState;
 }
 
 export interface MessageRef {

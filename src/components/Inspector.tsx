@@ -499,6 +499,17 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         )}
 
       {b.definitionId === 'town_center' && <TownHall game={game} p={p} />}
+      {['hospital','police_station','market','factory','hotel','restaurant','club','airport'].includes(b.definitionId) && isBuilt(b) && <section className="inspector-section" data-testid="city-service-status">
+        <h4>Şehir yaşamı</h4>
+        <p>Bağlı asfalt yol veya köprü ve çalışan gerekir. Araçlar müsait park alanlarını kullanır.</p>
+        <p>Bu binanın görevleri: {game.cityLife?.jobs.filter(j => j.source === b.id || j.target === b.id).length ?? 0}</p>
+        {b.definitionId === 'airport' && <>
+          <p>Pist: {game.cityLife?.flights.some(f => f.airport === b.id) ? 'Uçuş işlemi sürüyor' : 'Boş'}</p>
+          <p>Uçuşlar konaklama kapasitesi ve 1 altın işletme bütçesi ile otomatik sıraya alınır.</p>
+          <p>Tamamlanan uçuş: {game.cityLife?.completedFlights ?? 0} · Gelen yolcu: {game.cityLife?.passengers ?? 0}</p>
+          <p>Şehir hizmetleri geliri: {((game.cityLife?.revenue ?? 0) / 1000).toFixed(1)} · Uçuş gideri: {((game.cityLife?.operatingCosts ?? 0) / 1000).toFixed(1)}</p>
+        </>}
+      </section>}
       {b.definitionId === 'shipyard' && isBuilt(b) && <ShipyardSection game={game} />}
 
       {isBuilt(b) && (

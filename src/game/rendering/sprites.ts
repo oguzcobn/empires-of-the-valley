@@ -197,7 +197,7 @@ export function drawGroundTile(
 export interface BridgeEnds { start: boolean; end: boolean }
 const NO_BRIDGE_ENDS: BridgeEnds = { start: false, end: false };
 /** Height of the bridge carriageway above the bank, in pixels. Kept low so roads join flush. */
-export const BRIDGE_DECK_PX = 2;
+export const BRIDGE_DECK_PX = 0;
 export const BRIDGE_RAIL_PX = 5;
 
 function cliffTexture(g: Graphics, ax: number, ay: number, bx: number, by: number, drop: number, terrain: TerrainId, c: number): void {

@@ -55,6 +55,11 @@ describe('connected asphalt street topology', () => {
     expect(kind([east, west, north])).toBe('tee');
     expect(kind([east, west, north, south])).toBe('cross');
   });
+  it('joins asphalt to a bridge at the same bank elevation', () => {
+    const p = make([[13, 12]]);
+    const updated = produce(p, draft => { draft.tiles[12 * draft.width + 13]!.roadType = 'bridge'; draft.tiles[12 * draft.width + 13]!.paved = false; });
+    expect(getPavedLinks(updated, 12, 12).posX).toBe(true);
+  });
   it('does not draw a seamless connection across elevation changes', () => {
     const links = getPavedLinks(make([[13, 12]], 1), ...center);
     expect(links.posX).toBe(false);
