@@ -1,3 +1,4 @@
+import { drawCityBuilding } from './cityBuildings';
 import type { Graphics } from 'pixi.js';
 import type { ArchitectureStyle, BuildingId, BuildingLook, RoofType, WindowType } from '../../core/types';
 import { CULTURES } from '../../data/architecture';
@@ -900,6 +901,7 @@ export function drawStyledBuilding(
   const wear = b.condition >= 5000 ? 0 : b.condition >= 2500 ? 1 : 2;
   const ctx = newCtx(g, detail, seed, pal.snow, wear, illuminated);
   const look = renderLook(b);
+  if (drawCityBuilding(ctx, b.definitionId, b.style)) return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
   switch (b.definitionId) {
     case 'hut':
       house(ctx, b.look ? look : houseDesign(look, seed, wear > 0), b.style, b.level, pal);
@@ -950,6 +952,7 @@ export function drawStyledBuilding(
     case 'shipyard':
       shipyard(ctx, look, b.level);
       break;
+    case 'hospital': case 'factory': case 'hotel': case 'club': case 'restaurant': case 'airport': break;
     default:
       drawLandmark(ctx, b.definitionId, pal);
   }

@@ -156,6 +156,16 @@ export const gameStateSchema = z
     eventLog: z.array(gameEvent).max(500),
     nextEventId: nat,
     nextBuildingId: nat,
+    cityLife: z.object({
+      nextId: nat, completedTrips: nat, completedFlights: nat, passengers: nat, revenue: nat, operatingCosts: nat,
+      jobs: z.array(z.object({
+        id: nat, kind: z.enum(['shopping','ambulance','patrol','delivery','dining','nightlife','hotel']),
+        source: shortText, target: shortText, slot: nat.max(2),
+        path: z.array(z.object({x:z.number().finite().min(0).max(64),y:z.number().finite().min(0).max(64)}).strict()).min(1).max(4108),
+        index: nat, stage: z.enum(['outbound','park','walkIn','inside','walkOut','return']), age: nat,
+      }).strict().refine(j=>j.index<j.path.length)).max(24),
+      flights: z.array(z.object({airport:shortText,phase:z.enum(['landing','taxiIn','terminal','taxiOut','takeoff']),age:nat.max(3),passengers:nat.max(8)}).strict()).max(4),
+    }).strict().optional(),
     settings: z.object({ autoPauseOnMilestone: z.boolean() }).strict(),
     tourism: z
       .object({

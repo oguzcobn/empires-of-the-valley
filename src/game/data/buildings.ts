@@ -13,6 +13,60 @@ function level(partial: Partial<LevelSpec> & Pick<LevelSpec, 'cost' | 'buildTick
 
 /** Data-driven building catalog: the village (Phase 1), terraces and the historic landmarks. */
 const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
+  hospital: {
+    id: 'hospital', category: 'civic', era: 1,
+    footprint: [2, 2], validTerrains: LAND, seasonal: false, usesTools: false,
+    buildable: true, demolishable: true, services: { community: 4, safety: 4, safetyRadius: 5 },
+    levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
+      buildTicks: 4 * DAY, workerSlots: 4, upkeepGold: u(0.5),
+
+      requires: { population: 20 } })],
+  },
+  factory: {
+    id: 'factory', category: 'production', era: 1,
+    footprint: [3, 3], validTerrains: LAND, seasonal: false, usesTools: false,
+    buildable: true, demolishable: true, services: {  },
+    levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
+      buildTicks: 4 * DAY, workerSlots: 4, upkeepGold: u(0.5),
+      produces: { resourceId: 'tools', perDay: u(3) },
+      requires: { population: 20 } })],
+  },
+  hotel: {
+    id: 'hotel', category: 'housing', era: 1,
+    footprint: [2, 2], validTerrains: LAND, seasonal: false, usesTools: false,
+    buildable: true, demolishable: true, services: { beds: 20, attraction: 5 },
+    levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
+      buildTicks: 4 * DAY, workerSlots: 2, upkeepGold: u(0.5),
+
+      requires: { population: 20 } })],
+  },
+  club: {
+    id: 'club', category: 'civic', era: 1,
+    footprint: [2, 2], validTerrains: LAND, seasonal: false, usesTools: false,
+    buildable: true, demolishable: true, services: { community: 4, attraction: 8 },
+    levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
+      buildTicks: 4 * DAY, workerSlots: 2, upkeepGold: u(0.5),
+
+      requires: { population: 20 } })],
+  },
+  restaurant: {
+    id: 'restaurant', category: 'civic', era: 1,
+    footprint: [2, 2], validTerrains: LAND, seasonal: false, usesTools: false,
+    buildable: true, demolishable: true, services: { community: 3, attraction: 5 },
+    levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
+      buildTicks: 4 * DAY, workerSlots: 2, upkeepGold: u(0.5),
+
+      requires: { population: 20 } })],
+  },
+  airport: {
+    id: 'airport', category: 'civic', era: 1,
+    footprint: [8, 4], validTerrains: LAND, seasonal: false, usesTools: false,
+    buildable: true, demolishable: true, services: { attraction: 6 },
+    levels: [level({ cost: { wood: u(100), stone: u(120), gold: u(100), tools: u(10) },
+      buildTicks: 8 * DAY, workerSlots: 4, upkeepGold: u(2),
+
+      requires: { population: 30 } })],
+  },
   town_center: {
     id: 'town_center',
     category: 'governance',

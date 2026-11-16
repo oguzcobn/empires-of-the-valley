@@ -1,3 +1,4 @@
+import { cityLifeTick } from './cityLife';
 import { produce } from 'immer';
 import { crimeDayEnd } from './crime';
 import { securityDayEnd } from './security';
@@ -251,6 +252,7 @@ export function tickMut(s: GameState): void {
   constructionStep(s, p);
   economyStep(s, p, hour);
   s.tick += 1;
+  cityLifeTick(s, p);
   resolveHunt(s, p);
   if (s.tick % TICKS_PER_DAY === 0) dayEnd(s, p);
   evaluateQuests(s);

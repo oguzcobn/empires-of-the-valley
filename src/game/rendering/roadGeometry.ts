@@ -18,7 +18,7 @@ export function getPavedLinks(p: Province, x: number, y: number): PavedLinks {
   const connected = (dx: number, dy: number): boolean => {
     const next = tileAt(p, x + dx, y + dy);
     return !!tile?.road && !!tile.paved && tile.roadType === 'dirt' &&
-      !!next?.road && !!next.paved && next.roadType === 'dirt' &&
+      !!next?.road && (next.roadType === 'bridge' || (!!next.paved && next.roadType === 'dirt')) &&
       tile.height === next.height;
   };
   return {

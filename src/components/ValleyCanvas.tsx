@@ -99,7 +99,13 @@ export function ValleyCanvas(): ReactElement {
       onHover: (tile) => useApp.getState().setHover(tile),
       onLowFps(fps) {
         const next = lowerQuality(effectiveQuality(useApp.getState().settings));
-        if (!next) return;
+        if (!next) {
+          if (useApp.getState().settings.view3d) {
+            useApp.getState().updateSettings({ view3d: false });
+            useApp.getState().toast('info', 'Akıcı oyun için 2D görünüme geçildi. Şehriniz ve kayıtlarınız korundu.');
+          }
+          return;
+        }
         setAutoCap(next);
         useApp.getState().toast('info', t('graphics.autoLowered', { fps, q: `@graphics.${next}` }));
         setCapNonce((n) => n + 1);

@@ -32,6 +32,7 @@ import type { MatchDay } from '../data/matchDays';
 import { drawCityCar, drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
+import { CityScenes } from './cityScenes';
 import { WorkerScenes } from './workerScenes';
 import { FrontierScenes } from './frontierScenes';
 
@@ -156,6 +157,7 @@ export class ValleyRenderer {
   private under = new Graphics();
   private transportGround = new Graphics();
   private objects = new Container();
+  private cityScenes = new CityScenes(this.objects);
   private workScenes = new WorkerScenes(this.objects);
   private frontier = new FrontierScenes(this.transportGround, this.objects);
   private ghost = new Graphics();
@@ -240,6 +242,7 @@ export class ValleyRenderer {
     for (const fn of this.cleanup) fn();
     if (this.ready) {
       this.app.ticker.remove(this.frame);
+      this.cityScenes.destroy();
       this.workScenes.destroy();
       for (const a of this.atlas.values()) a.tex.destroy(true);
       this.atlas.clear();
@@ -524,6 +527,7 @@ export class ValleyRenderer {
     this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt');
     this.updateWalkers(view, p, dt, motion);
     this.updateTraffic(view, p, dt, motion);
+    this.cityScenes.update(view.game, p, dt, !motion);
     this.updateMilitia(view, p, dt);
     this.updateBoats(view, p, dt, motion);
     this.updateParticles(dt);
@@ -1261,14 +1265,14 @@ export class ValleyRenderer {
   private updateTraffic(view: RendererView, p: Province, dt: number, motion: boolean): void {
     const isPaved = (x: number, y: number): boolean => {
       const t = tileAt(p, x, y);
-      return !!t?.road && !!t.paved && t.roadType === 'dirt';
+      return !!t?.road && (t.roadType === 'bridge' || (!!t.paved && t.roadType === 'dirt'));
     };
     const neighbors = (x: number, y: number): [number, number][] =>
       (NEIGHBORS4.map(([dx, dy]) => [x + dx, y + dy] as [number, number]))
         .filter(([nx, ny]) =>
           isPaved(nx, ny) &&
           tileAt(p, nx, ny)?.height === tileAt(p, x, y)?.height);
-    const linked = this.pavedRoadTiles.filter(([x, y]) => neighbors(x, y).length > 0);
+    const linked = this.roadTiles.filter(([x, y]) => neighbors(x, y).length > 0);
     const desired = Math.min(8, Math.floor(linked.length / 4));
     // Deleted or demolished paved roads must immediately release their cars.
     for (let i = this.trafficCars.length - 1; i >= 0; i--) {

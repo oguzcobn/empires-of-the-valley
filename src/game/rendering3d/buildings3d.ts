@@ -1,3 +1,4 @@
+import { CITY_BUILDINGS, LETTERS } from '../rendering/arch/cityBuildings';
 import type * as THREE from 'three';
 import type { ArchitectureStyle, BuildingId, BuildingLook, RoofType } from '../core/types';
 import { BUILDINGS } from '../data/buildings';
@@ -536,6 +537,37 @@ const fallback: Maker = (c, w, d) => {
   house(c, 0.25, 0.25, w - 0.25, d - 0.45, Math.max(1, Math.min(3, c.look.floors)));
 };
 
+function modern(c: Ctx, id: BuildingId, w: number, d: number): void {
+ const title=CITY_BUILDINGS[id]!;
+ c.b.block(.05,.05,w-.05,d-.05,0,.015,0x919d96);
+ if(id==='airport'){
+  c.b.block(.15,.2,7.85,1.25,.015,.025,0x394452);
+  for(let x=.3;x<7.8;x+=.55)c.b.block(x,.7,x+.25,.74,.025,.03,0xffffff);
+  c.b.block(.4,1.4,7.5,1.75,.015,.025,0x67717c);
+  c.b.block(2,2,6.3,3.6,.015,.7,0xd9e8ed);
+  for(let x=2.15;x<6;x+=.4)c.b.block(x,3.6,x+.28,3.62,.2,.55,0x4b94ae);
+  c.b.block(6.8,2.7,7.2,3.1,0,1.5,0xbbc9d1);
+  c.b.block(6.55,2.45,7.45,3.35,1.5,1.85,0x326c85);
+  c.b.block(6.5,2.4,7.5,3.4,1.85,1.9,0xe2ebed);
+ }else{
+  const h=id==='hotel'?1.9:id==='factory'?1:.7;
+  c.b.block(.12,.12,w-.12,1.12,.015,h,id==='club'?0x323047:id==='hospital'?0xe8eff2:0xdac9b5);
+  c.b.block(.08,.08,w-.08,1.16,h,h+.08,0x4a6976);
+  for(let y=.2;y<h-.1;y+=.4)for(let x=.22;x<w-.25;x+=.36){c.b.block(x,1.12,x+.22,1.13,y,y+.23,0x44768c);c.lit.block(x,1.13,x+.22,1.135,y,y+.23,0xffe08a);if(id==='hotel')c.b.block(x-.03,1.13,x+.26,1.3,y-.03,y+.01,0xe5ded1);}
+  c.b.block(w/2-.14,1.13,w/2+.14,1.14,0,.32,0x23434f);
+  if(id==='market'||id==='hospital'||id==='police_station'){c.b.block(.12,1.5,1.88,1.95,.015,.025,0x545e68);for(let x=.14;x<1.9;x+=.55)c.b.block(x,1.5,x+.015,1.94,.025,.03,0xffffff);}
+  if(id==='factory'){for(const x of [.5,1,1.5])c.b.block(x,.3,x+.18,.5,1,1.85,0x9b5d4e);c.b.block(.3,1.2,2.7,1.8,.015,.2,0x68747c);}
+  if(id==='hotel'||id==='hospital')c.b.block(.65,1.15,1.35,1.5,.32,.38,0x3b7481);
+  if(id==='restaurant'){c.b.block(.15,1.12,1.85,1.48,.4,.46,0xb64f40);for(const x of [.45,1.35]){c.b.block(x-.16,1.55,x+.16,1.82,.15,.2,0xa97947);for(const z of [1.47,1.87])c.b.block(x-.1,z,x+.1,z+.1,.02,.12,0x4f6459);}}
+  if(id==='club')for(const x of [.17,1.8]){c.b.block(x,1.16,x+.04,1.17,.02,.72,0xe85aff);c.lit.block(x,1.17,x+.04,1.18,.02,.72,0xe85aff);}
+ }
+ const width=id==='airport'?3.9:w-.36, start=id==='airport'?2.15:.18, z=id==='airport'?3.63:1.15;
+ const y=id==='airport'?.74:id==='hotel'?1.61:id==='factory'?.72:.42;
+ const glyphs=[...title].map(ch=>LETTERS[ch]??LETTERS.I!),cols=glyphs.reduce((n,g)=>n+g[0]!.length+1,0),step=width/cols;
+ c.b.block(start-.04,z-.01,start+width+.04,z,y-.03,y+.23,id==='hospital'?0xc43c4b:0x244a72);
+ let x=start;for(const glyph of glyphs){glyph.forEach((row,j)=>[...row].forEach((bit,i)=>{if(bit==='1')c.b.block(x+i*step,z,x+(i+.8)*step,z+.005,y+.18-j*.035,y+.21-j*.035,0xffffff);}));x+=(glyph[0]!.length+1)*step;}
+}
+
 function finish(c: Ctx): BuildingModel {
   const body = c.b.build();
   const lit = c.lit.build();
@@ -563,7 +595,8 @@ export function buildModel(ref: ModelRef, seed = 0): BuildingModel {
   const def = BUILDINGS[ref.definitionId];
   const [w, d] = def.footprint;
   const c = context(ref, seed);
-  (MAKERS[ref.definitionId] ?? fallback)(c, w, d, ref.level);
+  if (CITY_BUILDINGS[ref.definitionId]) modern(c, ref.definitionId, w, d);
+  else (MAKERS[ref.definitionId] ?? fallback)(c, w, d, ref.level);
   return finish(c);
 }
 
