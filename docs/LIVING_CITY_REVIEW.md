@@ -20,10 +20,10 @@ A Playwright scenario is included for both renderers at 844×390 and 390×844. I
 
 The complete existing-and-new unit suite passed: 37 files, 210 tests. Lint and production build also passed. After the final parking fix, lint and build passed again; all 15 targeted city-life and road-visual tests passed, including the additional shared-parking regression test.
 
-## Remaining verification gates
+## Browser verification and limits
 
-Local Chromium could not start: the environment rejected its Unix socket creation with `Operation not permitted`. Therefore no browser screenshot, measured FPS improvement, iPhone performance claim, or completed visual acceptance is asserted.
+Local Chromium could not start because Unix socket creation was restricted. Browser validation therefore ran on GitHub Actions. The first run passed all five scenarios (two city-renderer scenarios and three touch/mobile build-save-resume scenarios): https://github.com/oguzcobn/empires-of-the-valley/actions/runs/43901599011. Its screenshots were downloaded and reviewed. Follow-up validation adds running-simulation frame samples and close-up building/airport screenshots. These software-renderer checks do not establish iPhone performance or a 60 FPS guarantee.
 
-The user explicitly approved uploading this branch and opening a draft PR. Browser workflow results and screenshots must be reviewed before proposing live deployment. Nothing has been merged or deployed.
+The user explicitly approved uploading this branch and opening a draft PR. The latest browser workflow status and visual-review results are recorded on PR #43 before proposing live deployment. Nothing has been merged or deployed.
 
 The simulation uses bounded representative trips rather than one independently simulated resident per population unit. Ambulance trips are scheduled service visits; a detailed disease/emergency model is outside this implementation. Flights are automatically queued passenger operations, not player-owned aircraft manufacturing. These distinctions keep the current game rules and performance budget explicit.

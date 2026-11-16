@@ -119,6 +119,16 @@ for (const view of ['2d', '3d'])
       const game = api.store.getState().game;
       api.store.setState({ game: { ...game, speed: 1 } });
     });
+    for (let i = 0; i < 7; i++) await page.keyboard.press('=');
+    for (const [label, x, y] of [
+      ['services', 7, 5],
+      ['hospitality', 18, 5],
+      ['airport', 14, 11],
+    ] as const) {
+      await page.evaluate(([x, y]) => (window as any).__EOV__.store.getState().focusOn(x, y), [x, y]);
+      await page.waitForTimeout(250);
+      await page.screenshot({ path: testInfo.outputPath(`${view}-${label}-detail.png`) });
+    }
     const performance = await page.evaluate(async () => {
       let last = globalThis.performance.now();
       const samples: number[] = [];
