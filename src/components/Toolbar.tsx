@@ -57,7 +57,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
 
   return (
     <nav className="toolbar game-toolbar" aria-label={t('toolbar.label')}>
-      {menuOpen && <div className="game-menu-popover" aria-label="Oyun menüsü">
+      {menuOpen && <div className="game-menu-popover" id="game-menu" aria-label="Oyun menüsü">
         <div className="game-menu-heading"><span>OYUN MENÜSÜ</span><button type="button" className="game-menu-close" onClick={() => setMenuOpen(false)} aria-label="Menüyü kapat">×</button></div>
         <div className="game-menu-grid">
           <label className="game-menu-field"><span>Harita aracı</span>
@@ -99,15 +99,15 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
 
       <div className="tool-group game-toolbar-main">
         <button className={`btn tool primary ${buildOpen || tool.kind === 'build' ? 'active' : ''}`} aria-pressed={buildOpen}
-          onClick={() => { toggleBuild(); setTool({ kind: 'select' }); }} title={`${t('tool.build')} (B)`} data-testid="tool-build">
+          onClick={() => { setMenuOpen(false); toggleBuild(); setTool({ kind: 'select' }); }} title={`${t('tool.build')} (B)`} data-testid="tool-build">
           <span className="glyph">⌂</span><span>{t('tool.build')}</span>
         </button>
         <button className={`btn tool ${tool.kind === 'roadPlan' && !tool.bridge ? 'active' : ''}`} aria-pressed={tool.kind === 'roadPlan' && !tool.bridge}
-          onClick={() => { toggleBuild(false); setTool(tool.kind === 'roadPlan' && !tool.bridge ? { kind: 'select' } : { kind: 'roadPlan' }); }}
+          onClick={() => { setMenuOpen(false); toggleBuild(false); setTool(tool.kind === 'roadPlan' && !tool.bridge ? { kind: 'select' } : { kind: 'roadPlan' }); }}
           title="Güzergâh çiz ve yol önizle" data-testid="tool-road-plan">
           <span className="glyph">⌁</span><span>Yol</span>
         </button>
-        <button className={`btn tool game-menu-trigger ${menuOpen ? 'active' : ''}`} aria-expanded={menuOpen} aria-haspopup="true"
+        <button className={`btn tool game-menu-trigger ${menuOpen ? 'active' : ''}`} aria-expanded={menuOpen} aria-controls={menuOpen ? 'game-menu' : undefined}
           onClick={() => setMenuOpen((open) => !open)}>
           <span className="glyph">☰</span><span>Menü</span>
         </button>

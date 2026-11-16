@@ -141,7 +141,10 @@ export function BuildCatalog({ game }: { game: GameState }): ReactElement {
             <button
               key={id}
               className={`catalog-item ${active ? 'active' : ''} ${affordable ? '' : 'poor'}`}
-              onClick={() => startBuild(id)}
+              onClick={() => {
+                startBuild(id);
+                if (window.matchMedia('(pointer: coarse)').matches) useApp.getState().toggleBuild(false);
+              }}
               aria-pressed={active}
               data-testid={`build-${id}`}
             >
