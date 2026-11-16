@@ -130,6 +130,7 @@ export function drawGroundTile(
   paved = false,
   pavedLinks: PavedLinks = { negX: false, posX: false, negY: false, posY: false },
   bridgeAlongY = false,
+  bridgeEnds: BridgeEnds = NO_BRIDGE_ENDS,
 ): void {
   const h = ctx.height;
   const z = h * LEVEL;
@@ -189,8 +190,15 @@ export function drawGroundTile(
     g.circle(ox + 8, oy + 12, 1.6).fill(0xfff4b8);
     g.circle(ox - 9, oy + 19, 1.6).fill(0xf7c6d9);
   }
-  if (road) drawRoad(g, ox, oy, roadType, pal, detail, paved, pavedLinks, bridgeAlongY);
+  if (road) drawRoad(g, ox, oy, roadType, pal, detail, paved, pavedLinks, bridgeAlongY, bridgeEnds);
 }
+
+/** Which ends of a bridge tile (along its span) touch a land road and need a ramp. */
+export interface BridgeEnds { start: boolean; end: boolean }
+const NO_BRIDGE_ENDS: BridgeEnds = { start: false, end: false };
+/** Height of the bridge carriageway above the bank, in pixels. Kept low so roads join flush. */
+export const BRIDGE_DECK_PX = 2;
+export const BRIDGE_RAIL_PX = 5;
 
 function cliffTexture(g: Graphics, ax: number, ay: number, bx: number, by: number, drop: number, terrain: TerrainId, c: number): void {
   if (terrain === 'terrace') {
@@ -221,6 +229,7 @@ function drawRoad(
   pal: SeasonPalette, detail: number, paved = false,
   links: PavedLinks = { negX: false, posX: false, negY: false, posY: false },
   bridgeAlongY = false,
+  bridgeEnds: BridgeEnds = NO_BRIDGE_ENDS,
 ): void {
   const inset = 0.12;
   const d = [ox, oy + 32 * inset, ox + 32 * (1 - inset), oy + 16, ox, oy + 32 * (1 - inset), ox - 32 * (1 - inset), oy + 16];
@@ -316,23 +325,35 @@ function drawRoad(
     return;
   }
   if (type === 'bridge') {
+    // The carriageway sits at bank level so it meets the land road without a step. Only the
+    // parapets rise above it; where the span touches a land road the deck tapers into the bank.
     const point = (u: number, v: number, z = 0): Pt => {
       const [x, y] = bridgeAlongY ? [v, u] : [u, v];
       return [ox + (x - y) * 32, oy + (x + y) * 16 - z];
     };
-    const front = (u: number, z: number) => point(u, 0.79, z);
-    const arch: Pt[] = [front(0, 0), front(0.18, 0)];
-    for (let i = 0; i <= 8; i++) {
-      const t = i / 8;
-      arch.push(front(0.18 + t * 0.64, Math.sin(t * Math.PI) * 7));
-    }
-    arch.push(front(0.82, 0), front(1, 0), front(1, 9), front(0, 9));
-    g.poly(arch.flat()).fill(0x90816a);
-    g.poly([point(0, 0.21, 9), point(1, 0.21, 9), front(1, 9), front(0, 9)].flat()).fill(0xd7c3a0);
-    for (const edge of [0.21, 0.79]) {
-      line(g, point(0, edge, 12), point(1, edge, 12), 0xb7a17e, 2.2);
+    const ease = (t: number): number => t * t * (3 - 2 * t);
+    const lift = (u: number): number => {
+      if (bridgeEnds.start && u < 0.35) return BRIDGE_DECK_PX * ease(u / 0.35);
+      if (bridgeEnds.end && u > 0.65) return BRIDGE_DECK_PX * ease((1 - u) / 0.35);
+      return BRIDGE_DECK_PX;
+    };
+    const us = [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.9, 1];
+    const back = 0.24, frontV = 0.76;
+    g.ellipse(...point(0.5, 0.86), 22, 5).fill({ color: 0x143548, alpha: 0.22 });
+    // pier under the middle of the tile and the fascia facing the viewer
+    g.poly([point(0.42, frontV, -4), point(0.58, frontV, -4), point(0.58, frontV, lift(0.58)), point(0.42, frontV, lift(0.42))].flat()).fill(0x7d705c);
+    g.poly([...us.map((u) => point(u, frontV, lift(u))), ...[...us].reverse().map((u) => point(u, frontV, 0))].flat()).fill(0x90816a);
+    // deck, then a carriageway in the land road's colour so the two read as one surface
+    g.poly([...us.map((u) => point(u, back, lift(u))), ...[...us].reverse().map((u) => point(u, frontV, lift(u)))].flat()).fill(0xd7c3a0);
+    g.poly([...us.map((u) => point(u, 0.38, lift(u))), ...[...us].reverse().map((u) => point(u, 0.62, lift(u)))].flat())
+      .fill(pal.snow ? 0xd8c9a8 : COLORS.road);
+    for (const edge of [back, frontV]) {
+      for (let i = 1; i < us.length; i++) {
+        const a = us[i - 1]!, b = us[i]!;
+        line(g, point(a, edge, lift(a) + BRIDGE_RAIL_PX), point(b, edge, lift(b) + BRIDGE_RAIL_PX), 0xb7a17e, 2);
+      }
       for (const u of detail >= 1 ? [0.04, 0.34, 0.66, 0.96] : [0.04, 0.96]) {
-        line(g, point(u, edge, 9), point(u, edge, 14), 0xe0ceb1, 1.8);
+        line(g, point(u, edge, lift(u)), point(u, edge, lift(u) + BRIDGE_RAIL_PX + 1), 0xe0ceb1, 1.8);
       }
     }
     return;

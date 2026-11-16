@@ -553,6 +553,14 @@ export class ValleyRenderer {
       for (let x = Math.max(0, sum - p.height + 1); x <= Math.min(p.width - 1, sum); x++) {
         const y = sum - x;
         const t = p.tiles[y * p.width + x]!;
+        const alongY = t.road && t.roadType === 'bridge'
+          ? Number(!!tileAt(p, x, y - 1)?.road) + Number(!!tileAt(p, x, y + 1)?.road) >
+            Number(!!tileAt(p, x - 1, y)?.road) + Number(!!tileAt(p, x + 1, y)?.road)
+          : false;
+        const landRoad = (nx: number, ny: number): boolean => {
+          const n = tileAt(p, nx, ny);
+          return !!n?.road && n.roadType !== 'bridge';
+        };
         drawGroundTile(
           g,
           x,
@@ -575,10 +583,10 @@ export class ValleyRenderer {
             negY: !!tileAt(p, x, y - 1)?.road,
             posY: !!tileAt(p, x, y + 1)?.road,
           },
+          alongY,
           t.road && t.roadType === 'bridge'
-            ? Number(!!tileAt(p, x, y - 1)?.road) + Number(!!tileAt(p, x, y + 1)?.road) >
-              Number(!!tileAt(p, x - 1, y)?.road) + Number(!!tileAt(p, x + 1, y)?.road)
-            : false,
+            ? { start: landRoad(alongY ? x : x - 1, alongY ? y - 1 : y), end: landRoad(alongY ? x : x + 1, alongY ? y + 1 : y) }
+            : undefined,
         );
         if ((t.terrain === 'water' || t.terrain === 'lake') && !t.road) this.waterTiles.push([x, y]);
         if (t.road) this.roadTiles.push([x, y]);
