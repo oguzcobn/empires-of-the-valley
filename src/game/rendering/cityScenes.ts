@@ -192,6 +192,8 @@ export class CityScenes {
       const a = this.actor(id),
         at = flightPoint(f, b, this.fraction);
       place(a, at, at.alt);
+      // Approach altitude is relative to the runway, not changing terrain under the aircraft.
+      a.root.y = isoY(at.x, at.y) - (tileAt(p, b.x, b.y)?.height ?? 0) * HEIGHT_PX - at.alt;
       a.root.zIndex = b.x + b.y + 11.1 + (at.alt > 0 ? 100 : 0);
       a.person.visible = a.red.visible = a.blue.visible = false;
       if (a.key !== `${at.heading}`) {

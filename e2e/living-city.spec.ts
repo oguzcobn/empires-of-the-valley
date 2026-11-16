@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Existing test-only debug hook is intentionally dynamically typed. */
+import { writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { GameState, BuildingId, BuildingInstance } from '../src/game/core/types';
 import { BUILDINGS } from '../src/game/data/buildings';
@@ -113,6 +114,11 @@ for (const view of ['2d', '3d'])
     expect(result.jobs).toBeGreaterThan(0);
     expect(result.flights).toBe(1);
     await page.screenshot({ path: testInfo.outputPath(`living-city-${view}.png`) });
+    await page.evaluate(() => {
+      const api = (window as any).__EOV__;
+      const game = api.store.getState().game;
+      api.store.setState({ game: { ...game, speed: 1 } });
+    });
     const performance = await page.evaluate(async () => {
       let last = globalThis.performance.now();
       const samples: number[] = [];
@@ -131,12 +137,18 @@ for (const view of ['2d', '3d'])
         p95ms: samples[Math.floor(samples.length * 0.95)],
       };
     });
+    writeFileSync(
+      testInfo.outputPath('frame-samples.json'),
+      JSON.stringify({ view, ...performance, ...result, motion: 'running' }, null, 2),
+    );
     await testInfo.attach('software-renderer-frame-samples', {
       body: JSON.stringify({ view, ...performance, ...result }, null, 2),
       contentType: 'application/json',
     });
     await page.evaluate(() => {
       const api = (window as any).__EOV__;
+      const game = api.store.getState().game;
+      api.store.setState({ game: { ...game, speed: 0 } });
       api.advance(72);
     });
     const after = await page.evaluate(() => {
