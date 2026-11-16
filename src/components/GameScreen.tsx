@@ -91,7 +91,7 @@ export function GameScreen({ game }: { game: GameState }): ReactElement {
   useShortcuts();
   const season = calendar(game.tick).season;
   return (
-    <main className={`game-screen season-${season} tool-${tool.kind}`}
+    <main className={`game-screen season-${season} tool-${tool.kind}${buildOpen ? ' build-catalog-open' : ''}`}
       style={{ '--sky-night': nightFactor(clockHour(game.tick)) } as React.CSSProperties}>
       <ValleyCanvas />
       <TopHud game={game} />

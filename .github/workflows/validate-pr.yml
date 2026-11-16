@@ -18,3 +18,11 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- e2e/mobile.spec.ts --workers=1
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: mobile-test-screenshots
+          path: test-results/**/*.png
+          if-no-files-found: ignore

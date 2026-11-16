@@ -39,7 +39,7 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
 
   return (
     <header className="top-hud">
-      <button className="btn hud-menu" onClick={() => openPanel('saves')} title={t('hud.menu')}>
+      <button className="btn hud-menu" onClick={() => openPanel('saves')} title={t('hud.menu')} aria-label={t('hud.menu')}>
         ☰ <span className="hide-narrow">{t('hud.menu')}</span>
       </button>
       <div className="hud-resources" role="group" aria-label={t('hud.resources')}>
