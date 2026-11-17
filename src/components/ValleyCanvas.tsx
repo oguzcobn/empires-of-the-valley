@@ -166,8 +166,12 @@ export function ValleyCanvas(): ReactElement {
         } else if (tool.kind === 'terrace') {
           s.dispatch({ type: 'buildTerrace', x, y });
         } else if (tool.kind === 'demolish') {
+          const tile = tileAt(homeProvince(s.game), x, y);
           if (buildingId) requestDemolish(buildingId);
-          else if (tileAt(homeProvince(s.game), x, y)?.road) s.dispatch({ type: 'removeRoad', x, y });
+          else if (tile?.road) s.dispatch({ type: 'removeRoad', x, y });
+          else if (tile && ['forest', 'stone', 'rocky', 'hill', 'mountain'].includes(tile.terrain)) {
+            s.dispatch({ type: 'clearTerrain', x, y });
+          }
         } else if (tool.kind === 'select') {
           const transit = homeProvince(s.game).transit;
           if ([transit?.rail, transit?.air].some((line) => line?.route[0]?.x === x && line.route[0].y === y)) {
@@ -274,6 +278,12 @@ export function ValleyCanvas(): ReactElement {
             : <button type="button" onClick={confirmPlacement}>✓ Buraya inşa et</button>}
         </div>
       </div>}
+      {tool.kind === 'demolish' && (
+        <div className="road-plan-controls" aria-label="Yıkım ve arazi temizleme aracı">
+          <p role="status">🪓 <b>Yık / Arazi Temizle:</b> Bina ve yolları kaldır; boş ağaç, taş ve engebeli alanları temizleyerek yeni inşaat kareleri aç.</p>
+          <div><button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'select' })}>Kapat</button></div>
+        </div>
+      )}
       {tool.kind === 'hunt' && game && (
         <div className="road-plan-controls">
           <p>Avcı sayısını seç, sonra haritada işaretli bir hayvana dokun. Boşta işçi: {idleWorkers(homeProvince(game))}</p>
