@@ -68,6 +68,24 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
 
       requires: { population: 30 } })],
   },
+  aquapark: {
+    id: 'aquapark', category: 'civic', era: 4, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 7, attraction: 14, marketGold: u(2.5) },
+    levels: [level({ cost: { wood: u(40), stone: u(45), gold: u(30) }, buildTicks: 4 * DAY, workerSlots: 3,
+      produces: { resourceId: 'gold', perDay: u(3) }, upkeepGold: u(0.35), requires: { population: 18 } }),
+      level({ cost: { wood: u(55), stone: u(65), gold: u(45) }, buildTicks: 4 * DAY, workerSlots: 5,
+        produces: { resourceId: 'gold', perDay: u(6) }, upkeepGold: u(0.5), requires: { townCenterLevel: 2 } })],
+  },
+  corporate_plaza: {
+    id: 'corporate_plaza', category: 'civic', era: 4, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 5, attraction: 8, marketGold: u(3) },
+    levels: [level({ cost: { wood: u(35), stone: u(45), gold: u(20) }, buildTicks: 3 * DAY, workerSlots: 4,
+      produces: { resourceId: 'gold', perDay: u(4) }, taxIncome: u(0.8), upkeepGold: u(0.3) }),
+      level({ cost: { wood: u(45), stone: u(65), gold: u(35) }, buildTicks: 4 * DAY, workerSlots: 6,
+        produces: { resourceId: 'gold', perDay: u(7) }, taxIncome: u(1.2), upkeepGold: u(0.45), requires: { townCenterLevel: 2 } })],
+  },
   town_center: {
     id: 'town_center',
     category: 'governance',

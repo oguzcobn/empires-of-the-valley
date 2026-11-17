@@ -949,6 +949,9 @@ export function drawStyledBuilding(
     case 'police_station':
       civicBuilding(ctx, b.definitionId, look, b.style);
       break;
+    case 'corporate_plaza':
+    case 'aquapark':
+      break;
     case 'shipyard':
       shipyard(ctx, look, b.level);
       break;

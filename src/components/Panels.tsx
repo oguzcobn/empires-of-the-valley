@@ -12,9 +12,9 @@ import { QUESTS } from '../game/data/quests';
 import { TECHNOLOGIES, TECH_IDS } from '../game/data/technologies';
 import { WORLD_PROVINCES } from '../game/data/worldMap';
 import { cityOf, districtName } from '../game/data/cities';
-import { citizens } from '../game/data/citizens';
+import { COMPANY_SECTORS, citizens, cityCompanies } from '../game/data/citizens';
 import type { WorldProvince } from '../game/data/worldMap';
-import { PACT_PRICES, validateCommand } from '../game/systems/commands';
+import { CITY_AGES, CITY_CONTRACTS, CITY_DILEMMAS, CITY_EDICTS, PACT_PRICES, validateCommand } from '../game/systems/commands';
 import { TRANSIT_COST, transitUnlocked } from '../game/systems/frontier';
 import { neighborhoodServices } from '../game/systems/crime';
 import { forecastBattle } from '../game/systems/combat';
@@ -81,6 +81,7 @@ function TransportPanel({ game }: { game: GameState }): ReactElement {
 }
 
 function EconomyPanel({ game }: { game: GameState }): ReactElement {
+  const dispatch = useApp((s) => s.dispatch);
   const p = homeProvince(game);
   const flows = useMemo(() => computeFlows(game), [game]);
   const caps = storageCaps(game, p);
@@ -152,11 +153,26 @@ function EconomyPanel({ game }: { game: GameState }): ReactElement {
         </table>
       </div>
       <p className="hint">{t('economy.note')}</p>
+      <section className="section" style={{ marginTop: 14 }}>
+        <h3>⚓ Damen, Paloma & ASBAŞ Sözleşmeleri</h3>
+        <div className="tech-grid">
+          {CITY_CONTRACTS.map((contract) => {
+            const done = game.completedContracts?.includes(contract.id) ?? false;
+            const ready = !done && validateCommand(game, { type: 'completeContract', contractId: contract.id }) === null;
+            return <article key={contract.id} className={`tech ${done ? 'done' : ready ? 'available' : 'locked'}`}>
+              <h4>{contract.title}</h4><p className="eyebrow">{contract.client}</p>
+              <p>Ödül: +{contract.gold / 1000} Altın · +{contract.tools / 1000} Alet · +{contract.happiness} Mutluluk</p>
+              <button className="btn primary" disabled={!ready} onClick={() => dispatch({ type: 'completeContract', contractId: contract.id })}>{done ? 'Teslim edildi' : 'Sözleşmeyi tamamla'}</button>
+            </article>;
+          })}
+        </div>
+      </section>
     </>
   );
 }
 
 function PopulationPanel({ game }: { game: GameState }): ReactElement {
+  const dispatch = useApp((s) => s.dispatch);
   const p = homeProvince(game);
   const pop = totalPopulation(p);
   const cap = housingCapacity(p);
@@ -224,13 +240,27 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
         <h4>Şehrin Sakinleri</h4>
         <p className="hint">İsme sahip örnek vatandaşlar; isimler kaydedilen şehir ve harita tohumuyla aynı kalır.</p>
         <div className="citizens-list">
-          {citizens(game, 18).map((person) => (
+          {citizens(game, 18).map((person, index) => (
             <div key={person.id} className="citizen-row" title={person.occupation}>
               <span aria-hidden="true">◉</span>
               <span><strong>{person.name}</strong><small>{person.age} yaş · {person.occupation}</small></span>
+              <button className="btn" aria-label={`${person.name} adını değiştir`} onClick={() => { const name = window.prompt('Yeni vatandaş adı', person.name); if (name) dispatch({ type: 'renameCitizen', index, name }); }}>Düzenle</button>
             </div>
           ))}
         </div>
+      </section>
+      <section className="section city-expansion">
+        <h3>Şehir Çağı: {CITY_AGES[game.age ?? 1].name}</h3>
+        <p className="hint">{CITY_AGES[game.age ?? 1].subtitle}</p>
+        {game.age !== 4 && (() => { const next = CITY_AGES[((game.age ?? 1) + 1) as 2 | 3 | 4]; const cmd = { type: 'advanceAge' as const }; const error = validateCommand(game, cmd); return <button className="btn primary" disabled={!!error} title={error ? t(error.key, error.params) : ''} onClick={() => dispatch(cmd)}>Sonraki çağa ilerle · nüfus {next.minPopulation}+ · maliyet kaynaklardan</button>; })()}
+        <h4>Şehir Fermanları</h4>
+        <div className="actions">{CITY_EDICTS.map((edict) => <button key={edict.id} className={`btn ${(game.edicts ?? []).includes(edict.id) ? 'primary' : ''}`} title={edict.desc} onClick={() => dispatch({ type: 'toggleEdict', edictId: edict.id })}>{(game.edicts ?? []).includes(edict.id) ? '✓ ' : ''}{edict.title}</button>)}</div>
+        <h4>Şehir İşletmeleri</h4>
+        <div className="tech-grid">{cityCompanies(game).map((company) => <article key={company.id} className="tech"><h4>{company.name}</h4><p>{company.sector} · {company.employees} çalışan</p><button className="btn" onClick={() => { const name = window.prompt('Yeni işletme adı', company.name); if (name) dispatch({ type: 'renameCompany', companyId: company.id, name }); }}>Adını düzenle</button></article>)}</div>
+        <h4>Şehir Kararları</h4>
+        <div className="tech-grid">{CITY_DILEMMAS.map((dilemma) => { const resolved = game.resolvedDilemmas?.[dilemma.id]; return <article key={dilemma.id} className={`tech ${resolved ? 'done' : ''}`}><h4>{dilemma.title}</h4><p>{dilemma.desc}</p><div className="actions">{(['a','b'] as const).map((choice) => <button key={choice} className="btn" disabled={!!resolved} onClick={() => dispatch({ type: 'resolveDilemma', dilemmaId: dilemma.id, choice })}>{resolved === choice ? '✓ ' : ''}{(choice === 'a' ? dilemma.a : dilemma.b).label}</button>)}</div></article>; })}</div>
+        <h4>Yeni şirket kur</h4>
+        <button className="btn" onClick={() => { const name = window.prompt('Şirket adı'); if (name) dispatch({ type: 'foundCompany', name, sector: COMPANY_SECTORS[0], founderIndex: 0 }); }}>🏢 Şirket kur · 3 Altın</button>
       </section>
     </div>
   );

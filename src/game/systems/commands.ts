@@ -1,11 +1,13 @@
 import { produce } from 'immer';
-import { RESOURCE_IDS } from '../core/types';
+import { CITY_EDICT_IDS, RESOURCE_IDS } from '../core/types';
 import { mulPermille } from '../core/fixed';
 import type {
   ArchitectureStyle,
   BuildingId,
   BuildingLook,
   BuildingInstance,
+  CityAge,
+  CityEdictId,
   CommandResult,
   Cost,
   DiplomacyPact,
@@ -44,7 +46,40 @@ import { huntRoute, planTransit, routeFrom, TRANSIT_COST, transitUnlocked, wildl
 import { expandProvinceGrid } from './terrain';
 import { emptyCityLife } from './cityLife';
 
+export const CITY_AGES = {
+  1: { age: 1, name: 'Kuruluş & Köy Çağı', subtitle: 'Toprak yollar ve ilk yerleşimler', cost: {}, minPopulation: 0, rewardGold: 0, rewardResearch: 0 },
+  2: { age: 2, name: 'Derebeylik & Ticaret Çağı', subtitle: 'Taş mimari, pazarlar ve ticaret', cost: { wood: 25000, stone: 20000, gold: 15000 }, minPopulation: 14, rewardGold: 12000, rewardResearch: 15000 },
+  3: { age: 3, name: 'Sanayi & Denizcilik (Damen) Çağı', subtitle: 'Tersaneler, fabrikalar ve gemi üretimi', cost: { wood: 40000, stone: 40000, gold: 35000, tools: 12000 }, minPopulation: 24, rewardGold: 25000, rewardResearch: 25000 },
+  4: { age: 4, name: 'Modern Turizm & Plaza Çağı', subtitle: 'Resortlar, aquapark ve şirket merkezleri', cost: { stone: 60000, gold: 65000, tools: 25000 }, minPopulation: 36, rewardGold: 50000, rewardResearch: 40000 },
+} as const;
+export const CITY_CONTRACTS = [
+  { id: 'damen-1906-sar', title: '1906 SAR Arama & Kurtarma Botu', client: 'Damen Shipyards Antalya', vessel: 'fishing' as const, gold: 28000, tools: 8000, happiness: 4 },
+  { id: 'damen-fcs-5009', title: 'FCS 5009 Hızlı Kargo Gemisi', client: 'Damen & ASBAŞ', vessel: 'cargo' as const, gold: 48000, tools: 14000, happiness: 5 },
+  { id: 'damen-seaxplorer-58', title: 'SeaXplorer 58 Yat Teslimatı', client: 'Damen Yachting', vessel: 'yacht' as const, gold: 95000, tools: 20000, happiness: 8 },
+  { id: 'paloma-tourism-summit', title: 'Paloma Resort & Aquapark Zirvesi', client: 'Paloma Hotels', building: 'hotel' as const, cost: { food: 15000 }, gold: 36000, tools: 6000, happiness: 7 },
+  { id: 'asbas-plaza-export', title: 'ASBAŞ Teknoloji & Lojistik Paketi', client: 'ASBAŞ', building: 'corporate_plaza' as const, cost: { tools: 10000, wood: 20000 }, gold: 42000, tools: 12000, happiness: 5 },
+] as const;
+export const CITY_EDICTS = [
+  { id: 'free_zone_tax', title: 'ASBAŞ Serbest Bölge Teşviki', desc: 'Yatırım ve mutluluk kazandırır.' },
+  { id: 'shipyard_overtime', title: 'Damen Tersanesi Çift Vardiya', desc: 'Alet ve araştırma kazandırır; mutluluğu azaltır.' },
+  { id: 'festival_aquapark', title: 'Palomaqua Şehir Festivali', desc: '5 altın karşılığında mutluluk kazandırır.' },
+  { id: 'solar_subsidy', title: 'Çatı GES Teşviki', desc: 'Araştırma ve mutluluk kazandırır.' },
+  { id: 'militia_watch', title: 'Liman Gönüllü Muhafızları', desc: 'Milis gücünü artırır.' },
+] as const;
+export const CITY_DILEMMAS = [
+  { id: 'damen-vip-delegation', title: 'Damen Uluslararası Heyeti', desc: 'Heyeti nasıl ağırlayacaksın?', a: { label: 'VIP organizasyon', gold: -8000, tools: 8000, happiness: 6, research: 18000 }, b: { label: 'Teknik saha turu', gold: 10000, tools: 4000, happiness: 1 } },
+  { id: 'derby-supporters-wave', title: 'Büyük Maç Günü', desc: 'Taraftar akını için hangi önlemi alacaksın?', a: { label: 'Meydan şenliği', food: -6000, gold: 18000, happiness: 10 }, b: { label: 'Güvenlik koridoru', gold: 24000, happiness: -2 } },
+  { id: 'coastal-storm-warning', title: 'Kıyı Fırtınası Uyarısı', desc: 'Liman ve tekneler için karar ver.', a: { label: 'Gemileri korumaya al', gold: -6000, tools: 8000, happiness: 6 }, b: { label: 'Seferleri sürdür', food: 15000, gold: 10000, happiness: -3 } },
+] as const;
+
 export type Command =
+  | { type: 'renameCitizen'; index: number; name: string }
+  | { type: 'foundCompany'; name: string; sector: string; founderIndex: number; buildingId?: string }
+  | { type: 'renameCompany'; companyId: string; name: string }
+  | { type: 'advanceAge' }
+  | { type: 'completeContract'; contractId: string }
+  | { type: 'toggleEdict'; edictId: CityEdictId }
+  | { type: 'resolveDilemma'; dilemmaId: string; choice: 'a' | 'b' }
   | { type: 'hunt'; x: number; y: number; workers: number }
   | { type: 'buildTransit'; kind: TransitKind }
   | { type: 'setTransitCargo'; kind: TransitKind; cargo: TransitCargo; direction?: 'export' | 'import' }
@@ -150,6 +185,7 @@ export function validatePlacement(
 ): MessageRef | null {
   const def = BUILDINGS[buildingId];
   if (!def?.buildable) return { key: 'err.notBuildable' };
+  if (def.era > (s.age ?? 1)) return { key: 'err.needTownCenter', params: { level: def.era } };
   const p = homeProvince(s);
   if (def.landmark && p.buildings.some((b) => b.definitionId === buildingId)) return { key: 'err.landmarkExists' };
   return (
@@ -290,6 +326,37 @@ function paidLandmarkCost(b: BuildingInstance): Cost {
 export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): MessageRef | null {
   const p = homeProvince(s);
   switch (cmd.type) {
+    case 'renameCitizen':
+      return Number.isInteger(cmd.index) && cmd.index >= 0 && cmd.index < 500 && cmd.name.trim().length >= 2 && cmd.name.trim().length <= 40 ? null : { key: 'err.invalid' };
+    case 'foundCompany':
+      return cmd.name.trim().length >= 2 && cmd.name.trim().length <= 48 && (s.companies?.length ?? 0) < 48
+        ? missingFor(p, { gold: 3000 }) : { key: 'err.invalid' };
+    case 'renameCompany':
+      return cmd.name.trim().length >= 2 && cmd.name.trim().length <= 48 ? null : { key: 'err.invalid' };
+    case 'advanceAge': {
+      const age = (s.age ?? 1) as CityAge;
+      if (age >= 4) return { key: 'err.maxLevel' };
+      const next = CITY_AGES[(age + 1) as CityAge];
+      return totalPopulation(p) < next.minPopulation ? { key: 'err.needPopulation', params: { n: next.minPopulation } } : missingFor(p, next.cost);
+    }
+    case 'completeContract': {
+      const c = CITY_CONTRACTS.find((item) => item.id === cmd.contractId);
+      if (!c || s.completedContracts?.includes(c.id)) return { key: 'err.invalid' };
+      if ('vessel' in c && c.vessel && s.shipyard.fleet[c.vessel] <= 0) return { key: 'err.invalid' };
+      if ('building' in c && c.building && !p.buildings.some((b) => (b.definitionId === c.building || (c.building === 'hotel' && b.definitionId === 'aquapark')) && isBuilt(b))) return { key: 'err.invalid' };
+      return 'cost' in c && c.cost ? missingFor(p, c.cost) : null;
+    }
+    case 'toggleEdict':
+      if (!CITY_EDICT_IDS.includes(cmd.edictId)) return { key: 'err.invalid' };
+      return cmd.edictId === 'festival_aquapark' && !s.edicts?.includes(cmd.edictId) ? missingFor(p, { gold: 5000 }) : null;
+    case 'resolveDilemma': {
+      const d = CITY_DILEMMAS.find((item) => item.id === cmd.dilemmaId);
+      if (!d || s.resolvedDilemmas?.[cmd.dilemmaId] || (cmd.choice !== 'a' && cmd.choice !== 'b')) return { key: 'err.invalid' };
+      const choice = cmd.choice === 'a' ? d.a : d.b;
+      if (choice.gold && choice.gold < 0 && p.stocks.gold < -choice.gold) return { key: 'err.cost', params: { resource: '@resource.gold' } };
+      if ('food' in choice && choice.food && choice.food < 0 && p.stocks.food < -choice.food) return { key: 'err.cost', params: { resource: '@resource.food' } };
+      return null;
+    }
     case 'hunt':
       if (p.hunt) return { key: 'err.huntBusy' };
       if (!Number.isInteger(cmd.workers) || cmd.workers < 1 || cmd.workers > 4) return { key: 'err.invalid' };
@@ -515,6 +582,72 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
 function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
   const p = homeProvince(s);
   switch (cmd.type) {
+    case 'renameCitizen':
+      (s.citizenNames ??= {})[String(cmd.index)] = cmd.name.trim();
+      break;
+    case 'foundCompany': {
+      pay(p, { gold: 3000 });
+      (s.companies ??= []).push({ id: `company-${s.tick}-${s.companies.length + 1}`, name: cmd.name.trim(), sector: cmd.sector.trim() || 'Finans & Yatırım', founderIndex: Math.max(0, cmd.founderIndex), level: 1, employees: 3 });
+      break;
+    }
+    case 'renameCompany': {
+      const company = (s.companies ??= []).find((item) => item.id === cmd.companyId);
+      if (company) company.name = cmd.name.trim();
+      else if (cmd.companyId.startsWith('auto-')) {
+        const buildingId = cmd.companyId.slice(5);
+        const building = buildingById(p, buildingId);
+        if (building) (s.companies ??= []).push({ id: cmd.companyId, name: cmd.name.trim(), sector: 'Finans & Yatırım', founderIndex: 0, buildingId, level: building.level, employees: Math.max(2, building.workers) });
+      }
+      break;
+    }
+    case 'advanceAge': {
+      const nextAge = (((s.age ?? 1) + 1) as CityAge);
+      const spec = CITY_AGES[nextAge];
+      pay(p, spec.cost);
+      s.age = nextAge;
+      p.stocks.gold += spec.rewardGold;
+      p.stocks.research += spec.rewardResearch;
+      if (nextAge === 3) p.stocks.tools = Math.min(storageCaps(s, p).tools, p.stocks.tools + 10000);
+      p.happiness = Math.min(100, p.happiness + (nextAge === 4 ? 10 : 5));
+      break;
+    }
+    case 'completeContract': {
+      const c = CITY_CONTRACTS.find((item) => item.id === cmd.contractId)!;
+      if ('cost' in c && c.cost) pay(p, c.cost);
+      if ('vessel' in c && c.vessel) { s.shipyard.fleet[c.vessel] = Math.max(0, s.shipyard.fleet[c.vessel] - 1); if (c.vessel === 'yacht') s.shipyard.yachtsSold += 1; }
+      const caps = storageCaps(s, p);
+      p.stocks.gold += c.gold;
+      p.stocks.tools = Math.min(caps.tools, p.stocks.tools + c.tools);
+      p.happiness = Math.min(100, p.happiness + c.happiness);
+      (s.completedContracts ??= []).push(c.id);
+      break;
+    }
+    case 'toggleEdict': {
+      const list = (s.edicts ??= []);
+      if (list.includes(cmd.edictId)) list.splice(list.indexOf(cmd.edictId), 1);
+      else {
+        list.push(cmd.edictId);
+        const caps = storageCaps(s, p);
+        if (cmd.edictId === 'free_zone_tax') { p.stocks.gold += 10000; p.happiness = Math.min(100, p.happiness + 4); }
+        if (cmd.edictId === 'shipyard_overtime') { p.stocks.tools = Math.min(caps.tools, p.stocks.tools + 10000); p.stocks.research += 8000; p.happiness = Math.max(0, p.happiness - 2); }
+        if (cmd.edictId === 'festival_aquapark') { pay(p, { gold: 5000 }); p.happiness = Math.min(100, p.happiness + 8); }
+        if (cmd.edictId === 'solar_subsidy') { p.stocks.research += 12000; p.happiness = Math.min(100, p.happiness + 3); }
+        if (cmd.edictId === 'militia_watch') s.militia = Math.min(200, (s.militia ?? 0) + 4);
+      }
+      break;
+    }
+    case 'resolveDilemma': {
+      const d = CITY_DILEMMAS.find((item) => item.id === cmd.dilemmaId)!;
+      const choice = cmd.choice === 'a' ? d.a : d.b;
+      const caps = storageCaps(s, p);
+      if (choice.gold) p.stocks.gold = Math.max(0, p.stocks.gold + choice.gold);
+      if ('food' in choice && choice.food) p.stocks.food = Math.max(0, Math.min(caps.food, p.stocks.food + choice.food));
+      if ('tools' in choice && choice.tools) p.stocks.tools = Math.max(0, Math.min(caps.tools, p.stocks.tools + choice.tools));
+      if ('research' in choice && choice.research) p.stocks.research += choice.research;
+      if (choice.happiness) p.happiness = Math.max(0, Math.min(100, p.happiness + choice.happiness));
+      (s.resolvedDilemmas ??= {})[cmd.dilemmaId] = cmd.choice;
+      break;
+    }
     case 'hunt': {
       const route = huntRoute(p, cmd.x, cmd.y)!;
       p.hunt = { route, workers: cmd.workers, startTick: s.tick, endTick: s.tick + Math.max(12, route.length * 2 + 4) };

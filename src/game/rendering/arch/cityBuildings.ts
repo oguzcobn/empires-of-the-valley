@@ -60,6 +60,8 @@ export const CITY_BUILDINGS: Partial<Record<BuildingId, string>> = {
   club: 'CLUB',
   restaurant: 'RESTORAN',
   airport: 'HAVALIMANI',
+  corporate_plaza: 'PLAZA',
+  aquapark: 'AQUAPARK',
 };
 export function drawCityBuilding(
   ctx: DrawCtx,

@@ -7,6 +7,7 @@ import { TECH_IDS } from '../data/technologies';
 import { ALL_STYLES, CONDITION_MAX } from '../data/architecture';
 import { lookSchema } from './lookSchema';
 import { MAX_HEIGHT } from '../data/balance';
+import { CITY_EDICT_IDS } from '../core/types';
 
 const int = z.number().int();
 const nat = int.nonnegative();
@@ -166,6 +167,12 @@ export const gameStateSchema = z
       }).strict().refine(j=>j.index<j.path.length)).max(24),
       flights: z.array(z.object({airport:shortText,phase:z.enum(['landing','taxiIn','terminal','taxiOut','takeoff']),age:nat.max(3),passengers:nat.max(8)}).strict()).max(4),
     }).strict().optional(),
+    age: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(),
+    citizenNames: z.record(z.string().regex(/^\d{1,3}$/), z.string().min(2).max(40)).optional(),
+    companies: z.array(z.object({ id: shortText, name: z.string().min(2).max(48), sector: z.string().max(80), founderIndex: nat.max(499), buildingId: shortText.optional(), level: int.min(1).max(5), employees: nat.max(1000) }).strict()).max(48).optional(),
+    edicts: z.array(z.enum(CITY_EDICT_IDS)).max(CITY_EDICT_IDS.length).optional(),
+    completedContracts: z.array(shortText).max(32).optional(),
+    resolvedDilemmas: z.record(z.enum(['a', 'b'])).optional(),
     settings: z.object({ autoPauseOnMilestone: z.boolean() }).strict(),
     tourism: z
       .object({

@@ -42,6 +42,8 @@ export type BuildingId =
   | 'club'
   | 'restaurant'
   | 'airport'
+  | 'corporate_plaza'
+  | 'aquapark'
   | LandmarkId;
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';
@@ -99,7 +101,7 @@ export type DecorType = 'none' | 'flowerboxes' | 'lanterns' | 'banners';
 
 /** Parametric appearance of a building. Materials also change cost and durability (data-driven). */
 export interface BuildingLook {
-  floors: 1 | 2 | 3 | 4 | 10;
+  floors: 1 | 2 | 3 | 4 | 6 | 8 | 10;
   roof: RoofType;
   roofMaterial: RoofMaterial;
   wall: WallMaterial;
@@ -118,6 +120,27 @@ export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q
 export type ProvinceId = string;
 export type DiplomacyPact = 'trade' | 'non_aggression' | 'alliance';
 export type FactionId = string;
+
+/** City progression and civic actions introduced by the uploaded city-expansion source. */
+export type CityAge = 1 | 2 | 3 | 4;
+export const CITY_EDICT_IDS = [
+  'free_zone_tax',
+  'shipyard_overtime',
+  'festival_aquapark',
+  'solar_subsidy',
+  'militia_watch',
+] as const;
+export type CityEdictId = (typeof CITY_EDICT_IDS)[number];
+
+export interface CompanyRecord {
+  id: string;
+  name: string;
+  sector: string;
+  founderIndex: number;
+  buildingId?: string;
+  level: number;
+  employees: number;
+}
 export type GameSpeed = 0 | 1 | 2 | 4;
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type TaxRate = 'low' | 'normal' | 'high';
@@ -463,6 +486,16 @@ export interface GameState {
   tourism: TourismState;
   shipyard: ShipyardState;
   cityLife?: CityLifeState;
+  /** Current civilisation era; absent in legacy saves and treated as age 1. */
+  age?: CityAge;
+  /** Player-authored citizen names, keyed by stable citizen ordinal. */
+  citizenNames?: Record<string, string>;
+  /** Player-founded and building-associated local businesses. */
+  companies?: CompanyRecord[];
+  /** Active one-time civic decrees. */
+  edicts?: CityEdictId[];
+  completedContracts?: string[];
+  resolvedDilemmas?: Record<string, 'a' | 'b'>;
 }
 
 export interface MessageRef {
