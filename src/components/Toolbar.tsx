@@ -67,7 +67,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
               <option value="bridge">Köprü güzergâhı</option>
               <option value="pave">Asfalt fırçası</option>
               <option value="terrace">Teras yap</option>
-              <option value="demolish">Yıkım aracı</option>
+              <option value="demolish">Yık / Ağaç &amp; Taş Temizle</option>
               <option value="army" disabled={(game.militia ?? 0) === 0}>Birlik taşı</option>
               <option value="hunt">Av ekibi gönder</option>
             </select>
@@ -106,6 +106,11 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
           onClick={() => { setMenuOpen(false); toggleBuild(false); setTool(tool.kind === 'roadPlan' && !tool.bridge ? { kind: 'select' } : { kind: 'roadPlan' }); }}
           title="Güzergâh çiz ve yol önizle" data-testid="tool-road-plan">
           <span className="glyph">⌁</span><span>Yol</span>
+        </button>
+        <button className={`btn tool ${tool.kind === 'demolish' ? 'active' : ''}`} aria-pressed={tool.kind === 'demolish'}
+          onClick={() => { setMenuOpen(false); toggleBuild(false); setTool(tool.kind === 'demolish' ? { kind: 'select' } : { kind: 'demolish' }); }}
+          title="Bina/yol yık veya ağaçları ve taşları temizleyip arazi aç (X)" data-testid="tool-demolish">
+          <span className="glyph">🪓</span><span>Temizle</span>
         </button>
         <button className={`btn tool game-menu-trigger ${menuOpen ? 'active' : ''}`} aria-expanded={menuOpen} aria-controls={menuOpen ? 'game-menu' : undefined}
           onClick={() => setMenuOpen((open) => !open)}>
