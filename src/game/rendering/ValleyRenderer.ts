@@ -1419,7 +1419,7 @@ export class ValleyRenderer {
       const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
       const paint = paints[this.trafficCars.length % paints.length]!;
       const electric = this.trafficCars.length % 3 === 0;
-      const variant = (start[0] * 5 + start[1] * 7 + this.trafficCars.length) % 5;
+      const variant = (start[0] * 5 + start[1] * 7 + this.trafficCars.length) % 6;
       const dx = to[0] - start[0], dy = to[1] - start[1];
       drawCityCar(body, paint, electric, dx, dy, variant);
       holder.addChild(body);
