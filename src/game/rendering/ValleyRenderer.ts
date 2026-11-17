@@ -9,7 +9,7 @@ extensions.add(CullerPlugin);
 import { calendar, clockHour } from '../core/time';
 import type { Season } from '../core/time';
 import type { ArchitectureStyle, BuildingId, BuildingInstance, BuildingLook, GameState, Province, Tile } from '../core/types';
-import { FOREST_TILE_MAX, HEIGHT_PX, MAX_HEIGHT } from '../data/balance';
+import { HEIGHT_PX, MAX_HEIGHT } from '../data/balance';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import type { RoadPlan, RoadPoint } from '../systems/commands';
 import { validatePlacement } from '../systems/commands';
@@ -17,7 +17,7 @@ import { homeProvince, isBuilt, isOperating, totalPopulation } from '../systems/
 import { NEIGHBORS4, buildingById, footprintTiles, tileAt, tilesInRange } from '../systems/grid';
 import { checkRoadSite } from '../systems/placement';
 import { requiredTicks } from '../systems/tick';
-import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
+import { TH, isoX, isoY, P, worldToTile } from './iso';
 import { COLORS, SEASON_PALETTE, VILLAGER_COLORS } from './palette';
 import type { SeasonPalette } from './palette';
 import { drawBird, drawBoat, drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
