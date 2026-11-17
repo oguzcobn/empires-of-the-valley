@@ -24,6 +24,7 @@ import { Terrain3D, standY } from './terrain3d';
 import { WorkerActors3D } from './workers3d';
 import { TiltShift } from './tiltShift';
 
+const SPEED_FACTOR: Record<number, number> = { 0: 0, 1: 1, 2: 1.6, 4: 2.4 };
 const FOV = 26;
 const ELEVATION = (40 * Math.PI) / 180;
 const MIN_DIST = 5;
