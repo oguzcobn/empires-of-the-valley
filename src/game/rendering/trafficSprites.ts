@@ -63,6 +63,15 @@ export function drawCityCar(
   g.circle(noseX, noseY, 1.05).fill(0xfff5ba);
   g.circle(-noseX, -noseY, 0.95).fill(0xe23b3b);
 
+  // Exterior detail: mirrors, door handles, tail reflectors, headlights and grille.
+  // Each remains orientation-aware so vehicles keep their distinct front and rear.
+  g.circle(-4.6 * forwardX, -3.4, 0.65).fill(0x313c48);
+  g.circle(4.8 * forwardX, -3.2, 0.65).fill(0x313c48);
+  g.roundRect(-3.1, -0.3, 2.1, 0.7, 0.3).fill(0xdfe6ea);
+  g.roundRect(2.4, -1.1, 1.9, 0.7, 0.3).fill(0xdfe6ea);
+  g.rect(6.6 * forwardX, -0.2, 1.2, 0.9).fill(0xcbd7df);
+  g.circle(-6.3 * forwardX, 0.2, 0.65).fill(0xc84942);
+  g.circle(5.5 * forwardX, -2.4, 0.55).fill(0xf8ecb3);
   if (electric) {
     g.circle(0, -4.4, 1.1).fill(0x3ad29f);
   }
