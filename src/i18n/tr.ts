@@ -348,6 +348,8 @@ export const tr = {
   'event.built': '{building} tamamlandı.',
   'event.upgraded': '{building} {level}. seviyeye yükseldi.',
   'event.demolished': '{building} yıkıldı.',
+  'event.terrainCleared': 'Arazi temizlendi. Elde edilen malzemeler depoya eklendi.',
+  'event.mapExpanded': 'Vadi genişletildi! Yeni inşaat alanı: {w} × {h}.',
   'event.researched': 'Araştırma tamamlandı: {tech}.',
   'event.questComplete': 'Görev tamamlandı: {title}',
   'event.chapterComplete': '{n}. bölüm tamamlandı!',
