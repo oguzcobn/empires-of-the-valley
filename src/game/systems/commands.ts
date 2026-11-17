@@ -28,7 +28,7 @@ import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { homeProvince, idleWorkers, isBuilt, storageCaps, totalPopulation } from './economy';
 import { logEvent } from './events';
-import { buildingById, canLink, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter, transitOccupies } from './grid';
+import { NEIGHBORS4, buildingById, canLink, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter, transitOccupies } from './grid';
 import { checkRoadSite, checkSite, roadTypeFor } from './placement';
 import { investedCost, levelCost, repairCost, restyleCost, sameLook } from './architecture';
 import { lookSchema } from '../save/lookSchema';
@@ -70,6 +70,8 @@ export type Command =
   | { type: 'paveRoad'; x: number; y: number }
   | { type: 'buildTerrace'; x: number; y: number }
   | { type: 'removeRoad'; x: number; y: number }
+  | { type: 'clearTerrain'; x: number; y: number }
+  | { type: 'expandMap' }
   | { type: 'cancelConstruction'; instanceId: string }
   | { type: 'upgradeBuilding'; instanceId: string }
   | { type: 'demolishBuilding'; instanceId: string }
@@ -364,6 +366,17 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
     }
     case 'removeRoad':
       return tileAt(p, cmd.x, cmd.y)?.road ? null : { key: 'err.noRoadHere' };
+    case 'clearTerrain': {
+      const t = tileAt(p, cmd.x, cmd.y);
+      if (!t) return { key: 'err.outOfBounds' };
+      if (t.buildingId || t.road || transitOccupies(p, cmd.x, cmd.y)) return { key: 'err.occupied' };
+      if (!['forest', 'stone', 'rocky', 'hill', 'mountain'].includes(t.terrain)) return { key: 'err.invalid' };
+      return null;
+    }
+    case 'expandMap': {
+      if (p.width >= 64 && p.height >= 64) return { key: 'err.maxLevel' };
+      return missingFor(p, { gold: 5000 });
+    }
     case 'cancelConstruction': {
       const b = buildingById(p, cmd.instanceId);
       if (!b) return { key: 'err.noBuilding' };
@@ -580,6 +593,24 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
       refund(s, p, ROAD_COSTS[t.roadType], DEMOLISH_REFUND_PERMILLE);
       t.roadType = 'dirt';
       refreshConnectivity(p);
+      break;
+    }
+    case 'clearTerrain': {
+      const t = p.tiles[idx(p, cmd.x, cmd.y)]!;
+      const wasForest = t.terrain === 'forest';
+      t.terrain = 'grass';
+      t.deposit = 0;
+      if (t.height > 0) {
+        t.height = Math.min(t.height, ...NEIGHBORS4.map(([dx, dy]) => tileAt(p, cmd.x + dx, cmd.y + dy)?.height ?? t.height));
+      }
+      refund(s, p, wasForest ? { wood: 15000 } : { stone: 15000 }, 1000);
+      logEvent(s, 'info', 'event.terrainCleared', {}, { x: cmd.x, y: cmd.y });
+      break;
+    }
+    case 'expandMap': {
+      pay(p, { gold: 5000 });
+      expandProvinceGrid(s.seed, p, 8);
+      logEvent(s, 'success', 'event.mapExpanded', { w: p.width, h: p.height });
       break;
     }
     case 'buildTerrace': {
