@@ -51,8 +51,6 @@ describe('two-city long campaign', () => {
     expect(validateCommand(s, { type: 'claimDistrict', provinceId: adjacent })).toBeNull();
     const expanded = must(s, { type: 'claimDistrict', provinceId: adjacent });
     expect(expanded.claimedDistricts).toEqual([adjacent]);
-    expect(home(expanded).width).toBe(home(s).width + 4);
-    expect(home(expanded).height).toBe(home(s).height + 4);
     expect(expanded.revealedProvinceIds).toContain(adjacent);
     expect(validateCommand(expanded, { type: 'claimDistrict', provinceId: adjacent })).not.toBeNull();
     const remote = WORLD_PROVINCES.find((p) =>

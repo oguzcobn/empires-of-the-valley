@@ -29,8 +29,6 @@ const SPEEDS: { speed: GameSpeed; label: string; key: string }[] = [
 export function TopHud({ game }: { game: GameState }): ReactElement {
   const dispatch = useApp((s) => s.dispatch);
   const openPanel = useApp((s) => s.openPanel);
-  const settings = useApp((s) => s.settings);
-  const setSettings = useApp((s) => s.setSettings);
   const p = homeProvince(game);
   const flows = useMemo(() => computeFlows(game), [game]);
   const caps = useMemo(() => storageCaps(game, p), [game, p]);
@@ -82,19 +80,7 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
         </button>
       </div>
       <div className="hud-time">
-        <button
-          type="button"
-          className={`btn speed-btn ${settings.view3d ? 'active' : ''}`}
-          aria-pressed={settings.view3d}
-          onClick={() => setSettings({ view3d: !settings.view3d })}
-          title="3B Tilt-Shift Diorama Görünümü / Klasik 2B Görünüm"
-          data-testid="toggle-3d"
-        >
-          {settings.view3d ? '3B Açık' : '3B / 2B'}
-        </button>
-        <span className="chip hud-city" title={`Şehir merkezi (${p.width}×${p.height} kare)`}>
-          {cityOf(game.cityId, game.culture).name} · {p.width}×{p.height}
-        </span>
+        <span className="chip hud-city" title="Şehir merkezi">{cityOf(game.cityId, game.culture).name}</span>
         <span className="chip" title={DIFFICULTY_RULES[difficultyOf(game.difficulty)].description} data-testid="hud-difficulty">
           {DIFFICULTY_RULES[difficultyOf(game.difficulty)].label}
         </span>

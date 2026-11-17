@@ -1,6 +1,6 @@
 import { makeRng } from '../core/rng';
 import type { LocalRng } from '../core/rng';
-import type { ArchitectureStyle, BuildingId, BuildingInstance, Province, TerrainId, Tile } from '../core/types';
+import type { ArchitectureStyle, BuildingId, BuildingInstance, TerrainId, Tile } from '../core/types';
 import { CONDITION_MAX, LEGACY_STYLE } from '../data/architecture';
 import { CORE_OFFSET, CORE_SIZE, FOREST_TILE_MAX, FRONTIER_SIZE, MAP_SIZE, STONE_TILE_MAX } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
@@ -335,50 +335,6 @@ export function expandFrontier(seed: number, tiles: readonly Tile[]): Tile[] {
     const land = height >= 3 ? 'hill' : noise < 29 ? 'forest' : noise < 36 ? 'stone' : noise < 47 ? 'fertile' : 'grass';
     return tile(land, noise % 4, height);
   });
-}
-
-/**
- * Dynamically expands the playable valley grid (south and east borders) when a new district is
- * claimed or conquered, up to the 64x64 save-schema limit. Existing (x, y) tile coordinates,
- * roads and buildings remain in place.
- */
-export function expandProvinceGrid(seed: number, p: Province, step = 4): void {
-  const oldW = p.width;
-  const oldH = p.height;
-  const nextW = Math.min(64, oldW + step);
-  const nextH = Math.min(64, oldH + step);
-  if (nextW === oldW && nextH === oldH) return;
-  const nextTiles: Tile[] = new Array<Tile>(nextW * nextH);
-  for (let y = 0; y < nextH; y++) {
-    for (let x = 0; x < nextW; x++) {
-      if (x < oldW && y < oldH) {
-        nextTiles[y * nextW + x] = p.tiles[y * oldW + x]!;
-        continue;
-      }
-      const edge = p.tiles[Math.min(y, oldH - 1) * oldW + Math.min(x, oldW - 1)]!;
-      const depth = Math.max(x - oldW, y - oldH) + 1;
-      const noise = (Math.imul(seed + 19 * x + 37 * y, 0x85ebca6b) >>> 16) % 100;
-      if ((edge.terrain === 'lake' || edge.terrain === 'water') && depth <= 2 + (noise % 2)) {
-        nextTiles[y * nextW + x] = tile('lake', noise % 4, 0);
-        continue;
-      }
-      const height = Math.max(0, edge.height - Math.floor(depth / 2));
-      const land: TerrainId =
-        height >= 3
-          ? 'hill'
-          : noise < 28
-            ? 'forest'
-            : noise < 35
-              ? 'stone'
-              : noise < 48
-                ? 'fertile'
-                : 'grass';
-      nextTiles[y * nextW + x] = tile(land, noise % 4, height);
-    }
-  }
-  p.width = nextW;
-  p.height = nextH;
-  p.tiles = nextTiles;
 }
 
 /** Seeded valley generation. Retries with derived seeds until the start is verified playable. */

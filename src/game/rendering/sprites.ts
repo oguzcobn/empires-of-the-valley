@@ -326,7 +326,7 @@ function drawRoad(
   }
   if (type === 'bridge') {
     // The carriageway sits at bank level so it meets the land road without a step. Only the
-    // parapets rise above it; where the span touches a land road the deck widens into the bank.
+    // parapets rise above it; where the span touches a land road the deck tapers into the bank.
     const point = (u: number, v: number, z = 0): Pt => {
       const [x, y] = bridgeAlongY ? [v, u] : [u, v];
       return [ox + (x - y) * 32, oy + (x + y) * 16 - z];
@@ -338,26 +338,15 @@ function drawRoad(
       return BRIDGE_DECK_PX;
     };
     const us = [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.9, 1];
-    const back = 0.2, frontV = 0.8;
+    const back = 0.24, frontV = 0.76;
     g.ellipse(...point(0.5, 0.86), 22, 5).fill({ color: 0x143548, alpha: 0.22 });
     // pier under the middle of the tile and the fascia facing the viewer
     g.poly([point(0.42, frontV, -4), point(0.58, frontV, -4), point(0.58, frontV, lift(0.58)), point(0.42, frontV, lift(0.42))].flat()).fill(0x7d705c);
     g.poly([...us.map((u) => point(u, frontV, lift(u))), ...[...us].reverse().map((u) => point(u, frontV, 0))].flat()).fill(0x90816a);
-    // Flush abutment aprons at bank transitions so roads and bridges join with zero seam
-    if (bridgeEnds.start) {
-      g.poly([point(-0.08, 0.16, 0), point(0.18, back, 0), point(0.18, frontV, 0), point(-0.08, 0.84, 0)].flat()).fill(0x353e49);
-    }
-    if (bridgeEnds.end) {
-      g.poly([point(0.82, back, 0), point(1.08, 0.16, 0), point(1.08, 0.84, 0), point(0.82, frontV, 0)].flat()).fill(0x353e49);
-    }
-    // Stone sidewalk deck and flush asphalt carriageway matching connecting paved streets
+    // deck, then a carriageway in the land road's colour so the two read as one surface
     g.poly([...us.map((u) => point(u, back, lift(u))), ...[...us].reverse().map((u) => point(u, frontV, lift(u)))].flat()).fill(0xd7c3a0);
-    g.poly([...us.map((u) => point(u, 0.28, lift(u))), ...[...us].reverse().map((u) => point(u, 0.72, lift(u)))].flat())
-      .fill(pal.snow ? 0xd8c9a8 : 0x353e49);
-    // Dashed centerline along the bridge span
-    for (const u0 of [0.12, 0.44, 0.74]) {
-      line(g, point(u0, 0.5, lift(u0)), point(u0 + 0.14, 0.5, lift(u0 + 0.14)), 0xf0db86, 1.2, 0.85);
-    }
+    g.poly([...us.map((u) => point(u, 0.38, lift(u))), ...[...us].reverse().map((u) => point(u, 0.62, lift(u)))].flat())
+      .fill(pal.snow ? 0xd8c9a8 : COLORS.road);
     for (const edge of [back, frontV]) {
       for (let i = 1; i < us.length; i++) {
         const a = us[i - 1]!, b = us[i]!;
@@ -421,54 +410,24 @@ export function drawCart(g: Graphics, load: number): void {
   g.circle(4, -2, 2.6).fill(0x3a2a1c);
 }
 
-/** Small vessels for the lake and river: fishing boat, cargo ship or yacht, with water wake. */
+/** Small vessels for the lake and river: fishing boat, cargo ship or yacht. */
 export function drawBoat(g: Graphics, kind: 'fishing' | 'cargo' | 'yacht'): void {
-  // V-shaped water wake foam trailing behind the vessel
-  g.moveTo(-8, 0).lineTo(-19, -3.5).stroke({ color: 0xe8f7fb, width: 1.6, alpha: 0.58 });
-  g.moveTo(-8, 1).lineTo(-18, 4.2).stroke({ color: 0xe8f7fb, width: 1.6, alpha: 0.58 });
-  g.ellipse(-12, 0.6, 5.5, 1.8).fill({ color: 0xd9f2f9, alpha: 0.36 });
-  g.ellipse(0, 1, 9.5, 3.2).fill({ color: 0x1b3a55, alpha: 0.26 });
+  g.ellipse(0, 1, 9, 3).fill({ color: 0x1b3a55, alpha: 0.25 });
   if (kind === 'yacht') {
-    g.poly([-10, -2, 11, -2, 7.5, 2.4, -7.5, 2.4]).fill(0xf6f6f4);
-    g.poly([-9, 0.4, 9.5, 0.4, 7.5, 2.4, -7.5, 2.4]).fill(0xd9e1e6);
-    g.roundRect(-3.5, -5.5, 7, 3.5, 1).fill(0xe4eaee);
-    g.rect(-1.8, -4.8, 3.6, 1.6).fill(0x2b4256);
-    g.moveTo(0.5, -5.5).lineTo(0.5, -21).stroke({ color: 0x8a8f94, width: 1.1 });
-    g.poly([1.2, -20, 1.2, -6, 9.5, -6]).fill(0xffffff);
-    g.poly([-0.2, -18, -0.2, -6, -6.5, -6]).fill(0xf2f4f7);
+    g.poly([-9, -2, 9, -2, 6, 2, -7, 2]).fill(0xf6f6f4);
+    g.rect(-3, -5, 6, 3).fill(0xe0e6ea);
+    g.moveTo(0, -5).lineTo(0, -20).stroke({ color: 0x8a8f94, width: 1 });
+    g.poly([1, -19, 1, -6, 9, -6]).fill(0xffffff);
     return;
   }
   if (kind === 'cargo') {
-    g.poly([-12, -3.2, 12.5, -3.2, 9.2, 2.5, -9.5, 2.5]).fill(0x7b1e3a);
-    g.poly([-11, 0.5, 10.5, 0.5, 9.2, 2.5, -9.5, 2.5]).fill(0x4d1424);
-    g.rect(-8, -7.5, 5, 4.3).fill(0xc98b3a);
-    g.rect(-2.2, -7.5, 5, 4.3).fill(0x3d7fb5);
-    g.rect(3.6, -7.5, 3.5, 4.3).fill(0x4f9a65);
-    g.rect(-10, -10.5, 4.2, 7.2).fill(0xe8e4dc);
-    g.rect(-9.2, -9.6, 2.6, 1.6).fill(0x2b4256);
-    g.rect(-8.6, -12.6, 1.4, 2.2).fill(0xc94a3a);
+    g.poly([-11, -3, 11, -3, 8, 2, -9, 2]).fill(0x7b1e3a);
+    g.rect(-7, -7, 5, 4).fill(0xc98b3a);
+    g.rect(-1, -7, 5, 4).fill(0x3d7fb5);
+    g.rect(5, -9, 3, 6).fill(0xe8e4dc);
     return;
   }
-  g.poly([-7.5, -2.2, 8, -2.2, 5.5, 2.2, -5.5, 2.2]).fill(0x8a5a36);
-  g.rect(-4.2, -4.8, 3.8, 2.6).fill(0x6a8a9a);
-  g.moveTo(0, -2.2).lineTo(0, -14).stroke({ color: 0x5a3b22, width: 1.1 });
-  g.poly([0.8, -13, 0.8, -3, 6.8, -3]).fill(0xe8dcc0);
-}
-
-/** Seagull / bird flying over the valley with wing-flapping phase and soft ground shadow. */
-export function drawBird(g: Graphics, flap: number): void {
-  g.clear();
-  const w = Math.sin(flap) * 4.2;
-  // Soft shadow cast on the ground below
-  g.ellipse(2, 26, 4.5, 2).fill({ color: COLORS.shadow, alpha: 0.16 });
-  // Left & right wings
-  g.moveTo(-6.5, -w)
-    .quadraticCurveTo(-2.5, -1.8 - w * 0.35, 0, 0)
-    .quadraticCurveTo(2.5, -1.8 - w * 0.35, 6.5, -w)
-    .stroke({ color: 0xf7f9fb, width: 2.1, cap: 'round' });
-  g.moveTo(-6.5, -w).lineTo(-7.8, -w + 0.8).stroke({ color: 0x364352, width: 1.6, cap: 'round' });
-  g.moveTo(6.5, -w).lineTo(7.8, -w + 0.8).stroke({ color: 0x364352, width: 1.6, cap: 'round' });
-  // Body & beak
-  g.ellipse(0, 0, 2.3, 1.2).fill(0xfdfefe);
-  g.circle(2.4, -0.2, 0.7).fill(0xe8b931);
+  g.poly([-7, -2, 7, -2, 5, 2, -5, 2]).fill(0x8a5a36);
+  g.moveTo(-1, -2).lineTo(-1, -13).stroke({ color: 0x5a3b22, width: 1 });
+  g.poly([0, -12, 0, -3, 6, -3]).fill(0xe8dcc0);
 }

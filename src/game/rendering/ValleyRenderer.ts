@@ -20,7 +20,7 @@ import { requiredTicks } from '../systems/tick';
 import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
 import { COLORS, SEASON_PALETTE, VILLAGER_COLORS } from './palette';
 import type { SeasonPalette } from './palette';
-import { drawBird, drawBoat, drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
+import { drawBoat, drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
 import { buildingArtSeed, drawStyledBuilding, drawStyledConstruction } from './arch/buildings';
 import type { SpriteInfo } from './arch/buildings';
 import { CULTURES } from '../data/architecture';
@@ -139,17 +139,6 @@ interface Particle {
   g: Graphics;
   life: number;
 }
-interface BirdSprite {
-  c: Container;
-  g: Graphics;
-  cx: number;
-  cy: number;
-  rx: number;
-  ry: number;
-  angle: number;
-  speed: number;
-  phase: number;
-}
 
 const MIN_ZOOM = 0.24;
 const MAX_ZOOM = 2.6;
@@ -199,7 +188,6 @@ export class ValleyRenderer {
   private militiaTargetKey = '';
   private particles: Particle[] = [];
   private boats: { c: Container; kind: 'fishing' | 'cargo' | 'yacht'; x: number; y: number; tx: number; ty: number; t: number }[] = [];
-  private birds: BirdSprite[] = [];
   private lastTiles: Tile[] | null = null;
   private lastSeason: Season | null = null;
   private waterTiles: [number, number][] = [];
@@ -272,7 +260,7 @@ export class ValleyRenderer {
       textures: this.atlas.size,
       buildings: this.buildingViews.size,
       props: this.propViews.size,
-      walkers: this.walkers.length + this.workScenes.count + this.birds.length,
+      walkers: this.walkers.length + this.workScenes.count,
       particles: this.particles.length,
     };
   }
@@ -542,7 +530,6 @@ export class ValleyRenderer {
     this.cityScenes.update(view.game, p, dt, !motion);
     this.updateMilitia(view, p, dt);
     this.updateBoats(view, p, dt, motion);
-    this.updateBirds(p, dt, motion);
     this.updateParticles(dt);
     this.drawOverlays(view, p, pal);
 
@@ -967,7 +954,6 @@ export class ValleyRenderer {
     for (const car of this.trafficCars) car.c.tint = tint;
     for (const guard of this.militiaSprites) guard.tint = tint;
     for (const b of this.boats) b.c.tint = tint;
-    for (const bird of this.birds) bird.c.tint = tint;
     for (const bv of this.buildingViews.values()) {
       bv.body.tint = tint;
       bv.glow.tint = 0xffffff;
@@ -1036,40 +1022,6 @@ export class ValleyRenderer {
         part.g.destroy();
         this.particles.splice(i, 1);
       }
-    }
-  }
-
-  /** Seagull / bird flocks circling over the coast and valley center. */
-  private updateBirds(p: Province, dt: number, motion: boolean): void {
-    const desired = 7;
-    while (this.birds.length < desired) {
-      const i = this.birds.length;
-      const c = new Container();
-      const g = new Graphics();
-      drawBird(g, i);
-      c.addChild(g);
-      c.cullable = true;
-      this.objects.addChild(c);
-      this.birds.push({
-        c,
-        g,
-        cx: p.width * (0.28 + ((i * 19) % 44) / 100),
-        cy: p.height * (0.24 + ((i * 29) % 48) / 100),
-        rx: 4.2 + (i % 4) * 1.5,
-        ry: 3.4 + ((i + 2) % 4) * 1.3,
-        angle: (i * Math.PI * 2) / desired,
-        speed: 0.26 + (i % 3) * 0.06,
-        phase: i * 1.2,
-      });
-    }
-    const sec = motion ? dt / 1000 : 0;
-    for (const b of this.birds) {
-      b.angle += sec * b.speed;
-      const fx = b.cx + Math.cos(b.angle) * b.rx;
-      const fy = b.cy + Math.sin(b.angle) * b.ry;
-      if (motion) drawBird(b.g, this.time / 110 + b.phase);
-      b.c.position.set(isoX(fx, fy), isoY(fx, fy) - 52 + Math.sin(this.time / 650 + b.phase) * 3.5);
-      b.c.zIndex = fx + fy + 80;
     }
   }
 

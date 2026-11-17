@@ -26,7 +26,6 @@ import { Icon } from './icons';
 import { requestDemolish } from './ValleyCanvas';
 import { ShipyardSection } from './Heritage';
 import { workerJob } from '../game/rendering/workerScenes';
-import { flightDuration } from '../game/systems/cityLife';
 
 function StatusLine({ b }: { b: BuildingInstance }): ReactElement {
   const spec = specOf(b);
@@ -309,14 +308,6 @@ function TownHall({ game, p }: { game: GameState; p: Province }): ReactElement {
   );
 }
 
-const FLIGHT_PHASE_LABELS: Record<'landing' | 'taxiIn' | 'terminal' | 'taxiOut' | 'takeoff', string> = {
-  landing: 'İniş yaklaşması',
-  taxiIn: 'Apron & Taksi (Geliş)',
-  terminal: 'Terminal (Yolcu İndirme/Bindirme)',
-  taxiOut: 'Pist Başı Taksi (Çıkış)',
-  takeoff: 'Kalkış & Tırmanış',
-};
-
 export function Inspector({ game }: { game: GameState }): ReactElement | null {
   const selectedId = useApp((s) => s.selectedBuildingId);
   const dispatch = useApp((s) => s.dispatch);
@@ -508,50 +499,17 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         )}
 
       {b.definitionId === 'town_center' && <TownHall game={game} p={p} />}
-      {['hospital', 'police_station', 'market', 'factory', 'hotel', 'restaurant', 'club', 'airport'].includes(b.definitionId) && isBuilt(b) && (() => {
-        const buildingJobs = game.cityLife?.jobs.filter((j) => j.source === b.id || j.target === b.id) ?? [];
-        const parkedCount = buildingJobs.filter((j) => j.target === b.id && ['park', 'walkIn', 'inside', 'walkOut'].includes(j.stage)).length;
-        const activeFlight = game.cityLife?.flights.find((f) => f.airport === b.id);
-        const dispatchError = b.definitionId === 'airport' ? validateCommand(game, { type: 'dispatchFlight', airportId: b.id }) : null;
-        return (
-          <section className="section inspector-section" data-testid="city-service-status">
-            <h4>{b.definitionId === 'airport' ? 'Havalimanı Operasyonları & Şehir Yaşamı' : 'Şehir Yaşamı & Park Alanı'}</h4>
-            <p className="hint">Bağlı asfalt yol veya köprü ve çalışan gerekir. Araçlar müsait park alanlarını kullanır.</p>
-            <Row label="Bu binanın görevleri">{buildingJobs.length}</Row>
-            {b.definitionId !== 'airport' && (
-              <Row label="Dolu otopark / servis cebi">{parkedCount} / 3</Row>
-            )}
-            {b.definitionId === 'airport' && (
-              <>
-                <p>Pist: {activeFlight ? 'Uçuş işlemi sürüyor' : 'Boş'}</p>
-                {activeFlight && (
-                  <>
-                    <Row label="Uçuş aşaması">{FLIGHT_PHASE_LABELS[activeFlight.phase]}</Row>
-                    <Bar value={activeFlight.age + 1} max={flightDuration(activeFlight.phase)} tone="info" />
-                    <Row label="Uçaktaki yolcu">{activeFlight.passengers}</Row>
-                  </>
-                )}
-                <p className="hint">Uçuşlar konaklama kapasitesi ve 1 altın işletme bütçesi ile otomatik sıraya alınır veya manuel başlatılır.</p>
-                <p>Tamamlanan uçuş: {game.cityLife?.completedFlights ?? 0} · Gelen yolcu: {game.cityLife?.passengers ?? 0}</p>
-                <p>Şehir hizmetleri geliri: {((game.cityLife?.revenue ?? 0) / 1000).toFixed(1)} · Uçuş gideri: {((game.cityLife?.operatingCosts ?? 0) / 1000).toFixed(1)}</p>
-                <div className="row-actions">
-                  <CostList cost={{ gold: 1000 }} stocks={p.stocks} />
-                  <button
-                    type="button"
-                    className="btn primary"
-                    disabled={!!dispatchError}
-                    title={dispatchError ? tm(dispatchError) : 'Hemen ek yolcu uçağı indir (1 Altın)'}
-                    onClick={() => dispatch({ type: 'dispatchFlight', airportId: b.id })}
-                    data-testid="dispatch-flight"
-                  >
-                    ✈️ Özel Sefer Başlat
-                  </button>
-                </div>
-              </>
-            )}
-          </section>
-        );
-      })()}
+      {['hospital','police_station','market','factory','hotel','restaurant','club','airport'].includes(b.definitionId) && isBuilt(b) && <section className="inspector-section" data-testid="city-service-status">
+        <h4>Şehir yaşamı</h4>
+        <p>Bağlı asfalt yol veya köprü ve çalışan gerekir. Araçlar müsait park alanlarını kullanır.</p>
+        <p>Bu binanın görevleri: {game.cityLife?.jobs.filter(j => j.source === b.id || j.target === b.id).length ?? 0}</p>
+        {b.definitionId === 'airport' && <>
+          <p>Pist: {game.cityLife?.flights.some(f => f.airport === b.id) ? 'Uçuş işlemi sürüyor' : 'Boş'}</p>
+          <p>Uçuşlar konaklama kapasitesi ve 1 altın işletme bütçesi ile otomatik sıraya alınır.</p>
+          <p>Tamamlanan uçuş: {game.cityLife?.completedFlights ?? 0} · Gelen yolcu: {game.cityLife?.passengers ?? 0}</p>
+          <p>Şehir hizmetleri geliri: {((game.cityLife?.revenue ?? 0) / 1000).toFixed(1)} · Uçuş gideri: {((game.cityLife?.operatingCosts ?? 0) / 1000).toFixed(1)}</p>
+        </>}
+      </section>}
       {b.definitionId === 'shipyard' && isBuilt(b) && <ShipyardSection game={game} />}
 
       {isBuilt(b) && (
