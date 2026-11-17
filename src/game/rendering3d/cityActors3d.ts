@@ -53,13 +53,14 @@ export class CityActors3D {
 
   private get(id: string, variant: ActorVariant, paint: number): THREE.Group {
     let g = this.actors.get(id);
-    if (g && g.userData.variant === variant) return g;
+    if (g && g.userData.variant === variant && g.userData.paint === paint) return g;
     if (g) {
       g.removeFromParent();
       this.actors.delete(id);
     }
     g = new THREE.Group();
     g.userData.variant = variant;
+    g.userData.paint = paint;
     this.actors.set(id, g);
     this.group.add(g);
 
