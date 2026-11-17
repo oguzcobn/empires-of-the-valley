@@ -374,7 +374,7 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       return null;
     }
     case 'expandMap': {
-      if (p.width >= 64 && p.height >= 64) return { key: 'err.maxLevel' };
+      if (p.width >= 96 && p.height >= 96) return { key: 'err.maxLevel' };
       return missingFor(p, { gold: 5000 });
     }
     case 'cancelConstruction': {
@@ -601,7 +601,11 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
       t.terrain = 'grass';
       t.deposit = 0;
       if (t.height > 0) {
-        t.height = Math.min(t.height, ...NEIGHBORS4.map(([dx, dy]) => tileAt(p, cmd.x + dx, cmd.y + dy)?.height ?? t.height));
+        const minNeighborH = Math.min(
+          t.height,
+          ...NEIGHBORS4.map(([dx, dy]) => tileAt(p, cmd.x + dx, cmd.y + dy)?.height ?? t.height),
+        );
+        t.height = minNeighborH;
       }
       refund(s, p, wasForest ? { wood: 15000 } : { stone: 15000 }, 1000);
       logEvent(s, 'info', 'event.terrainCleared', {}, { x: cmd.x, y: cmd.y });

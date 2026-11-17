@@ -54,8 +54,8 @@ const building = z
 
 const ledger = z.object({ produced: resourceMap, consumed: resourceMap }).strict();
 
-const mapPoint = z.object({ x: nat.max(63), y: nat.max(63) }).strict();
-const journey = z.array(mapPoint).min(1).max(4096);
+const mapPoint = z.object({ x: nat.max(95), y: nat.max(95) }).strict();
+const journey = z.array(mapPoint).min(1).max(9216);
 const transitLine = z.object({
   route: journey.min(2),
   cargo: z.enum(['passengers', 'stone', 'wood', 'food', 'tools']),
@@ -74,9 +74,9 @@ const province = z
     ownerFactionId: shortText.nullable(),
     loyalty: int.min(0).max(100),
     unrest: int.min(0).max(100),
-    width: int.min(8).max(64),
-    height: int.min(8).max(64),
-    tiles: z.array(tile).max(64 * 64),
+    width: int.min(8).max(96),
+    height: int.min(8).max(96),
+    tiles: z.array(tile).max(96 * 96),
     buildings: z.array(building).max(2000),
     stocks: resourceMap,
     population: z
@@ -159,9 +159,9 @@ export const gameStateSchema = z
     cityLife: z.object({
       nextId: nat, completedTrips: nat, completedFlights: nat, passengers: nat, revenue: nat, operatingCosts: nat,
       jobs: z.array(z.object({
-        id: nat, kind: z.enum(['shopping','ambulance','patrol','delivery','dining','nightlife','hotel']),
+        id: nat, kind: z.enum(['shopping','ambulance','patrol','fire','delivery','dining','nightlife','hotel']),
         source: shortText, target: shortText, slot: nat.max(2),
-        path: z.array(z.object({x:z.number().finite().min(0).max(64),y:z.number().finite().min(0).max(64)}).strict()).min(1).max(4108),
+        path: z.array(z.object({x:z.number().finite().min(0).max(96),y:z.number().finite().min(0).max(96)}).strict()).min(1).max(9228),
         index: nat, stage: z.enum(['outbound','park','walkIn','inside','walkOut','return']), age: nat,
       }).strict().refine(j=>j.index<j.path.length)).max(24),
       flights: z.array(z.object({airport:shortText,phase:z.enum(['landing','taxiIn','terminal','taxiOut','takeoff']),age:nat.max(3),passengers:nat.max(8)}).strict()).max(4),

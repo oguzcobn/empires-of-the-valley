@@ -952,7 +952,7 @@ export function drawStyledBuilding(
     case 'shipyard':
       shipyard(ctx, look, b.level);
       break;
-    case 'hospital': case 'factory': case 'hotel': case 'club': case 'restaurant': case 'airport': break;
+    case 'hospital': case 'fire_station': case 'factory': case 'hotel': case 'club': case 'restaurant': case 'airport': break;
     default:
       drawLandmark(ctx, b.definitionId, pal);
   }

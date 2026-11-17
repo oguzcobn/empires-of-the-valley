@@ -8,6 +8,8 @@ import { NEIGHBORS4, tileAt } from '../systems/grid';
 import { findRoadPath } from '../rendering/armyPath';
 import type { GridPoint } from '../rendering/armyPath';
 import { VILLAGER_COLORS } from '../rendering/palette';
+import { matchDayFor } from '../data/matchDays';
+import type { MatchDay } from '../data/matchDays';
 import { Builder, LEVEL_H } from './geo';
 import { DIRS, drivableLinks, lanePoint, opposite, roadNode } from './roads3d';
 import { standY } from './terrain3d';
@@ -169,6 +171,9 @@ export class Actors3D {
   private single = new Map<string, THREE.BufferGeometry>();
   private cars: Roamer[] = [];
   private walkers: Roamer[] = [];
+  private cortegeFans: THREE.Group[] = [];
+  private cortegeLeader: Roamer | null = null;
+  private activeCortegeKey = '';
   private boats: Boat[] = [];
   private birds: Bird[] = [];
   private soldiers: THREE.Mesh[] = [];
@@ -363,6 +368,121 @@ export class Actors3D {
       car.mesh.position.set(at.x, at.y + 0.03, at.z);
       car.mesh.rotation.y = yawOf(at.hx, at.hz);
     }
+  }
+
+  private buildSupporter3D(match: MatchDay, idx: number): THREE.Group {
+    const g = new THREE.Group();
+    const b = new Builder();
+    // Trousers, team jersey with stripe, scarf, head, raised arms, flagpole + team flag
+    b.box(-0.012, 0, 0, 0.017, 0.05, 0.022, 0x252d38).box(0.012, 0, 0, 0.017, 0.05, 0.022, 0x252d38);
+    b.box(0, 0.05, 0, 0.05, 0.058, 0.032, match.jersey);
+    b.box(0, 0.052, 0.002, 0.018, 0.056, 0.034, match.stripe);
+    b.box(0, 0.104, 0, 0.054, 0.014, 0.036, match.scarf);
+    b.sphere(0, 0.13, 0, 0.021, 0xf0c9a0, 1, 6);
+    if (idx % 2 === 0) b.cyl(0, 0.142, 0, 0.022, 0.024, 0.014, match.jersey, 6);
+    // Left arm & flagpole + waving team flag
+    b.box(-0.032, 0.095, 0, 0.014, 0.045, 0.014, match.jersey);
+    b.cyl(-0.036, 0.09, 0, 0.004, 0.004, 0.22, 0xd6c7b2, 5);
+    b.box(-0.036, 0.25, -0.045, 0.008, 0.075, 0.09, match.jersey);
+    b.box(-0.036, 0.25, -0.045, 0.01, 0.026, 0.092, match.stripe);
+    // Right arm & flare handle
+    b.box(0.032, 0.098, 0, 0.014, 0.048, 0.014, match.jersey);
+    b.cyl(0.036, 0.135, 0, 0.006, 0.006, 0.035, 0xc0392b, 5);
+    const bodyMesh = new THREE.Mesh(b.build(), this.mat);
+    bodyMesh.castShadow = this.shadows;
+    // Glowing flare core + 3 rising smoke puffs
+    const litB = new Builder();
+    litB.sphere(0.036, 0.18, 0, 0.024, 0xff4d29, 1, 6);
+    litB.sphere(0.036, 0.18, 0, 0.014, 0xfff7c2, 1, 5);
+    const flareMesh = new THREE.Mesh(litB.build(), this.litMat);
+    flareMesh.name = 'flare';
+    const smokeGroup = new THREE.Group();
+    smokeGroup.name = 'smoke';
+    for (let s = 0; s < 3; s++) {
+      const sb = new Builder();
+      const col = s === 0 ? match.jersey : s === 1 ? match.stripe : 0xe2e8f0;
+      sb.sphere(0, 0, 0, 0.032 + s * 0.014, col, 0.85, 6);
+      const sm = new THREE.Mesh(sb.build(), this.litMat);
+      sm.name = `puff:${s}`;
+      smokeGroup.add(sm);
+    }
+    g.add(bodyMesh, flareMesh, smokeGroup);
+    this.group.add(g);
+    return g;
+  }
+
+  private updateMatchCortege(view: ActorView, p: Province, seconds: number, roads: [number, number][]): void {
+    const match = matchDayFor(view.game);
+    const key = match ? `${match.team}:${match.day}` : '';
+    const links = (x: number, y: number): number[] => {
+      const node = roadNode(p, x, y);
+      return node ? [0, 1, 2, 3].filter((s) => node.links[s]) : [];
+    };
+    if (this.activeCortegeKey !== key) {
+      for (const fan of this.cortegeFans) this.drop(fan);
+      this.cortegeFans = [];
+      this.cortegeLeader = null;
+      this.activeCortegeKey = key;
+      if (match && roads.length > 0) {
+        const start = roads[Math.floor(Math.random() * roads.length)]!;
+        const out = links(start[0], start[1]);
+        if (out.length) {
+          this.cortegeLeader = {
+            mesh: new THREE.Object3D(),
+            tx: start[0],
+            ty: start[1],
+            entry: -1,
+            exit: out[0]!,
+            t: 0,
+            speed: 0.42,
+            phase: 0,
+            side: 1,
+          };
+          for (let i = 0; i < 10; i++) {
+            this.cortegeFans.push(this.buildSupporter3D(match, i));
+          }
+        }
+      }
+    }
+    if (!this.cortegeLeader || !this.cortegeFans.length || !roads.length) return;
+    if (!roadNode(p, this.cortegeLeader.tx, this.cortegeLeader.ty) || !this.advance(this.cortegeLeader, seconds * this.cortegeLeader.speed, links)) {
+      const start = roads[Math.floor(Math.random() * roads.length)]!;
+      const out = links(start[0], start[1]);
+      if (!out.length) return;
+      this.cortegeLeader.tx = start[0];
+      this.cortegeLeader.ty = start[1];
+      this.cortegeLeader.entry = -1;
+      this.cortegeLeader.exit = out[0]!;
+      this.cortegeLeader.t = 0;
+    }
+    const node = roadNode(p, this.cortegeLeader.tx, this.cortegeLeader.ty);
+    if (!node) return;
+    const at = lanePoint(this.cortegeLeader.tx, this.cortegeLeader.ty, node, this.cortegeLeader.entry, this.cortegeLeader.exit, this.cortegeLeader.t, 0);
+    const len = Math.hypot(at.hx, at.hz) || 1;
+    const fx = at.hx / len;
+    const fz = at.hz / len;
+    const rx = -fz;
+    const rz = fx;
+    this.cortegeFans.forEach((fan, idx) => {
+      const row = Math.floor(idx / 2);
+      const col = idx % 2 === 0 ? -1 : 1;
+      const px = at.x - fx * row * 0.14 + rx * col * 0.09;
+      const pz = at.z - fz * row * 0.14 + rz * col * 0.09;
+      const bob = Math.abs(Math.sin(this.time * 10 + idx * 0.7)) * 0.015;
+      fan.position.set(px, at.y + 0.016 + bob, pz);
+      fan.rotation.y = yawOf(fx, fz);
+      const smoke = fan.getObjectByName('smoke');
+      if (smoke) {
+        for (let s = 0; s < 3; s++) {
+          const puff = smoke.getObjectByName(`puff:${s}`);
+          if (puff) {
+            const age = (this.time * 0.9 + idx * 0.3 + s * 0.33) % 1;
+            puff.position.set(0.036 + Math.sin(this.time * 3 + idx + s) * 0.03, 0.2 + age * 0.38, -age * 0.12);
+            puff.scale.setScalar(0.7 + age * 1.4);
+          }
+        }
+      }
+    });
   }
 
   private updateWalkers(p: Province, seconds: number, roads: [number, number][]): void {
@@ -683,6 +803,7 @@ export class Actors3D {
       }
     this.updateCars(view, p, seconds, drivable);
     this.updateWalkers(p, seconds, roads);
+    this.updateMatchCortege(view, p, seconds, roads);
     this.updateBoats(view, p, seconds);
     this.updateMilitia(view, p, dtMs, roads, motion);
     this.updateWildlife(view, p);

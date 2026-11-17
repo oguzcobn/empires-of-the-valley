@@ -508,7 +508,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         )}
 
       {b.definitionId === 'town_center' && <TownHall game={game} p={p} />}
-      {['hospital', 'police_station', 'market', 'factory', 'hotel', 'restaurant', 'club', 'airport'].includes(b.definitionId) && isBuilt(b) && (() => {
+      {['hospital', 'police_station', 'fire_station', 'market', 'factory', 'hotel', 'restaurant', 'club', 'airport'].includes(b.definitionId) && isBuilt(b) && (() => {
         const buildingJobs = game.cityLife?.jobs.filter((j) => j.source === b.id || j.target === b.id) ?? [];
         const parkedCount = buildingJobs.filter((j) => j.target === b.id && ['park', 'walkIn', 'inside', 'walkOut'].includes(j.stage)).length;
         const activeFlight = game.cityLife?.flights.find((f) => f.airport === b.id);

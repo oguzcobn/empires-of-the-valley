@@ -9,14 +9,15 @@ export interface MatchDay {
   day: number;
   jersey: number;
   stripe: number;
+  scarf: number;
   pattern: 'vertical' | 'horizontal' | 'solid';
 }
 
 const CLUBS: Record<FootballTeam, Omit<MatchDay, 'day' | 'home'>> = {
-  trabzonspor: { team: 'trabzonspor', teamName: 'Trabzonspor', jersey: 0x8f2446, stripe: 0x61b9dc, pattern: 'vertical' },
-  hearts: { team: 'hearts', teamName: 'Hearts', jersey: 0x85304b, stripe: 0xffffff, pattern: 'solid' },
-  celtic: { team: 'celtic', teamName: 'Celtic', jersey: 0xf5f5ef, stripe: 0x139155, pattern: 'horizontal' },
-  rangers: { team: 'rangers', teamName: 'Rangers', jersey: 0x3065c5, stripe: 0xf1f1f1, pattern: 'solid' },
+  trabzonspor: { team: 'trabzonspor', teamName: 'Trabzonspor', jersey: 0x8f2446, stripe: 0x61b9dc, scarf: 0x61b9dc, pattern: 'vertical' },
+  hearts: { team: 'hearts', teamName: 'Hearts', jersey: 0x85304b, stripe: 0xffffff, scarf: 0x85304b, pattern: 'solid' },
+  celtic: { team: 'celtic', teamName: 'Celtic', jersey: 0xf5f5ef, stripe: 0x139155, scarf: 0x139155, pattern: 'horizontal' },
+  rangers: { team: 'rangers', teamName: 'Rangers', jersey: 0x3065c5, stripe: 0xf1f1f1, scarf: 0x3065c5, pattern: 'solid' },
 };
 
 /** Fictional, in-game match days, NOT actual fixture results or live schedules. */

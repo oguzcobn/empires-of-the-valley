@@ -4,8 +4,9 @@ import { defOf } from '../data/buildings';
 import { canLink, perimeterTiles, tileAt } from './grid';
 import { beds } from './tourism';
 import { isOperating, isBuilt, storageCaps } from './economy';
+import { logEvent } from './events';
 
-export type CityJobKind = 'shopping' | 'ambulance' | 'patrol' | 'delivery' | 'dining' | 'nightlife' | 'hotel';
+export type CityJobKind = 'shopping' | 'ambulance' | 'patrol' | 'fire' | 'delivery' | 'dining' | 'nightlife' | 'hotel';
 export type CityStage = 'outbound' | 'park' | 'walkIn' | 'inside' | 'walkOut' | 'return';
 export interface CityJob {
   id: number;
@@ -126,7 +127,7 @@ export function validCityJob(p: Province, j: CityJob): boolean {
     target = p.buildings.find((b) => b.id === j.target);
   if (!source || !target || !source.connected || !target.connected || !isBuilt(source) || !isBuilt(target))
     return false;
-  const service = ['ambulance', 'patrol', 'delivery'].includes(j.kind) ? source : target;
+  const service = ['ambulance', 'patrol', 'fire', 'delivery'].includes(j.kind) ? source : target;
   if (!isOperating(service)) return false;
   return j.path.every((at) => {
     const t = tileAt(p, Math.floor(at.x), Math.floor(at.y));
@@ -148,7 +149,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
   const venues = p.buildings.filter(
     (b) =>
       isOperating(b) &&
-      ['hospital', 'police_station', 'factory', 'market', 'restaurant', 'club', 'hotel', 'airport'].includes(
+      ['hospital', 'police_station', 'fire_station', 'factory', 'market', 'restaurant', 'club', 'hotel', 'airport'].includes(
         b.definitionId,
       ),
   );
@@ -168,16 +169,30 @@ export function cityLifeTick(s: GameState, p: Province): void {
       }
     } else {
       const sequence: CityStage[] = ['park', 'walkIn', 'inside', 'walkOut', 'return'];
-      if (j.age >= (j.stage === 'inside' ? 2 : 1)) {
+      if (j.age >= (j.stage === 'inside' ? (j.kind === 'fire' ? 3 : 2) : 1)) {
         if (j.stage === 'inside') {
-          const amount =
-            j.kind === 'shopping' ? 100 : j.kind === 'dining' ? 180 : j.kind === 'hotel' ? 250 : 0;
-          if (amount && p.stocks.food >= 100) {
-            p.stocks.food -= 100;
-            p.today.consumed.food += 100;
-            p.stocks.gold += amount;
-            p.today.produced.gold += amount;
-            life.revenue += amount;
+          if (j.kind === 'fire') {
+            const targetBld = p.buildings.find((b) => b.id === j.target);
+            if (targetBld) {
+              targetBld.condition = Math.min(10000, targetBld.condition + 1500);
+              logEvent(
+                s,
+                'success',
+                'event.fireExtinguished',
+                { building: `@building.${targetBld.definitionId}.name` },
+                { x: targetBld.x, y: targetBld.y },
+              );
+            }
+          } else {
+            const amount =
+              j.kind === 'shopping' ? 100 : j.kind === 'dining' ? 180 : j.kind === 'hotel' ? 250 : 0;
+            if (amount && p.stocks.food >= 100) {
+              p.stocks.food -= 100;
+              p.today.consumed.food += 100;
+              p.stocks.gold += amount;
+              p.today.produced.gold += amount;
+              life.revenue += amount;
+            }
           }
         }
         j.stage = sequence[sequence.indexOf(j.stage) + 1]!;
@@ -239,7 +254,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
     }
     if (life.jobs.length >= 24 || s.tick % 4 !== 0) continue;
     if (b.definitionId === 'club' && clockHour(s.tick) < 18 && clockHour(s.tick) > 4) continue;
-    const service = ['hospital', 'police_station', 'factory'].includes(b.definitionId);
+    const service = ['hospital', 'police_station', 'fire_station', 'factory'].includes(b.definitionId);
     const candidates = p.buildings.filter(
       (other) =>
         other.id !== b.id &&
@@ -247,7 +262,9 @@ export function cityLifeTick(s: GameState, p: Province): void {
         other.connected &&
         (b.definitionId === 'factory'
           ? ['market', 'warehouse'].includes(other.definitionId)
-          : other.definitionId === 'hut'),
+          : b.definitionId === 'fire_station'
+            ? other.definitionId !== 'town_center'
+            : other.definitionId === 'hut'),
     );
     if (!candidates.length) continue;
     const other = candidates[(Math.floor(s.tick / 4) + b.x) % candidates.length]!;
@@ -264,15 +281,27 @@ export function cityLifeTick(s: GameState, p: Province): void {
         ? 'ambulance'
         : b.definitionId === 'police_station'
           ? 'patrol'
-          : b.definitionId === 'factory'
-            ? 'delivery'
-            : b.definitionId === 'restaurant'
-              ? 'dining'
-              : b.definitionId === 'club'
-                ? 'nightlife'
-                : b.definitionId === 'hotel'
-                  ? 'hotel'
-                  : 'shopping';
+          : b.definitionId === 'fire_station'
+            ? 'fire'
+            : b.definitionId === 'factory'
+              ? 'delivery'
+              : b.definitionId === 'restaurant'
+                ? 'dining'
+                : b.definitionId === 'club'
+                  ? 'nightlife'
+                  : b.definitionId === 'hotel'
+                    ? 'hotel'
+                    : 'shopping';
+    if (kind === 'fire') {
+      target.condition = Math.max(2500, target.condition - 600);
+      logEvent(
+        s,
+        'warning',
+        'event.fireOutbreak',
+        { building: `@building.${target.definitionId}.name` },
+        { x: target.x, y: target.y },
+      );
+    }
     const sourceAccess = service ? access(source, route[0]!, 0).reverse() : [];
     const destinationAccess = [
       'market',
@@ -282,6 +311,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
       'factory',
       'hospital',
       'police_station',
+      'fire_station',
     ].includes(target.definitionId)
       ? access(target, route.at(-1)!, slot)
       : [];

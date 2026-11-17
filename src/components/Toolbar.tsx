@@ -67,7 +67,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
               <option value="bridge">Köprü güzergâhı</option>
               <option value="pave">Asfalt fırçası</option>
               <option value="terrace">Teras yap</option>
-              <option value="demolish">Yık / Ağaç &amp; Taş Temizle</option>
+              <option value="demolish">Yık / Ağaç & Taş Temizle</option>
               <option value="army" disabled={(game.militia ?? 0) === 0}>Birlik taşı</option>
               <option value="hunt">Av ekibi gönder</option>
             </select>

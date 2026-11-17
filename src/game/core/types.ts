@@ -36,6 +36,7 @@ export type BuildingId =
   | 'police_station'
   | 'shipyard'
   | 'hospital'
+  | 'fire_station'
   | 'factory'
   | 'hotel'
   | 'club'
@@ -71,7 +72,8 @@ export type RoadType = 'dirt' | 'bridge' | 'stairs' | 'mountain' | 'tunnel';
  * without a save-format change; only cultures marked `implemented` in data/architecture.ts are
  * playable (validated on every command and save).
  */
-export type ArchitectureStyle = 'scottish' | 'turkish' | 'japanese' | 'medieval_european';
+export const ARCHITECTURE_STYLES = ['scottish', 'turkish', 'japanese', 'medieval_european'] as const;
+export type ArchitectureStyle = (typeof ARCHITECTURE_STYLES)[number];
 
 export type RoofType = 'gable' | 'crow_step' | 'hip' | 'pyramid' | 'flat' | 'dome';
 export type RoofMaterial = 'slate' | 'clay' | 'thatch' | 'shingle' | 'lead' | 'earth';

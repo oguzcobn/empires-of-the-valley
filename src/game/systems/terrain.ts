@@ -238,7 +238,7 @@ export function applyCityGeography(tiles: Tile[], style: ArchitectureStyle): Til
   }
 
   if (style === 'turkish') {
-    // The steep southern and eastern Black Sea mountain flanks.
+    // The steep southern and eastern Black Sea mountain flanks (Zigana & Boztepe slopes).
     for (let y = 25; y < MAP_SIZE; y++)
       for (let x = 28; x < MAP_SIZE; x++) {
         const edge = Math.min(4, 1 + (x - 28) + Math.floor((y - 25) / 2));
@@ -339,14 +339,14 @@ export function expandFrontier(seed: number, tiles: readonly Tile[]): Tile[] {
 
 /**
  * Dynamically expands the playable valley grid (south and east borders) when a new district is
- * claimed or conquered, up to the 64x64 save-schema limit. Existing (x, y) tile coordinates,
- * roads and buildings remain in place.
+ * claimed or conquered or when the player expands city boundaries, up to the 96x96 save-schema limit.
+ * Existing (x, y) tile coordinates, roads and buildings remain in place.
  */
 export function expandProvinceGrid(seed: number, p: Province, step = 4): void {
   const oldW = p.width;
   const oldH = p.height;
-  const nextW = Math.min(64, oldW + step);
-  const nextH = Math.min(64, oldH + step);
+  const nextW = Math.min(96, oldW + step);
+  const nextH = Math.min(96, oldH + step);
   if (nextW === oldW && nextH === oldH) return;
   const nextTiles: Tile[] = new Array<Tile>(nextW * nextH);
   for (let y = 0; y < nextH; y++) {
@@ -358,19 +358,28 @@ export function expandProvinceGrid(seed: number, p: Province, step = 4): void {
       const edge = p.tiles[Math.min(y, oldH - 1) * oldW + Math.min(x, oldW - 1)]!;
       const depth = Math.max(x - oldW, y - oldH) + 1;
       const noise = (Math.imul(seed + 19 * x + 37 * y, 0x85ebca6b) >>> 16) % 100;
+      // Continue coastal water & sandy beach along the northern coastline when expanding east
+      if (y < 3 && x >= oldW) {
+        nextTiles[y * nextW + x] = tile('lake', noise % 4, 0);
+        continue;
+      }
+      if (y === 3 && x >= oldW) {
+        nextTiles[y * nextW + x] = tile('sand', noise % 4, 0);
+        continue;
+      }
       if ((edge.terrain === 'lake' || edge.terrain === 'water') && depth <= 2 + (noise % 2)) {
         nextTiles[y * nextW + x] = tile('lake', noise % 4, 0);
         continue;
       }
-      const height = Math.max(0, edge.height - Math.floor(depth / 2));
+      const height = Math.max(0, edge.height - Math.floor((depth + 1) / 2));
       const land: TerrainId =
         height >= 3
           ? 'hill'
-          : noise < 28
+          : noise < 22
             ? 'forest'
-            : noise < 35
+            : noise < 29
               ? 'stone'
-              : noise < 48
+              : noise < 46
                 ? 'fertile'
                 : 'grass';
       nextTiles[y * nextW + x] = tile(land, noise % 4, height);
