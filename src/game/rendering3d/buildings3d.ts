@@ -143,6 +143,14 @@ function fence(c: Ctx, x0: number, z0: number, x1: number, z1: number, color = C
   c.b.box((x0 + x1) / 2, 0.06, (z0 + z1) / 2, Math.abs(x1 - x0) + 0.02, 0.015, Math.abs(z1 - z0) + 0.02, color);
 }
 
+function addSign(c: Ctx, title: string, start: number, width: number, y: number, z: number, bg: number): void {
+  const glyphs=[...title].map((ch)=>LETTERS[ch]??LETTERS.I!);
+  const cols=glyphs.reduce((n,g)=>n+g[0]!.length+1,0),step=width/Math.max(1,cols);
+  c.b.block(start-.03,z-.01,start+width+.03,z,y-.03,y+.22,bg);
+  let x=start;
+  for(const glyph of glyphs){glyph.forEach((row,j)=>[...row].forEach((bit,i)=>{if(bit==='1')c.b.block(x+i*step,z,x+(i+.8)*step,z+.005,y+.17-j*.034,y+.2-j*.034,0xffffff);}));x+=(glyph[0]!.length+1)*step;}
+}
+
 function crenels(c: Ctx, x0: number, z0: number, x1: number, z1: number, y: number, hex: number): void {
   const step = 0.12;
   for (let x = x0; x <= x1 + 1e-6; x += step) {
@@ -541,10 +549,31 @@ const fallback: Maker = (c, w, d) => {
   house(c, 0.25, 0.25, w - 0.25, d - 0.45, Math.max(1, Math.min(3, c.look.floors)));
 };
 
-function modern(c: Ctx, id: BuildingId, w: number, d: number, style: ArchitectureStyle = 'turkish'): void {
+function modern(c: Ctx, id: BuildingId, w: number, d: number, style: ArchitectureStyle = 'turkish', level = 1): void {
  const title=CITY_BUILDINGS[id]!;
  const scottish = style === 'scottish';
  c.b.block(.05,.05,w-.05,d-.05,0,.015,scottish?0x848c94:0x919d96);
+ if(id==='corporate_plaza'){
+  c.b.block(.08,.08,w-.08,d-.08,.015,.03,0xe2e8f0);
+  c.b.block(.16,.18,w-.16,1.38,.03,.42,0xcbd5e1);c.lit.block(.22,1.38,w-.22,1.39,.05,.36,0xbae6fd);
+  const towerH=1.45+(level-1)*.26;
+  c.b.block(.24,.22,w-.24,1.18,.42,towerH,scottish?0x1e293b:0x0f172a);
+  for(let y=.5;y<towerH-.15;y+=.22){c.lit.block(.28,1.18,w-.28,1.19,y,y+.14,y>towerH-.4?0xfef08a:0x38bdf8);c.lit.block(w-.24,.26,w-.23,1.14,y,y+.14,0x0284c7);}
+  for(const x of [.26,.62,1,1.38,1.74])c.b.block(x-.015,1.175,x+.015,1.195,.42,towerH,0x94a3b8);
+  c.b.block(.32,.28,w-.32,1.12,towerH,towerH+.12,0x334155);
+  if(level>=3){c.b.cyl(1,towerH+.12,.7,.28,.28,.025,0x1e293b,14);c.lit.box(1,towerH+.15,.7,.16,.01,.16,0xfacc15);}
+  c.b.block(.24,1.52,.86,1.88,.03,.06,0x0284c7);tree(c,1.72,1.72,.85);addSign(c,title,.26,w-.52,towerH-.18,1.19,0x0f172a);return;
+ }
+ if(id==='aquapark'){
+  c.b.block(.06,.06,w-.06,d-.06,.015,.03,0xf5deb3);c.b.block(.68,.24,1.88,1.78,.03,.065,0x06b6d4);c.lit.block(.74,.3,1.82,1.72,.065,.072,0x67e8f9);
+  c.b.cyl(1.55,.03,1.52,.24,.24,.04,0xd97706,12);const towerH=.88+(level-1)*.12;
+  for(const [x,z] of [[.2,.22],[.58,.22],[.2,.62],[.58,.62]] as const)c.b.box(x,.03,z,.045,towerH,.045,0x92400e);
+  c.b.block(.16,.18,.62,.66,towerH*.55,towerH*.55+.04,0xb45309);c.b.block(.16,.18,.62,.66,towerH-.04,towerH,0xb45309);c.b.pyramid(.12,.14,.66,.7,towerH,.24,0x78350f);
+  const slides=[{color:0xfacc15,z:.32,y:towerH-.06},{color:0xf97316,z:.54,y:towerH-.14},{color:0x22c55e,z:.78,y:towerH*.62},{color:0x2563eb,z:1.04,y:towerH*.52}];
+  for(let s=0;s<Math.min(slides.length,2+Math.floor(level/2));s++){const slide=slides[s]!;const points:[number,number,number][]=[];for(let k=0;k<=8;k++){const t=k/8;points.push([.56+t*.85+Math.sin(t*Math.PI*2+s)*.12,slide.y*(1-t)+.08,slide.z+t*.45+Math.cos(t*Math.PI*2+s)*.1]);}c.b.ribbon(points,.095,slide.color,.025);const end=points.at(-1)!;c.lit.sphere(end[0],.075,end[2],.075,0xe0f2fe,.85,6);}
+  if(level>=2){c.b.cyl(1.15,.06,1.38,.025,.025,.36,0x0284c7,6);c.b.cyl(1.15,.42,1.38,.065,.055,.09,0xef4444,8);}
+  tree(c,.24,1.72,.88);addSign(c,title,.2,1.5,.18,1.86,0x0284c7);return;
+ }
  if(id==='airport'){
   c.b.block(.15,.2,7.85,1.25,.015,.025,0x394452);
   for(let x=.3;x<7.8;x+=.55)c.b.block(x,.7,x+.25,.74,.025,.03,0xffffff);
@@ -629,7 +658,7 @@ export function buildModel(ref: ModelRef, seed = 0): BuildingModel {
   const def = BUILDINGS[ref.definitionId];
   const [w, d] = def.footprint;
   const c = context(ref, seed);
-  if (CITY_BUILDINGS[ref.definitionId]) modern(c, ref.definitionId, w, d, ref.style);
+  if (CITY_BUILDINGS[ref.definitionId]) modern(c, ref.definitionId, w, d, ref.style, ref.level);
   else (MAKERS[ref.definitionId] ?? fallback)(c, w, d, ref.level);
   return finish(c);
 }

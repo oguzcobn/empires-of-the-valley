@@ -1,5 +1,5 @@
 import type { ArchitectureStyle, BuildingId } from '../../core/types';
-import { P } from '../iso';
+import { P, shade } from '../iso';
 import { box, line, poly, quad, faceL, drawFlagPole } from './kit';
 import type { DrawCtx } from './kit';
 
@@ -67,6 +67,7 @@ export function drawCityBuilding(
   ctx: DrawCtx,
   id: BuildingId,
   style: ArchitectureStyle = 'turkish',
+  level = 1,
 ): boolean {
   const title = CITY_BUILDINGS[id];
   if (!title) return false;
@@ -109,6 +110,38 @@ export function drawCityBuilding(
     drawFlagPole(ctx, P(1.6, 3.5, 1), scottish ? 0x1d4ed8 : 0x7b1e3a, 14);
     garden(8, 4);
     return true;
+  }
+
+  if (id === 'corporate_plaza') {
+    const towerH = 38 + level * 11;
+    const glass = scottish ? 0x1e3a8a : 0x0284c7;
+    box(ctx, 0.04, 0.04, 1.96, 1.96, 0, 1.5, scottish ? 0x94a3b8 : 0xcbd5e1);
+    poly(ctx, [P(0.14,1.38,1.6),P(0.75,1.38,1.6),P(0.75,1.86,1.6),P(0.14,1.86,1.6)], 0x38bdf8, 0.85);
+    box(ctx, 0.14, 0.14, 1.86, 1.32, 1.5, 16 + level * 2, scottish ? 0x475569 : 0xe2e8f0);
+    box(ctx, 0.1, 0.1, 1.9, 1.36, 18 + level * 2, 20 + level * 2, 0x1e293b);
+    box(ctx, 0.24, 0.18, 1.76, 1.16, 20 + level * 2, towerH, glass);
+    const front = faceL(0.24, 1.76, 1.165);
+    for (let z = 25 + level * 2; z < towerH - 4; z += 9) {
+      line(ctx, P(0.24,1.165,z),P(1.76,1.165,z),0xcbd5e1,0.9,0.8);
+      for(let u=0.3;u<1.68;u+=0.28){quad(ctx,front,u,u+0.2,z+1,z+7,0x38bdf8);ctx.lights.push([P(u,1.17,z+1),P(u+.2,1.17,z+1),P(u+.2,1.17,z+7),P(u,1.17,z+7)]);}
+    }
+    if(level>=4){box(ctx,.22,.16,1.78,1.18,towerH-2,towerH+1,0xf1f5f9);line(ctx,P(.88,.55,towerH+2),P(1.12,.8,towerH+2),0xfacc15,1.4);}
+    line(ctx,P(1,.65,towerH),P(1,.65,towerH+14),0xe2e8f0,1.6);
+    sign(ctx,title,.32,1.33,20+level*2-8,1.33,0x0f172a);garden(2,2);return true;
+  }
+
+  if (id === 'aquapark') {
+    box(ctx,.04,.04,1.96,1.96,0,1.2,scottish?0xc2b8a3:0xe6d7b9);
+    poly(ctx,[P(.55,.72,1.3),P(1.88,.72,1.3),P(1.88,1.86,1.3),P(.55,1.86,1.3)],0xf8fafc);
+    poly(ctx,[P(.6,.77,1.4),P(1.83,.77,1.4),P(1.83,1.81,1.4),P(.6,1.81,1.4)],0x38bdf8);
+    poly(ctx,[P(.68,.85,1.45),P(1.45,.85,1.45),P(1.45,1.65,1.45),P(.68,1.65,1.45)],0x7dd3fc);
+    ctx.lights.push([P(.6,.77,1.4),P(1.83,.77,1.4),P(1.83,1.81,1.4),P(.6,1.81,1.4)]);
+    const towerZ=26+level*5;
+    box(ctx,.14,.14,.68,.68,1.2,towerZ,0x8c5a32);box(ctx,.1,.1,.72,.72,towerZ-6,towerZ,0xa47143);
+    poly(ctx,[P(.08,.08,towerZ),P(.74,.08,towerZ),P(.41,.41,towerZ+10)],0x6e4726);
+    const slides=[{color:0xfacc15,z:.22},{color:0xf97316,z:.5},{color:0x22c55e,z:.8},{color:0x2563eb,z:1.1}];
+    for(let s=0;s<Math.min(slides.length,2+Math.floor(level/2));s++){const slide=slides[s]!;drawWaterSlideTube(ctx,.58,.52,towerZ-4,.95,.98,towerZ*.55,1.4,1.32,slide.z,slide.color,0xffffff);}
+    sign(ctx,title,.2,1.5,30,.26,0x0284c7);garden(2,2);return true;
   }
 
   const factory = id === 'factory',
@@ -273,4 +306,9 @@ export function drawCityBuilding(
   }
   garden(w, w);
   return true;
+}
+
+function drawWaterSlideTube(ctx:DrawCtx,u0:number,v0:number,z0:number,um:number,vm:number,zm:number,u1:number,v1:number,z1:number,color:number,band:number):void{
+  let prev=P(u0,v0,z0);
+  for(let i=1;i<=10;i++){const t=i/10,inv=1-t;const cur=P(inv*inv*u0+2*inv*t*um+t*t*u1,inv*inv*v0+2*inv*t*vm+t*t*v1,inv*inv*z0+2*inv*t*zm+t*t*z1);line(ctx,prev,cur,shade(color,.75),4.4);line(ctx,prev,cur,i%2===0?color:band,3.1);prev=cur;}
 }
