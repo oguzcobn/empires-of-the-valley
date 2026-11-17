@@ -16,7 +16,7 @@ const resourceStock = z.object(
 
 const buildingId = z.enum(BUILDING_IDS as [string, ...string[]]);
 const techId = z.enum(TECH_IDS as [string, ...string[]]);
-const unitId = z.enum(UNIT_IDS as [string, ...string[]]);
+const unitId = z.enum(UNIT_IDS as unknown as [string, ...string[]]);
 const archStyle = z.enum(ARCHITECTURE_STYLES);
 
 const tileSchema = z.object({
@@ -111,7 +111,7 @@ export const gameStateSchema = z.object({
   claimedDistricts: z.array(z.string().max(32)).max(64).optional(),
   treaties: z.record(z.string().max(32), z.enum(['trade', 'non_aggression', 'alliance'])).optional(),
   militia: z.number().int().min(0).max(500).optional(),
-  specialists: z.partialRecord(unitId, z.number().int().min(0).max(500)).optional(),
+  specialists: z.record(unitId, z.number().int().min(0).max(500)).optional(),
   armyOrder: z.enum(['defend', 'patrol']).optional(),
   armyTarget: z.object({ x: z.number().int().min(0).max(95), y: z.number().int().min(0).max(95) }).strict().nullable().optional(),
   researchedTechIds: z.array(techId).max(64),
