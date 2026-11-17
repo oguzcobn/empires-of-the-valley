@@ -5,6 +5,7 @@ import type { RoadType, TerrainId } from '../core/types';
 import { COLORS } from './palette';
 import type { SeasonPalette } from './palette';
 import { shade } from './iso';
+import { drawCityCar } from './trafficSprites';
 import type { Pt } from './iso';
 
 /**
@@ -476,11 +477,13 @@ export function drawVillager(g: Graphics, color: number, variant = 0): void {
 }
 
 export function drawCart(g: Graphics, load: number): void {
-  g.ellipse(0, 0, 8, 3).fill({ color: COLORS.shadow, alpha: 0.25 });
-  g.roundRect(-7, -9, 14, 6, 1.5).fill(COLORS.wood);
-  g.roundRect(-5, -12, 10, 4, 1.5).fill(load);
-  g.circle(-4, -2, 2.6).fill(0x3a2a1c);
-  g.circle(4, -2, 2.6).fill(0x3a2a1c);
+  // Rural roads share the detailed 2.5D pickup body used on paved streets.
+  // The previous sprite was just two rectangles and wheels, not a recognizable car.
+  drawCityCar(g, load, false, 1, 0, 4);
+  // Farm/utility cargo in the rear bed.
+  g.poly([-9, -4, -6.6, -6.4, -3, -4.8, -5.5, -2.3]).fill(0x77523a);
+  g.poly([-8.7, -4.3, -6.7, -6, -3.2, -4.6, -5.6, -2.5]).fill(0x9d7550);
+  g.moveTo(-7.7, -4).lineTo(-6.1, -2.9).stroke({ color: 0xe8c99b, width: 0.65 });
 }
 
 /** Small vessels for the lake and river: fishing boat, cargo ship or yacht, with water wake. */
