@@ -4,9 +4,10 @@ import { COLORS } from './palette';
 import { P, shade } from './iso';
 import type { Pt } from './iso';
 
-/** Distinct, visually recognizable 2.5D road vehicles. Geometry is projected from a
- * miniature 3D body, not a flat icon, so the doors, glass, bonnet and wheel arches
- * remain in proportion on each of the four isometric headings. */
+/**
+ * Compact isometric vehicle drawn in local screen space around (0, 0).
+ * Heading is expressed in tile-grid deltas: (+x, -x, +y, -y).
+ */
 export function drawCityCar(
   g: Graphics,
   paint: number,
@@ -113,6 +114,38 @@ export function drawCityCar(
   }
   line([half + 0.009, -side * 0.3, 2.8], [half + 0.009, side * 0.3, 2.8], 0xe9edf0, 1.7);
   line([-half - 0.009, -side * 0.3, 2.8], [-half - 0.009, side * 0.3, 2.8], 0xe6e8e8, 1.3);
+}
+
+/** Dedicated silhouettes and signage for emergency and service traffic. */
+export function drawServiceVehicle(
+  g: Graphics,
+  service: 'ambulance' | 'patrol' | 'delivery',
+  dx: number,
+  dy: number,
+): void {
+  const forwardX = dx - dy >= 0 ? 1 : -1;
+  if (service === 'ambulance') {
+    drawCityCar(g, 0xf5f7f5, false, dx, dy, 3);
+    g.roundRect(-6.4, -7.0, 12.8, 1.6, 0.4).fill(0xd6303f);
+    g.rect(-1.1, -10.3, 2.2, 5.1).fill(0xd6303f);
+    g.rect(-3.4, -8.7, 6.8, 1.8).fill(0xd6303f);
+    g.roundRect(-3.2, -9.7, 6.4, 1.2, 0.4).fill(0xfafafa);
+    g.circle(-2.2 * forwardX, -9.3, 1.0).fill(0x2083da);
+    g.circle(2.2 * forwardX, -9.3, 1.0).fill(0xe83b42);
+  } else if (service === 'patrol') {
+    drawCityCar(g, 0x285084, false, dx, dy, 2);
+    g.roundRect(-6.1, -1.0, 12.2, 1.35, 0.35).fill(0xf2f5f9);
+    g.roundRect(-4.6, -2.0, 8.7, 1.4, 0.35).fill(0x1b365b);
+    g.roundRect(-3.8, -8.9, 7.6, 1.25, 0.3).fill(0x333f4e);
+    g.rect(-3.4, -8.7, 3.2, 0.95).fill(0x2e7bff);
+    g.rect(0.2, -8.7, 3.2, 0.95).fill(0xf23a42);
+  } else {
+    drawCityCar(g, 0xb98749, false, dx, dy, 3);
+    g.poly([-6.9, -6.7, -2.1, -9.6, 4.1, -6.8, -0.8, -4.1]).fill(0xe5d7bd);
+    g.poly([-6.9, -6.7, -0.8, -4.1, -0.8, 0.8, -6.9, -2.3]).fill(0xc5aa7b);
+    g.moveTo(-6.2, -3.9).lineTo(-1.6, -6.4).stroke({ color: 0x937750, width: 0.8 });
+    g.roundRect(-4.8, -4.2, 2.6, 1.3, 0.35).fill(0xf4ead8);
+  }
 }
 
 /**

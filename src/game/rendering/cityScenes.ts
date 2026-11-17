@@ -1,15 +1,47 @@
 import { Container, Graphics } from 'pixi.js';
-import type { BuildingInstance, GameState, Province } from '../core/types';
-import { HEIGHT_PX } from '../data/balance';
-import { defOf } from '../data/buildings';
+import type { GameState, MapPoint, Province } from '../core/types';
+import { bay, door, flightDuration, validCityJob } from '../systems/cityLife';
+import type { Flight } from '../systems/cityLife';
 import { isBuilt } from '../systems/economy';
 import { tileAt } from '../systems/grid';
-import { bay, door, flightAt, validCityJob } from '../systems/cityLife';
-import type { CityFlight, CityPoint } from '../systems/cityLife';
-import { P, isoX, isoY } from './iso';
+import { defOf } from '../data/buildings';
+import { HEIGHT_PX } from '../data/balance';
+import { isoX, isoY, P } from './iso';
+import { drawCityCar, drawFireTruck, drawServiceVehicle } from './trafficSprites';
 import { drawVillager } from './sprites';
-import { drawCityCar, drawFireTruck } from './trafficSprites';
 
+const lerp = (a: MapPoint, b: MapPoint, t: number): MapPoint => ({
+  x: a.x + (b.x - a.x) * t,
+  y: a.y + (b.y - a.y) * t,
+});
+export function flightPoint(
+  f: Flight,
+  b: MapPoint,
+  fraction: number,
+): MapPoint & { alt: number; heading: number } {
+  const t = Math.min(1, (f.age + fraction) / flightDuration(f.phase));
+  if (f.phase === 'landing') return { x: b.x - 2 + t * 7.7, y: b.y + 0.72, alt: 50 * (1 - t), heading: 1 };
+  if (f.phase === 'takeoff')
+    return { x: b.x + 0.5 + t * 10, y: b.y + 0.72, alt: Math.max(0, t - 0.4) * 110, heading: 1 };
+  if (f.phase === 'terminal') return { x: b.x + 5.5, y: b.y + 1.85, alt: 0, heading: -1 };
+  const path =
+    f.phase === 'taxiIn'
+      ? [
+          { x: 5.7, y: 0.72 },
+          { x: 6.8, y: 0.72 },
+          { x: 6.8, y: 1.85 },
+          { x: 5.5, y: 1.85 },
+        ]
+      : [
+          { x: 5.5, y: 1.85 },
+          { x: 0.5, y: 1.85 },
+          { x: 0.5, y: 0.72 },
+        ];
+  const i = Math.min(path.length - 2, Math.floor(t * (path.length - 1))),
+    local = t * (path.length - 1) - i;
+  const at = lerp(path[i]!, path[i + 1]!, local);
+  return { x: b.x + at.x, y: b.y + at.y, alt: 0, heading: f.phase === 'taxiIn' ? 1 : -1 };
+}
 interface Actor {
   root: Container;
   car: Graphics;
@@ -19,139 +51,12 @@ interface Actor {
   fx: Graphics;
   key: string;
 }
-
-const lerp = (a: CityPoint, b: CityPoint, t: number): CityPoint => ({
-  x: a.x + (b.x - a.x) * t,
-  y: a.y + (b.y - a.y) * t,
-});
-
-export function flightPoint(
-  f: CityFlight,
-  b: BuildingInstance,
-  fraction: number,
-): CityPoint & { alt: number; heading: 1 | -1 } {
-  const cur = flightAt(f, b),
-    next = flightAt({ ...f, step: f.step + 1 }, b);
-  return {
-    x: cur.x + (next.x - cur.x) * fraction,
-    y: cur.y + (next.y - cur.y) * fraction,
-    alt: cur.alt + (next.alt - cur.alt) * fraction,
-    heading: cur.heading,
-  };
-}
-
-/** Realistic 2.5D commercial passenger jet airliner with swept wings, twin turbofan engines, cockpit, cabin windows, and tail fin. */
-function drawCommercialAirliner(g: Graphics, heading: 1 | -1): void {
-  const h = heading;
-  // Soft ground/air shadow beneath the fuselage
-  const sh = [P(-0.55 * h, -0.05, 0), P(0.65 * h, -0.05, 0), P(0.65 * h, 0.12, 0), P(-0.55 * h, 0.12, 0)].flat();
-  g.poly(sh).fill({ color: 0x0f172a, alpha: 0.22 });
-
-  // Swept main wings (drawn first under/mid fuselage) + winglets
-  const wingL = [
-    P(0.12 * h, -0.06, 2),
-    P(-0.18 * h, -0.58, 3),
-    P(-0.34 * h, -0.58, 3.5),
-    P(-0.18 * h, -0.06, 2),
-  ].flat();
-  const wingR = [
-    P(0.12 * h, 0.06, 2),
-    P(-0.18 * h, 0.58, 3),
-    P(-0.34 * h, 0.58, 3.5),
-    P(-0.18 * h, 0.06, 2),
-  ].flat();
-  g.poly(wingL).fill(0xdbe4ec).stroke({ color: 0x64748b, width: 0.9 });
-  g.poly(wingR).fill(0xcbd5e1).stroke({ color: 0x64748b, width: 0.9 });
-
-  // Twin under-wing turbofan engine nacelles
-  for (const wy of [-0.28, 0.28]) {
-    const eng = [
-      P(0.08 * h, wy - 0.05, 1),
-      P(-0.14 * h, wy - 0.05, 1),
-      P(-0.14 * h, wy + 0.05, 1),
-      P(0.08 * h, wy + 0.05, 1),
-    ].flat();
-    g.poly(eng).fill(0x475569).stroke({ color: 0x1e293b, width: 0.8 });
-    const intake = P(0.09 * h, wy, 1.2);
-    g.circle(intake[0], intake[1], 1.8).fill(0x0f172a);
-  }
-
-  // Horizontal tailplane stabilizers
-  const tailPlane = [
-    P(-0.46 * h, 0, 3),
-    P(-0.68 * h, -0.26, 3.5),
-    P(-0.76 * h, -0.26, 3.5),
-    P(-0.62 * h, 0, 3),
-    P(-0.76 * h, 0.26, 3.5),
-    P(-0.68 * h, 0.26, 3.5),
-  ].flat();
-  g.poly(tailPlane).fill(0xcbd5e1).stroke({ color: 0x64748b, width: 0.8 });
-
-  // Cylindrical pressurized fuselage with aerodynamic nose cone and tapered tail
-  const fuselage = [
-    P(0.82 * h, 0, 2.5),
-    P(0.62 * h, -0.09, 3.5),
-    P(-0.56 * h, -0.09, 3.5),
-    P(-0.76 * h, -0.03, 4),
-    P(-0.76 * h, 0.03, 4),
-    P(-0.56 * h, 0.09, 3.5),
-    P(0.62 * h, 0.09, 3.5),
-  ].flat();
-  g.poly(fuselage).fill(0xf8fafc).stroke({ color: 0x475569, width: 1.1 });
-
-  // Royal Blue airline cheatline stripe along the fuselage
-  const stripe = [
-    P(0.64 * h, 0.02, 3.8),
-    P(-0.62 * h, 0.02, 3.8),
-    P(-0.66 * h, 0.06, 3.2),
-    P(0.6 * h, 0.06, 3.2),
-  ].flat();
-  g.poly(stripe).fill(0x0284c7);
-
-  // Cockpit wrap-around dark glass windshield
-  const cockpit = [
-    P(0.74 * h, 0, 3.2),
-    P(0.62 * h, -0.06, 4.2),
-    P(0.54 * h, -0.06, 4.2),
-    P(0.58 * h, 0.06, 4.2),
-  ].flat();
-  g.poly(cockpit).fill(0x0f172a);
-
-  // Illuminated passenger cabin windows
-  for (let u = -0.42; u <= 0.44; u += 0.11) {
-    const wp = P(u * h, 0.04, 4.1);
-    g.circle(wp[0], wp[1], 1.05).fill(0xbae6fd);
-  }
-
-  // Tall swept vertical tail fin (stabilizer) with airline emblem
-  const fin = [
-    P(-0.46 * h, 0, 3.8),
-    P(-0.68 * h, 0, 14.5),
-    P(-0.8 * h, 0, 14.5),
-    P(-0.74 * h, 0.04, 3.8),
-  ].flat();
-  g.poly(fin).fill(0x0284c7).stroke({ color: 0x0369a1, width: 0.9 });
-  const logoAt = P(-0.68 * h, 0, 10.5);
-  g.circle(logoAt[0], logoAt[1], 2.1).fill(0xfef08a);
-
-  // Wingtip navigation lights (red port / green starboard) + white tail strobe
-  const navL = P(-0.28 * h, -0.57, 3.6);
-  const navR = P(-0.28 * h, 0.57, 3.6);
-  g.circle(navL[0], navL[1], 1.5).fill(0xef4444);
-  g.circle(navR[0], navR[1], 1.5).fill(0x22c55e);
-}
-
 export class CityScenes {
   private actors = new Map<string, Actor>();
   private tick = -1;
   private fraction = 0;
   private time = 0;
-  private tint = 0xffffff;
-  constructor(private layer: Container) {}
-  setTint(tint: number): void {
-    this.tint = tint;
-    for (const a of this.actors.values()) a.car.tint = a.person.tint = tint;
-  }
+  constructor(private parent: Container) {}
   private actor(id: string): Actor {
     let a = this.actors.get(id);
     if (a) return a;
@@ -161,53 +66,57 @@ export class CityScenes {
       red = new Graphics(),
       blue = new Graphics(),
       fx = new Graphics();
-    drawVillager(person, 0xdba357, id.length);
-    person.scale.set(0.58);
-    red.circle(-3, -12, 2.2).fill(0xff334e);
-    blue.circle(3, -12, 2.2).fill(0x3794ff);
-    car.tint = person.tint = this.tint;
-    root.cullable = true;
     root.addChild(car, person, red, blue, fx);
-    this.layer.addChild(root);
+    root.cullable = true;
+    this.parent.addChild(root);
+    drawVillager(person, 0xdfa454, 0);
+    red.circle(-1, -11, 2.2).fill(0xff334e);
+    blue.circle(2.5, -11, 2.2).fill(0x367eff);
     a = { root, car, person, red, blue, fx, key: '' };
     this.actors.set(id, a);
     return a;
   }
   update(s: GameState, p: Province, dt: number, reduced: boolean): void {
-    if (this.tick !== s.tick) {
+    if (s.tick !== this.tick) {
       this.tick = s.tick;
       this.fraction = 0;
     }
-    if (s.speed && !reduced) {
+    if (s.speed > 0 && !reduced) {
       this.fraction = Math.min(1, this.fraction + (dt * s.speed) / 4000);
       this.time += dt;
     }
     const seen = new Set<string>();
-    const place = (a: Actor, pt: CityPoint, lift = 0): void => {
-      const h = (tileAt(p, Math.floor(pt.x), Math.floor(pt.y))?.height ?? 0) * HEIGHT_PX;
-      a.root.position.set(isoX(pt.x, pt.y), isoY(pt.x, pt.y) - h - lift);
-      a.root.zIndex = pt.x + pt.y + (lift ? 80 : 0.08);
+    const place = (a: Actor, at: MapPoint, alt = 0): void => {
+      const h =
+        (tileAt(
+          p,
+          Math.max(0, Math.min(p.width - 1, Math.floor(at.x))),
+          Math.max(0, Math.min(p.height - 1, Math.floor(at.y))),
+        )?.height ?? 0) * HEIGHT_PX;
+      a.root.position.set(isoX(at.x, at.y), isoY(at.x, at.y) - h - alt);
+      a.root.zIndex = at.x + at.y + 0.08 + (alt > 0 ? 100 : 0);
     };
     for (const j of s.cityLife?.jobs ?? []) {
       if (!validCityJob(p, j)) continue;
+      const target = p.buildings.find((b) => b.id === j.target)!;
       const id = `job:${j.id}`;
       seen.add(id);
-      const a = this.actor(id),
-        target = p.buildings.find((b) => b.id === j.target)!;
+      const a = this.actor(id);
       const moving = j.stage === 'outbound' || j.stage === 'return';
-      const cur = j.path[j.index]!,
-        next = j.path[Math.min(j.index + 1, j.path.length - 1)]!;
-      let at = moving ? lerp(cur, next, this.fraction) : j.path.at(-1)!;
-      const dx = next.x - cur.x,
-        dy = next.y - cur.y;
+      const start = j.path[j.index]!,
+        end = j.path[Math.min(j.index + 1, j.path.length - 1)]!;
+      let at = moving ? lerp(start, end, this.fraction) : j.path.at(-1)!;
+      const dx = end.x - start.x,
+        dy = end.y - start.y;
+      // Consistent opposite lanes; parking/access points remain on their reserved lot.
       if (
         moving &&
-        tileAt(p, Math.floor(cur.x), Math.floor(cur.y))?.road &&
-        tileAt(p, Math.floor(next.x), Math.floor(next.y))?.road
+        tileAt(p, Math.floor(start.x), Math.floor(start.y))?.road &&
+        tileAt(p, Math.floor(end.x), Math.floor(end.y))?.road
       ) {
         const len = Math.hypot(dx, dy) || 1,
           side = s.culture === 'scottish' ? -1 : 1;
-        at = { x: at.x - (dy / len) * 0.11 * side, y: at.y + (dx / len) * 0.11 * side };
+        at = { x: at.x - (dy / len) * 0.13 * side, y: at.y + (dx / len) * 0.13 * side };
       }
       place(a, at);
       const own = p.buildings.find((b) => b.id === tileAt(p, Math.floor(at.x), Math.floor(at.y))?.buildingId);
@@ -224,21 +133,16 @@ export class CityScenes {
               ? 0x295383
               : j.kind === 'delivery'
                 ? 0xb98749
-                : j.kind === 'business'
-                  ? 0x1e293b
-                  : 0x619b98;
+                : 0x619b98;
       const key = `${j.kind}:${paint}:${Math.sign(dx)},${Math.sign(dy)}`;
       if (a.key !== key) {
         a.car.clear();
         if (j.kind === 'fire') {
           drawFireTruck(a.car, dx || 1, dy);
+        } else if (j.kind === 'ambulance' || j.kind === 'patrol' || j.kind === 'delivery') {
+          drawServiceVehicle(a.car, j.kind, dx || 1, dy);
         } else {
-          drawCityCar(a.car, paint, false, dx || 1, dy);
-          if (j.kind === 'ambulance') {
-            a.car.rect(-1, -7, 2, 6).fill(0xdc3345);
-            a.car.rect(-3, -5, 6, 2).fill(0xdc3345);
-          }
-          if (j.kind === 'delivery') a.car.roundRect(-6, -9, 10, 7, 1).fill(0xc9b994);
+          drawCityCar(a.car, paint, false, dx || 1, dy, j.id % 5);
         }
         a.key = key;
       }
@@ -333,11 +237,7 @@ export class CityScenes {
           if (b.definitionId === 'fire_station') {
             drawFireTruck(a.car, 1, 0);
           } else {
-            drawCityCar(a.car, b.definitionId === 'hospital' ? 0xf5f7f5 : 0x295383, false, 1, 0);
-            if (b.definitionId === 'hospital') {
-              a.car.rect(-1, -7, 2, 6).fill(0xdc3345);
-              a.car.rect(-3, -5, 6, 2).fill(0xdc3345);
-            }
+            drawServiceVehicle(a.car, b.definitionId === 'hospital' ? 'ambulance' : 'patrol', 1, 0);
           }
           a.key = `idle:${b.definitionId}`;
         }
@@ -360,7 +260,31 @@ export class CityScenes {
       a.fx.clear();
       if (a.key !== `${at.heading}`) {
         a.car.clear();
-        drawCommercialAirliner(a.car, at.heading);
+        const pts = [
+          [0.7, 0],
+          [-0.25, -0.12],
+          [-0.45, -0.45],
+          [-0.65, -0.45],
+          [-0.5, -0.04],
+          [-0.7, 0.04],
+          [-0.5, 0.12],
+          [-0.6, 0.45],
+          [-0.4, 0.45],
+          [-0.2, 0.12],
+        ];
+        a.car
+          .poly(pts.flatMap(([x, y]) => P(x! * at.heading, y!)))
+          .fill(0xf5f5ec)
+          .stroke({ color: 0x54728a, width: 1 });
+        a.car
+          .poly(
+            [
+              P(-0.45 * at.heading, 0, 1),
+              P(-0.65 * at.heading, 0, 10),
+              P(-0.65 * at.heading, 0.08, 1),
+            ].flat(),
+          )
+          .fill(0x258eae);
         a.key = `${at.heading}`;
       }
     }

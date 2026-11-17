@@ -72,9 +72,6 @@ export type Command =
   | { type: 'removeRoad'; x: number; y: number }
   | { type: 'clearTerrain'; x: number; y: number }
   | { type: 'expandMap' }
-  | { type: 'renameCitizen'; index: number; name: string }
-  | { type: 'foundCompany'; name: string; sector: string; founderIndex: number; buildingId?: string }
-  | { type: 'renameCompany'; companyId: string; name: string }
   | { type: 'cancelConstruction'; instanceId: string }
   | { type: 'upgradeBuilding'; instanceId: string }
   | { type: 'demolishBuilding'; instanceId: string }
@@ -380,23 +377,6 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       if (p.width >= 96 && p.height >= 96) return { key: 'err.maxLevel' };
       return missingFor(p, { gold: 5000 });
     }
-    case 'renameCitizen': {
-      if (!Number.isInteger(cmd.index) || cmd.index < 0 || cmd.index >= 500) return { key: 'err.invalid' };
-      const cleaned = cmd.name.trim();
-      if (cleaned.length < 2 || cleaned.length > 40) return { key: 'err.invalid' };
-      return null;
-    }
-    case 'foundCompany': {
-      const cleaned = cmd.name.trim();
-      if (cleaned.length < 2 || cleaned.length > 48) return { key: 'err.invalid' };
-      if ((s.companies?.length ?? 0) >= 48) return { key: 'err.queueFull', params: { n: 48 } };
-      return missingFor(p, { gold: 3000 });
-    }
-    case 'renameCompany': {
-      const cleaned = cmd.name.trim();
-      if (cleaned.length < 2 || cleaned.length > 48) return { key: 'err.invalid' };
-      return null;
-    }
     case 'cancelConstruction': {
       const b = buildingById(p, cmd.instanceId);
       if (!b) return { key: 'err.noBuilding' };
@@ -635,48 +615,6 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
       pay(p, { gold: 5000 });
       expandProvinceGrid(s.seed, p, 8);
       logEvent(s, 'success', 'event.mapExpanded', { w: p.width, h: p.height });
-      break;
-    }
-    case 'renameCitizen': {
-      (s.citizenNames ??= {})[String(cmd.index)] = cmd.name.trim();
-      break;
-    }
-    case 'foundCompany': {
-      pay(p, { gold: 3000 });
-      const list = (s.companies ??= []);
-      const plaza = cmd.buildingId
-        ? buildingById(p, cmd.buildingId)
-        : p.buildings.find((b) => b.definitionId === 'corporate_plaza' && isBuilt(b));
-      list.push({
-        id: `comp-${s.tick}-${list.length + 1}`,
-        name: cmd.name.trim(),
-        sector: cmd.sector.trim() || 'Finans & Yatırım',
-        founderIndex: Math.max(0, cmd.founderIndex),
-        buildingId: plaza?.id,
-        level: plaza?.level ?? 1,
-        employees: plaza ? Math.max(2, plaza.workers) : 3,
-      });
-      logEvent(s, 'success', 'event.companyFounded', { name: cmd.name.trim() });
-      break;
-    }
-    case 'renameCompany': {
-      const list = (s.companies ??= []);
-      const existing = list.find((c) => c.id === cmd.companyId);
-      if (existing) {
-        existing.name = cmd.name.trim();
-      } else if (cmd.companyId.startsWith('auto-')) {
-        const bId = cmd.companyId.slice(5);
-        const bld = buildingById(p, bId);
-        list.push({
-          id: cmd.companyId,
-          name: cmd.name.trim(),
-          sector: 'Finans & Yatırım',
-          founderIndex: 0,
-          buildingId: bId,
-          level: bld?.level ?? 1,
-          employees: bld ? Math.max(2, bld.workers) : 3,
-        });
-      }
       break;
     }
     case 'buildTerrace': {

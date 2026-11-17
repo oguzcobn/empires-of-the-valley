@@ -12,7 +12,7 @@ import { QUESTS } from '../game/data/quests';
 import { TECHNOLOGIES, TECH_IDS } from '../game/data/technologies';
 import { WORLD_PROVINCES } from '../game/data/worldMap';
 import { cityOf, districtName } from '../game/data/cities';
-import { COMPANY_SECTORS, DOCUMENT_COMPANIES, citizenAt, citizens, cityCompanies } from '../game/data/citizens';
+import { citizens } from '../game/data/citizens';
 import type { WorldProvince } from '../game/data/worldMap';
 import { PACT_PRICES, validateCommand } from '../game/systems/commands';
 import { TRANSIT_COST, transitUnlocked } from '../game/systems/frontier';
@@ -157,29 +157,12 @@ function EconomyPanel({ game }: { game: GameState }): ReactElement {
 }
 
 function PopulationPanel({ game }: { game: GameState }): ReactElement {
-  const dispatch = useApp((s) => s.dispatch);
-  const setTool = useApp((s) => s.setTool);
-  const openPanel = useApp((s) => s.openPanel);
   const p = homeProvince(game);
   const pop = totalPopulation(p);
   const cap = housingCapacity(p);
-  const employed = assignedWorkers(p);
-  const unemployed = idleWorkers(p);
-  const unemploymentRate = p.population.adults > 0 ? Math.round((unemployed / p.population.adults) * 100) : 0;
   const factors = happinessFactors(p);
   const crime = neighborhoodServices(p);
   const blocker = growthBlocker(p, calendar(game.tick).day);
-  const roster = citizens(game, 24);
-  const companies = cityCompanies(game);
-
-  const [editingCitizen, setEditingCitizen] = useState<number | null>(null);
-  const [citizenDraft, setCitizenDraft] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [companySector, setCompanySector] = useState<string>(COMPANY_SECTORS[0]);
-  const [founderIdx, setFounderIdx] = useState(0);
-  const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
-  const [companyRenameDraft, setCompanyRenameDraft] = useState('');
-
   return (
     <div className="grid-2">
       <section>
@@ -193,49 +176,9 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
           </b>
         </Row>
         <Bar value={pop} max={Math.max(cap, 1)} tone={pop > cap ? 'bad' : pop === cap ? 'warn' : 'ok'} />
-        <h4>{t('population.employment')} & İşsizlik</h4>
-        <Row label={t('population.employed')}>{employed}</Row>
-        <Row label="İşsiz (Boşta İşgücü)">{unemployed}</Row>
-        <Row label="İşsizlik Oranı">
-          <span className={unemploymentRate > 35 ? 'neg' : unemploymentRate > 15 ? 'warn' : 'pos'}>
-            %{unemploymentRate}
-          </span>
-        </Row>
-        <Bar value={employed} max={Math.max(p.population.adults, 1)} tone={unemploymentRate > 40 ? 'bad' : 'ok'} />
-        <div className="actions" style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <button
-            type="button"
-            className="btn primary"
-            onClick={() => {
-              setTool({ kind: 'build', buildingId: 'corporate_plaza' });
-              openPanel(null);
-            }}
-            data-testid="build-plaza-shortcut"
-          >
-            🏢 Şirket Plazası Aç
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => {
-              setTool({ kind: 'build', buildingId: 'aquapark' });
-              openPanel(null);
-            }}
-            data-testid="build-aquapark-shortcut"
-          >
-            🌊 Palomaqua Aquapark Aç
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => {
-              setTool({ kind: 'build', buildingId: 'hotel' });
-              openPanel(null);
-            }}
-          >
-            🏨 Resort Otel Aç
-          </button>
-        </div>
+        <h4>{t('population.employment')}</h4>
+        <Row label={t('population.employed')}>{assignedWorkers(p)}</Row>
+        <Row label={t('population.idle')}>{idleWorkers(p)}</Row>
         <h4>{t('population.growth')}</h4>
         <p className={blocker && blocker !== 'interval' ? 'hint warn' : 'hint'}>
           {t(`growth.${blocker ?? 'ready'}`)}
@@ -259,177 +202,34 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
           </Row>
         ))}
         <p className="hint">{t('population.services')}</p>
+      </section>
+      <section>
         <h4>Mahalle Güvenliği</h4>
         <Row label="Günlük suç riski">%{crime.risk}</Row>
         <Row label="Devriye kapsamındaki evler">
           {crime.homes.filter((entry) => entry.protection > 0).length} / {crime.homes.length}
         </Row>
-      </section>
-      <section>
-        <h4>🏢 Şehir Şirketleri & Girişimler ({companies.length})</h4>
-        <p className="hint">
-          Vatandaşlar kendi şirketlerini kurabilir veya Şirket Plazalarında yeni iş yerleri açarak işsizliği düşürebilir.
-        </p>
-        <div className="actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-          <select
-            value=""
-            onChange={(e) => {
-              if (e.currentTarget.value) setCompanyName(e.currentTarget.value);
-            }}
-            style={{ padding: '4px 6px', maxWidth: 210 }}
-          >
-            <option value="">📄 Hazır Şirket / Otel Seç…</option>
-            {Object.values(DOCUMENT_COMPANIES).flat().map((preset) => (
-              <option key={preset} value={preset}>{preset}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={companyName}
-            onChange={(e) => setCompanyName(e.currentTarget.value)}
-            placeholder="Veya özel şirket adı yaz (örn. Çoban Holding)"
-            style={{ flex: '1 1 150px', padding: '4px 8px' }}
-          />
-          <select
-            value={companySector}
-            onChange={(e) => setCompanySector(e.currentTarget.value)}
-            style={{ padding: '4px 6px' }}
-          >
-            {COMPANY_SECTORS.map((sec) => (
-              <option key={sec} value={sec}>{sec}</option>
-            ))}
-          </select>
-          <select
-            value={founderIdx}
-            onChange={(e) => setFounderIdx(Number(e.currentTarget.value))}
-            style={{ padding: '4px 6px' }}
-          >
-            {roster.map((c) => (
-              <option key={c.index} value={c.index}>Kurucu: {c.name}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn primary"
-            disabled={companyName.trim().length < 2 || p.stocks.gold < 3000}
-            onClick={() => {
-              if (dispatch({ type: 'foundCompany', name: companyName, sector: companySector, founderIndex: founderIdx })) {
-                setCompanyName('');
-              }
-            }}
-            data-testid="found-company-btn"
-          >
-            + Şirket Kur (3 Altın)
-          </button>
-        </div>
-        <div className="citizens-list">
-          {companies.length === 0 ? (
-            <p className="hint">Henüz şirket yok. Yukarıdan yeni bir vatandaş şirketi kurabilir veya Şirket Plazası inşa edebilirsin.</p>
-          ) : (
-            companies.map((comp) => {
-              const founder = citizenAt(game, comp.founderIndex);
-              const isEditing = editingCompanyId === comp.id;
-              return (
-                <div key={comp.id} className="citizen-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>
-                    <strong>🏢 {comp.name}</strong>
-                    <small>
-                      {comp.sector} · Kurucu: {founder.name} · Sv.{comp.level} · {comp.employees} çalışan
-                    </small>
-                  </span>
-                  {isEditing ? (
-                    <span style={{ display: 'flex', gap: 4 }}>
-                      <input
-                        type="text"
-                        value={companyRenameDraft}
-                        onChange={(e) => setCompanyRenameDraft(e.currentTarget.value)}
-                        style={{ width: 120, padding: '2px 6px' }}
-                      />
-                      <button
-                        type="button"
-                        className="btn primary"
-                        onClick={() => {
-                          if (dispatch({ type: 'renameCompany', companyId: comp.id, name: companyRenameDraft })) {
-                            setEditingCompanyId(null);
-                          }
-                        }}
-                      >
-                        Kaydet
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        setEditingCompanyId(comp.id);
-                        setCompanyRenameDraft(comp.name);
-                      }}
-                    >
-                      ✎ Adı Değiştir
-                    </button>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
+        <p className="hint">Suç riski 30 nüfustan itibaren başlar. İşsizlik, açlık ve yüksek vergi riski artırır. Polis atanan karakollar yakın evleri korur.</p>
+        <h4>Son Olaylar</h4>
+        {(() => {
+          const incidents = game.eventLog.filter((event) =>
+            event.key === 'event.crimeTheft' || event.key === 'event.crimeVandalism' || event.key === 'event.crimePatrol',
+          ).slice(-5).reverse();
+          return incidents.length ? <ul>{incidents.map((event) => (
+            <li key={event.id}>{calendar(event.tick).day}. gün · {t(event.key, event.params)}</li>
+          ))}</ul> : <p className="hint">Kayıtlı olay yok.</p>;
+        })()}
       </section>
       <section className="citizen-roster">
-        <h4>Şehrin Sakinleri (İsimleri Düzenlenebilir)</h4>
-        <p className="hint">İstediğin vatandaşın yanındaki <b>✎ İsim Değiştir</b> düğmesine tıklayarak adını değiştirebilirsin.</p>
+        <h4>Şehrin Sakinleri</h4>
+        <p className="hint">İsme sahip örnek vatandaşlar; isimler kaydedilen şehir ve harita tohumuyla aynı kalır.</p>
         <div className="citizens-list">
-          {roster.map((person) => {
-            const isEditing = editingCitizen === person.index;
-            return (
-              <div key={person.id} className="citizen-row" title={person.occupation} style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span aria-hidden="true">◉</span>
-                  <span>
-                    <strong>{person.name}</strong>
-                    <small>{person.age} yaş · {person.occupation}</small>
-                  </span>
-                </span>
-                {isEditing ? (
-                  <span style={{ display: 'flex', gap: 4 }}>
-                    <input
-                      type="text"
-                      value={citizenDraft}
-                      onChange={(e) => setCitizenDraft(e.currentTarget.value)}
-                      placeholder="Yeni ad soyad"
-                      style={{ width: 125, padding: '2px 6px' }}
-                      data-testid={`citizen-input-${person.index}`}
-                    />
-                    <button
-                      type="button"
-                      className="btn primary"
-                      onClick={() => {
-                        if (dispatch({ type: 'renameCitizen', index: person.index, name: citizenDraft })) {
-                          setEditingCitizen(null);
-                        }
-                      }}
-                      data-testid={`citizen-save-${person.index}`}
-                    >
-                      Kaydet
-                    </button>
-                    <button type="button" className="btn" onClick={() => setEditingCitizen(null)}>İptal</button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => {
-                      setEditingCitizen(person.index);
-                      setCitizenDraft(person.name);
-                    }}
-                    data-testid={`citizen-edit-${person.index}`}
-                  >
-                    ✎ İsim Değiştir
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          {citizens(game, 18).map((person) => (
+            <div key={person.id} className="citizen-row" title={person.occupation}>
+              <span aria-hidden="true">◉</span>
+              <span><strong>{person.name}</strong><small>{person.age} yaş · {person.occupation}</small></span>
+            </div>
+          ))}
         </div>
       </section>
     </div>

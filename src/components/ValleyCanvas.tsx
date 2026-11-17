@@ -79,6 +79,7 @@ export function ValleyCanvas(): ReactElement {
     };
     let disposed = false;
     let renderer: ValleyView | null = null;
+    setError(null);
     const callbacks: RendererHost = {
       getView() {
         const s = useApp.getState();
@@ -192,7 +193,15 @@ export function ValleyCanvas(): ReactElement {
           current = r;
         }
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+      .catch((e: unknown) => {
+        if (disposed) return;
+        if (view3d) {
+          useApp.getState().updateSettings({ view3d: false });
+          useApp.getState().toast('info', '3B harita yüklenemedi. Oyun ve kayıtlarınız korunarak 2B haritaya geçildi.');
+          return;
+        }
+        setError(e instanceof Error ? e.message : String(e));
+      });
     return () => {
       disposed = true;
       renderer?.destroy();

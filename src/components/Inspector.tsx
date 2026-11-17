@@ -508,42 +508,14 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         )}
 
       {b.definitionId === 'town_center' && <TownHall game={game} p={p} />}
-      {['hospital', 'police_station', 'fire_station', 'corporate_plaza', 'aquapark', 'market', 'factory', 'hotel', 'restaurant', 'club', 'airport'].includes(b.definitionId) && isBuilt(b) && (() => {
+      {['hospital', 'police_station', 'fire_station', 'market', 'factory', 'hotel', 'restaurant', 'club', 'airport'].includes(b.definitionId) && isBuilt(b) && (() => {
         const buildingJobs = game.cityLife?.jobs.filter((j) => j.source === b.id || j.target === b.id) ?? [];
         const parkedCount = buildingJobs.filter((j) => j.target === b.id && ['park', 'walkIn', 'inside', 'walkOut'].includes(j.stage)).length;
         const activeFlight = game.cityLife?.flights.find((f) => f.airport === b.id);
         const dispatchError = b.definitionId === 'airport' ? validateCommand(game, { type: 'dispatchFlight', airportId: b.id }) : null;
         return (
           <section className="section inspector-section" data-testid="city-service-status">
-            <h4>{b.definitionId === 'airport' ? 'Havalimanı Operasyonları (AYT) & Şehir Yaşamı' : b.definitionId === 'corporate_plaza' ? '🏢 Şirket Plazası & Kurumsal Merkez' : b.definitionId === 'aquapark' ? '🌊 Palomaqua & Grida Splash Park Operasyonları' : b.definitionId === 'hotel' ? '🏨 5★ Resort & Partner Otel Konsepti' : 'Şehir Yaşamı & Park Alanı'}</h4>
-            {b.definitionId === 'hotel' && (
-              <p className="hint">
-                <b>Aktif Otel Konsepti (Sv.{b.level}):</b>{' '}
-                {b.level === 1
-                  ? 'Fourhills Boutique Hotel & Geleneksel Türk Hamamı'
-                  : b.level === 2
-                    ? 'Mercure & Sealife Family Resort Konyaaltı'
-                    : b.level === 3
-                      ? 'Paloma Grida Belek — Lagoon & Lake Suites (Özel İskele & Havuz)'
-                      : b.level === 4
-                        ? 'Paloma Finesse Side — Kolonad Mimari, Swim-Up Süitler & Plaj Cabanaları'
-                        : 'Crowne Plaza & Porto Bello 5★ Luxury Resort Kulesi & FAE Spa'}
-              </p>
-            )}
-            {b.definitionId === 'aquapark' && (
-              <p className="hint">
-                <b>Aktif Su Parkı Etabı (Sv.{b.level}):</b>{' '}
-                {b.level === 1
-                  ? 'Grida Kids Splash Park, Aquatower & Devrilen Su Kovası'
-                  : b.level === 2
-                    ? 'Aquatube, Body Slide & Surf Safari Aile Kaydırakları'
-                    : b.level === 3
-                      ? 'Blackhole, Windigo Racer & Flying Saw Tüp Kaydıraklar'
-                      : b.level === 4
-                        ? 'Space Shuttle, Wave Slide & Relax Lagoon Havuzları'
-                        : 'Palomaqua 20 Kaydıraklı Dev Su Parkı (Looping Rocket 80m & Aqua Bar)'}
-              </p>
-            )}
+            <h4>{b.definitionId === 'airport' ? 'Havalimanı Operasyonları & Şehir Yaşamı' : 'Şehir Yaşamı & Park Alanı'}</h4>
             <p className="hint">Bağlı asfalt yol veya köprü ve çalışan gerekir. Araçlar müsait park alanlarını kullanır.</p>
             <Row label="Bu binanın görevleri">{buildingJobs.length}</Row>
             {b.definitionId !== 'airport' && (
@@ -580,26 +552,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
           </section>
         );
       })()}
-      {b.definitionId === 'shipyard' && isBuilt(b) && (
-        <>
-          <section className="section inspector-section">
-            <h4>⚓ Damen Shipyards Antalya (ASBAŞ) Tesis Durumu</h4>
-            <p className="hint">
-              <b>Aktif Üretim Holü (Sv.{b.level}/5):</b>{' '}
-              {b.level === 1
-                ? 'DSA1 Gövde İnşa & Kumlama Holü (124×74m · 8 Vinç)'
-                : b.level === 2
-                  ? 'DSA2 & DSA3 Çelik ve Alüminyum Blok Holleri (150×60m · Cadmatic/Rhino 3D)'
-                  : b.level === 3
-                    ? 'DSA4 Büyük Gemi Donatım Holü + 560 Tonluk Mavi Travel Lift'
-                    : b.level === 4
-                      ? 'DSA5 Modern Süperyat Holü (24m Çatı) + 2.000 Tonluk Syncrolift'
-                      : 'DSA6 BV Mode-I Kompozit Teknolojileri & Güneş Enerjili (GES) Tersane Kampüsü'}
-            </p>
-          </section>
-          <ShipyardSection game={game} />
-        </>
-      )}
+      {b.definitionId === 'shipyard' && isBuilt(b) && <ShipyardSection game={game} />}
 
       {isBuilt(b) && (
         <section className="section">

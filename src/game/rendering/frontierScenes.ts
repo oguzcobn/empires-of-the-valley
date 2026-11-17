@@ -57,23 +57,13 @@ function animal(g: Graphics, kind: AnimalKind): void {
 function vehicle(g: Graphics, kind: TransitKind, cargo: TransitCargo, engine: boolean, loaded: boolean): void {
   g.clear();
   if (kind === 'air') {
-    // Detailed twin-engine regional airliner / cargo aircraft
-    g.ellipse(0, 2, 18, 4.2).fill({ color: 0x0f172a, alpha: 0.22 });
-    // Swept main wings + winglets + twin turbofan nacelles
-    g.poly([-4, -3, -12, -16, -16, -15, -8, -3, -14, 11, -10, 12, -1, -2]).fill(0xcbd5e1).stroke({ color: 0x64748b, width: 0.9 });
-    g.roundRect(-6, -11, 6, 3.2, 1).fill(0x475569);
-    g.roundRect(-5, 5, 6, 3.2, 1).fill(0x475569);
-    // Tailplane + vertical tail fin
-    g.poly([-14, -4, -20, -13, -16, -13, -11, -4]).fill(0x0284c7);
-    g.poly([-14, -3, -19, 3, -15, 4, -12, -2]).fill(0xcbd5e1);
-    // Pressurized fuselage + nose cone + cockpit glass
-    g.roundRect(-16, -6.8, 34, 6.8, 3.4).fill(0xf8fafc).stroke({ color: 0x475569, width: 1 });
-    g.poly([14, -6.2, 19, -3.8, 14, -2.5]).fill(0x0f172a);
-    g.moveTo(-14, -3.2).lineTo(14, -3.2).stroke({ color: 0x0284c7, width: 1.8 });
+    g.poly([-7, 0, 0, -16, 14, -6, 17, -2, 2, -2, -2, 7, -6, 7, -3, -2]).fill(0xdde5ea);
+    g.ellipse(1, -3.8, 17, 3.9).fill(0xf3f4e9);
+    g.moveTo(-12, -3).lineTo(11, -3).stroke({ color: 0xa23b4b, width: 1.8 });
     if (cargo === 'passengers') {
-      for (let i = -10; i <= 9; i += 3) g.circle(i, -4.6, 0.95).fill(0xbae6fd);
+      for (let i = -8; i <= 7; i += 3) g.rect(i, -5, 1.7, 1.4).fill(0x4b6a84);
     } else if (loaded) {
-      g.roundRect(-8, -6, 10, 3.8, 1).fill(CARGO_COLOR[cargo]);
+      g.roundRect(-7, -6, 8, 4, 1).fill(CARGO_COLOR[cargo]);
     }
     return;
   }
@@ -198,70 +188,61 @@ export class FrontierScenes {
       const a = route[0]!;
       const last = route.at(-1)!;
       const out = { x: last.x + 4 * Math.sign(last.x - a.x), y: last.y + 4 * Math.sign(last.y - a.y) };
-      const airborne = trip > 0.36;
-      const point = airborne ? { x: last.x + (out.x - last.x) * ((trip - 0.36) / 0.64), y: last.y + (out.y - last.y) * ((trip - 0.36) / 0.64) } : a;
-      const next = airborne ? point : last;
-      const t = airborne ? 0 : trip / 0.36;
-      const lift = airborne ? Math.pow((trip - 0.36) / 0.64, 1.35) * 62 : 0;
-      g.visible = trip < 0.98;
-      place(g, p, point, next, t, lift);
-      g.scale.x = (isoX(last.x - a.x, last.y - a.y) || 1) * direction < 0 ? -1 : 1;
+      place(g, p, a, out, trip, Math.max(0, trip - 0.25) * 130);
+      g.alpha = Math.min(1, (1 - trip) * 5);
+      g.scale.x = isoX(out.x - a.x, out.y - a.y) * direction < 0 ? -1 : 1;
     }
     this.cargo.set(kind, shape);
-    const riders = this.riders[kind] ??= [];
-    const want = line.cargo === 'passengers' ? Math.min(3, Math.ceil(shipment(s, p, kind, line).amount / 2)) : 0;
-    while (riders.length < want) {
-      const g = this.add();
-      drawVillager(g, [0x4c7c89, 0xb86f52, 0x6f8b52][riders.length % 3]!, riders.length);
-      g.scale.set(0.56);
-      riders.push(g);
+    const boarders = this.riders[kind] ??= [];
+    const visible = line.cargo === 'passengers' && trip < 0.23;
+    if (visible && boarders.length === 0) {
+      for (let i = 0; i < 3; i++) {
+        const g = this.add();
+        drawVillager(g, [0xc1a27d, 0x8c5352, 0x54797d][i]!, i);
+        g.scale.set(0.62);
+        boarders.push(g);
+      }
     }
-    while (riders.length > want) riders.pop()!.destroy();
-    const wait = (trip < 0.14 || trip > 0.88) && s.speed > 0;
-    const hub = route[0]!;
-    riders.forEach((g, i) => {
-      g.visible = wait;
-      const step = Math.sin(this.time / 120 + i) * 0.08;
-      place(g, p, { x: hub.x + 0.18 * i, y: hub.y + 0.25 + step });
-    });
+    for (let i = 0; i < boarders.length; i++) {
+      const g = boarders[i]!;
+      g.visible = visible;
+      if (!visible) continue;
+      const from = route[0]!;
+      const next = route[1]!;
+      place(g, p, from, next, (0.23 - trip) * 2);
+      g.position.x += (i - 1) * 4.2 - 7;
+      g.position.y += 8 + i * 1.5;
+    }
   }
 
-  update(s: GameState, p: Province, dt: number, huntMode: boolean): void {
-    this.time += dt;
+  update(s: GameState, p: Province, seconds: number, huntMode: boolean): void {
+    this.time += seconds;
     if (this.lastTick !== s.tick) this.tickOffset = 0;
-    this.tickOffset = Math.min(0.95, this.tickOffset + (dt / 1000) * Math.min(1.35, s.speed) * 1.75);
-    const railRoute = p.transit?.rail?.route;
-    const airRoute = p.transit?.air?.route;
-    if (this.lastProvince !== p || this.lastLines !== p.transit || this.railRoute !== railRoute || this.airRoute !== airRoute) {
-      this.drawLines(p);
-      this.lastProvince = p;
-      this.lastLines = p.transit;
-      this.railRoute = railRoute;
-      this.airRoute = airRoute;
-    }
-    if (this.lastTick !== s.tick) {
-      const spots = wildlife(p, s.seed, s.tick);
+    this.tickOffset = Math.min(0.95, this.tickOffset + seconds * 1.75);
+    if (this.lastTick !== s.tick || this.lastProvince?.tiles !== p.tiles || this.lastLines !== p.transit) {
       const seen = new Set<string>();
-      for (const spot of spots) {
+      for (const spot of wildlife(p, s.seed, s.tick)) {
         const key = `${spot.x},${spot.y}`;
         seen.add(key);
-        let g = this.animals.get(key);
-        if (!g) {
-          g = this.add();
+        if (!this.animals.has(key)) {
+          const g = this.add();
           animal(g, spot.kind);
+          place(g, p, spot);
           this.animals.set(key, g);
         }
-        place(g, p, spot);
       }
       for (const [key, g] of this.animals) if (!seen.has(key)) {
         g.destroy();
         this.animals.delete(key);
       }
+      this.lastProvince = p;
       this.lastTick = s.tick;
+      this.lastLines = p.transit;
     }
-    for (const g of this.animals.values()) {
-      const pulse = huntMode ? 1.02 + Math.sin(this.time / 150) * 0.12 : 0.72;
-      g.scale.set(pulse);
+    for (const [key, g] of this.animals) {
+      const phase = Number(key.replace(',', '.'));
+      g.scale.set(huntMode ? 1.35 : 0.86, (huntMode ? 1.35 : 0.86) + Math.sin(this.time * 2 + phase) * 0.045);
+      g.tint = huntMode ? 0xffdb9b : this.tint;
     }
 
     const hunt = p.hunt;
@@ -269,33 +250,28 @@ export class FrontierScenes {
     if (hunt) {
       while (this.hunters.length < hunt.workers) {
         const g = this.add();
-        drawVillager(g, 0x886349, this.hunters.length + 2);
-        g.moveTo(3.5, -9).lineTo(7.5, -12.5).stroke({ color: 0x5c4632, width: 1.1 });
-        g.scale.set(0.68);
+        drawVillager(g, 0x886349, this.hunters.length);
+        g.scale.set(0.78);
         this.hunters.push(g);
       }
       const runtime = Math.min(1, (s.tick + this.tickOffset - hunt.startTick) / Math.max(1, hunt.endTick - hunt.startTick));
       const progress = Math.min(1, Math.max(0, (runtime > 0.5 ? 1 - runtime : runtime) * 2.45));
-      this.hunters.forEach((g, i) => {
+      for (let i = 0; i < this.hunters.length; i++) {
+        const g = this.hunters[i]!;
         const [a, b, t] = along(hunt.route, progress * (hunt.route.length - 1) - i * 0.19);
         place(g, p, a, b, t);
-        g.y += Math.sin(this.time / 85 + i) * 0.8;
-      });
+        g.x += i * 2.6;
+      }
     }
-
+    if (this.railRoute !== p.transit?.rail?.route || this.airRoute !== p.transit?.air?.route) {
+      this.railRoute = p.transit?.rail?.route;
+      this.airRoute = p.transit?.air?.route;
+      this.drawLines(p);
+    }
     const phase = ((s.tick + this.tickOffset) % TICKS_PER_DAY) / TICKS_PER_DAY;
     for (const kind of ['rail', 'air'] as const) {
       const line = p.transit?.[kind];
       if (line) this.transport(s, kind, line, p, phase);
-      else if (kind === 'rail') this.trains.forEach((g) => { g.visible = false; });
-      else if (this.plane) this.plane.visible = false;
     }
-  }
-
-  destroy(): void {
-    for (const g of [...this.animals.values(), ...this.hunters, ...this.trains]) g.destroy();
-    if (this.plane) this.plane.destroy();
-    for (const group of Object.values(this.riders)) for (const g of group) g.destroy();
-    this.animals.clear();
   }
 }

@@ -6,7 +6,7 @@ import { beds } from './tourism';
 import { isOperating, isBuilt, storageCaps } from './economy';
 import { logEvent } from './events';
 
-export type CityJobKind = 'shopping' | 'ambulance' | 'patrol' | 'fire' | 'delivery' | 'dining' | 'nightlife' | 'hotel' | 'business';
+export type CityJobKind = 'shopping' | 'ambulance' | 'patrol' | 'fire' | 'delivery' | 'dining' | 'nightlife' | 'hotel';
 export type CityStage = 'outbound' | 'park' | 'walkIn' | 'inside' | 'walkOut' | 'return';
 export interface CityJob {
   id: number;
@@ -149,7 +149,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
   const venues = p.buildings.filter(
     (b) =>
       isOperating(b) &&
-      ['hospital', 'police_station', 'fire_station', 'corporate_plaza', 'aquapark', 'factory', 'market', 'restaurant', 'club', 'hotel', 'airport'].includes(
+      ['hospital', 'police_station', 'fire_station', 'factory', 'market', 'restaurant', 'club', 'hotel', 'airport'].includes(
         b.definitionId,
       ),
   );
@@ -185,7 +185,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
             }
           } else {
             const amount =
-              j.kind === 'shopping' ? 100 : j.kind === 'dining' ? 180 : j.kind === 'hotel' ? 250 : j.kind === 'business' ? 320 : 0;
+              j.kind === 'shopping' ? 100 : j.kind === 'dining' ? 180 : j.kind === 'hotel' ? 250 : 0;
             if (amount && p.stocks.food >= 100) {
               p.stocks.food -= 100;
               p.today.consumed.food += 100;
@@ -291,9 +291,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
                   ? 'nightlife'
                   : b.definitionId === 'hotel'
                     ? 'hotel'
-                    : b.definitionId === 'corporate_plaza'
-                      ? 'business'
-                      : 'shopping';
+                    : 'shopping';
     if (kind === 'fire') {
       target.condition = Math.max(2500, target.condition - 600);
       logEvent(
@@ -314,8 +312,6 @@ export function cityLifeTick(s: GameState, p: Province): void {
       'hospital',
       'police_station',
       'fire_station',
-      'corporate_plaza',
-      'aquapark',
     ].includes(target.definitionId)
       ? access(target, route.at(-1)!, slot)
       : [];
