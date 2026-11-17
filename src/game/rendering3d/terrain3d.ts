@@ -105,13 +105,25 @@ function buildGround(p: Province, pal: SeasonPalette): THREE.BufferGeometry {
         const az = side === 0 || side === 1 ? ty + 1 : ty;
         const bx = side === 0 || side === 1 ? tx + 1 : tx;
         const bz = side === 1 || side === 2 ? ty + 1 : ty;
-        const normal = [dx, 0, dz] as const;
+        // For natural highland/mountain slopes where the lower tile has no building/road/water, flare the base outward into a natural talus slope
+        const canFlare =
+          n &&
+          !n.buildingId &&
+          !n.road &&
+          !isWater(n) &&
+          (t.terrain === 'mountain' || t.terrain === 'rocky' || t.terrain === 'hill');
+        const flare = canFlare ? 0.36 : 0;
+        const fax = ax + dx * flare;
+        const faz = az + dz * flare;
+        const fbx = bx + dx * flare;
+        const fbz = bz + dz * flare;
+        const normal = canFlare ? ([dx * 0.7, 0.7, dz * 0.7] as const) : ([dx, 0, dz] as const);
         vert(ax, y, az, normal, top);
         vert(bx, y, bz, normal, top);
-        vert(bx, bottom, bz, normal, low);
+        vert(fbx, bottom, fbz, normal, low);
         vert(ax, y, az, normal, top);
-        vert(bx, bottom, bz, normal, low);
-        vert(ax, bottom, az, normal, low);
+        vert(fbx, bottom, fbz, normal, low);
+        vert(fax, bottom, faz, normal, low);
       });
     }
   const g = new THREE.BufferGeometry();
@@ -276,10 +288,13 @@ function treeGeometries(): { trunk: THREE.BufferGeometry; broad: THREE.BufferGeo
     .sphere(-0.1, 0.035, 0.1, 0.07, 0xe8e8e8, 0.8, 5)
     .build();
   const bush = new Builder().sphere(0, 0.05, 0, 0.09, 0xffffff, 0.75, 6).sphere(0.07, 0.04, 0.03, 0.06, 0xe4e4e4, 0.8, 5).build();
+  // Broad, overlapping multi-faceted mountain massif that hides tile seams and creates organic ridges
   const peak = new Builder()
-    .cone(0, 0, 0, 0.5, 0.62, 0xffffff, 5)
-    .cone(0.2, 0, 0.14, 0.3, 0.36, 0xe4e4e4, 5)
-    .cone(-0.22, 0, -0.1, 0.26, 0.3, 0xeeeeee, 5)
+    .cone(0, -0.12, 0, 0.76, 0.98, 0xffffff, 6)
+    .cone(0.28, -0.1, 0.2, 0.52, 0.66, 0xe2e6ea, 5)
+    .cone(-0.3, -0.1, -0.16, 0.48, 0.6, 0xecf0f2, 5)
+    .cone(0.12, -0.08, -0.28, 0.42, 0.52, 0xd8dde2, 5)
+    .cone(0, 0.48, 0, 0.31, 0.42, 0xf8fafc, 6)
     .build();
   return { trunk, broad, pine, rock, bush, peak };
 }
@@ -390,7 +405,7 @@ export class Terrain3D {
           if (rocks < MAX_SMALL) place(this.rocks, rocks++, tx + 0.5, y, ty + 0.5, t.deposit > 0 ? 1.5 : 0.8, hash2(tx, ty, 19) * 6.28, pal.snow ? 0xd5dadd : COLORS.rock, 0.9 + hash2(tx, ty, 23) * 0.2);
         } else if (t.terrain === 'mountain') {
           const snowy = pal.snow || t.height >= 4;
-          if (peaks < MAX_SMALL) place(this.peaks, peaks++, tx + 0.5, y, ty + 0.5, 0.75 + t.height * 0.16 + hash2(tx, ty, 51) * 0.3, hash2(tx, ty, 53) * 6.28, snowy ? 0xeef1f3 : 0x8b867b, 0.88 + hash2(tx, ty, 57) * 0.2);
+          if (peaks < MAX_SMALL) place(this.peaks, peaks++, tx + 0.5, y, ty + 0.5, 0.88 + t.height * 0.18 + hash2(tx, ty, 51) * 0.28, hash2(tx, ty, 53) * 6.28, snowy ? 0xeef1f3 : 0x8b867b, 0.88 + hash2(tx, ty, 57) * 0.2);
         } else if (t.terrain === 'rocky') {
           if (rocks < MAX_SMALL && hash2(tx, ty, 59) < 0.6) place(this.rocks, rocks++, tx + 0.3 + hash2(tx, ty, 61) * 0.4, y, ty + 0.3 + hash2(tx, ty, 67) * 0.4, 1.1 + hash2(tx, ty, 71), hash2(tx, ty, 19) * 6.28, pal.snow ? 0xd5dadd : 0x8f8a7e, 1);
         } else if ((t.terrain === 'grass' || t.terrain === 'hill') && hash2(tx, ty, 29) < 0.16) {

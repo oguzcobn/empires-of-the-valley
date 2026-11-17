@@ -1,12 +1,42 @@
-import type { CityLifeState } from '../systems/cityLife';
 import type { UnitId } from '../data/units';
-import type { TKey } from '../../i18n/tr';
-import type { CityId } from '../data/cities';
+export const RESOURCE_IDS = ['wood', 'stone', 'food', 'gold', 'tools', 'research'] as const;
+export type ResourceId = (typeof RESOURCE_IDS)[number];
+export type ResourceStock = Record<ResourceId, number>;
+export type Cost = Partial<Record<ResourceId, number>>;
 
-export type ResourceId = 'wood' | 'stone' | 'food' | 'gold' | 'tools' | 'research';
-export const RESOURCE_IDS: readonly ResourceId[] = ['wood', 'stone', 'food', 'gold', 'tools', 'research'];
+export type TerrainId = 'grass' | 'forest' | 'stone' | 'water' | 'fertile' | 'sand' | 'hill' | 'rocky' | 'mountain' | 'lake' | 'terrace';
 
-export type LandmarkId =
+export type RoadType = 'dirt' | 'stairs' | 'bridge' | 'mountain' | 'tunnel';
+
+export type BuildingCategory = 'housing' | 'production' | 'storage' | 'civic' | 'defense' | 'landmark';
+
+export type BuildingId =
+  | 'town_center'
+  | 'hut'
+  | 'lumber_camp'
+  | 'farm'
+  | 'quarry'
+  | 'warehouse'
+  | 'granary'
+  | 'school'
+  | 'market'
+  | 'inn'
+  | 'watchtower'
+  | 'barracks'
+  | 'mosque'
+  | 'church'
+  | 'theatre'
+  | 'cinema'
+  | 'hospital'
+  | 'factory'
+  | 'hotel'
+  | 'club'
+  | 'restaurant'
+  | 'airport'
+  | 'police_station'
+  | 'fire_station'
+  | 'shipyard'
+  | 'terrace_farm'
   | 'edinburgh_castle'
   | 'stirling_castle'
   | 'scott_monument'
@@ -15,292 +45,124 @@ export type LandmarkId =
   | 'selimiye_mosque'
   | 'trabzon_stadium';
 
-export type BuildingId =
-  | 'town_center'
-  | 'hut'
-  | 'warehouse'
-  | 'lumber_camp'
-  | 'farm'
-  | 'quarry'
-  | 'granary'
-  | 'school'
-  | 'terrace_farm'
-  | 'market'
-  | 'inn'
-  | 'watchtower'
-  | 'barracks'
-  | 'mosque'
-  | 'church'
-  | 'cinema'
-  | 'theatre'
-  | 'police_station'
-  | 'shipyard'
-  | 'hospital'
-  | 'factory'
-  | 'hotel'
-  | 'club'
-  | 'restaurant'
-  | 'airport'
-  | LandmarkId;
+export const ARCHITECTURE_STYLES = [
+  'scottish',
+  'turkish',
+  'japanese',
+  'medieval_european',
+  'ottoman',
+  'byzantine',
+  'nordic',
+  'mediterranean',
+] as const;
+export type ArchitectureStyle = (typeof ARCHITECTURE_STYLES)[number];
+
+export type RoofShape = 'gable' | 'hip' | 'crow_step' | 'flat' | 'pyramid' | 'dome';
+export type RoofMaterial = 'slate' | 'clay' | 'thatch' | 'lead' | 'copper';
+export type WallMaterial = 'granite' | 'sandstone' | 'brick' | 'plaster' | 'timber' | 'ashlar';
+export type FacadeTint = 'natural' | 'ochre' | 'terracotta' | 'cream' | 'white' | 'sage' | 'sky' | 'rose' | 'honey';
+export type WindowStyle = 'small' | 'arched' | 'sash' | 'lattice';
+export type DoorStyle = 'plank' | 'arched' | 'double' | 'carved';
+export type ChimneyStyle = 'none' | 'single' | 'double' | 'tall';
+export type BalconyStyle = 'none' | 'wood' | 'stone' | 'cumba' | 'iron';
+export type GardenStyle = 'none' | 'flowers' | 'hedge' | 'courtyard' | 'orchard';
+export type DecorStyle = 'none' | 'lanterns' | 'banners' | 'awnings' | 'ivy' | 'SHUTTERS';
+export type TowerFeature = 'none' | 'turret' | 'bartizan' | 'minaret' | 'cupola';
+
+/** Player-customised appearance for a building (bounded enums only — never free text or paths). */
+export interface BuildingLook {
+  roof: RoofShape;
+  roofMaterial: RoofMaterial;
+  wall: WallMaterial;
+  facade: FacadeTint;
+  floors: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  windows: WindowStyle;
+  door: DoorStyle;
+  chimney: ChimneyStyle;
+  balcony: BalconyStyle;
+  garden: GardenStyle;
+  decor: DecorStyle;
+  tower: TowerFeature;
+}
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';
 
-/**
- * Terrain. `water` is a river (bridgeable), `lake` is still water (not bridgeable); `hill`,
- * `rocky` and `mountain` are raised ground; `terrace` is a hill tile levelled behind a stone
- * retaining wall by the player.
- */
-export type TerrainId =
-  | 'grass'
-  | 'fertile'
-  | 'forest'
-  | 'water'
-  | 'stone'
-  | 'sand'
-  | 'hill'
-  | 'rocky'
-  | 'mountain'
-  | 'terrace'
-  | 'lake';
-
-/** Road structure chosen automatically from the terrain it crosses. */
-export type RoadType = 'dirt' | 'bridge' | 'stairs' | 'mountain' | 'tunnel';
-
-/**
- * Architectural cultures. The union already names the next cultures so content can be added
- * without a save-format change; only cultures marked `implemented` in data/architecture.ts are
- * playable (validated on every command and save).
- */
-export type ArchitectureStyle = 'scottish' | 'turkish' | 'japanese' | 'medieval_european';
-
-export type RoofType = 'gable' | 'crow_step' | 'hip' | 'pyramid' | 'flat' | 'dome';
-export type RoofMaterial = 'slate' | 'clay' | 'thatch' | 'shingle' | 'lead' | 'earth';
-export type WallMaterial =
-  | 'granite'
-  | 'sandstone'
-  | 'harl'
-  | 'timber_frame'
-  | 'stone_timber'
-  | 'plaster'
-  | 'brick'
-  | 'wood';
-export type FacadeColor =
-  'white' | 'cream' | 'ochre' | 'rose' | 'sky' | 'sage' | 'grey' | 'honey' | 'terracotta' | 'umber';
-export type WindowType = 'sash' | 'small' | 'arched' | 'latticed' | 'bay';
-export type DoorType = 'plank' | 'arched' | 'double' | 'fanlight';
-export type TowerType = 'none' | 'turret' | 'square' | 'clock' | 'bell';
-export type BalconyType = 'none' | 'cumba' | 'iron' | 'gallery';
-export type ChimneyType = 'none' | 'gable' | 'twin' | 'central';
-export type GardenType = 'none' | 'hedge' | 'orchard' | 'flowers';
-export type CourtyardType = 'none' | 'avlu' | 'well';
-export type DecorType = 'none' | 'flowerboxes' | 'lanterns' | 'banners';
-
-/** Parametric appearance of a building. Materials also change cost and durability (data-driven). */
-export interface BuildingLook {
-  floors: 1 | 2 | 3 | 4 | 10;
-  roof: RoofType;
-  roofMaterial: RoofMaterial;
-  wall: WallMaterial;
-  facade: FacadeColor;
-  windows: WindowType;
-  door: DoorType;
-  tower: TowerType;
-  balcony: BalconyType;
-  chimney: ChimneyType;
-  garden: GardenType;
-  courtyard: CourtyardType;
-  decor: DecorType;
+export interface ShipyardOrder {
+  id: number;
+  kind: VesselKind;
+  /** Ticks of shipwright labour invested so far. */
+  progress: number;
 }
-export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy' | 'architecture';
-export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08' | 'q09' | 'q10' | 'q11' | 'q12' | 'q13' | 'q14' | 'q15' | 'q16';
-export type ProvinceId = string;
-export type DiplomacyPact = 'trade' | 'non_aggression' | 'alliance';
-export type FactionId = string;
-export type GameSpeed = 0 | 1 | 2 | 4;
-export type Difficulty = 'easy' | 'normal' | 'hard';
-export type TaxRate = 'low' | 'normal' | 'high';
-export type GameMode = 'campaign' | 'sandbox';
 
-/** Quantities are integer milli-units (see core/fixed.ts). */
-export type ResourceMap = Record<ResourceId, number>;
-export type Cost = Partial<ResourceMap>;
+export interface ShipyardState {
+  nextOrderId: number;
+  queue: ShipyardOrder[];
+  fleet: Record<VesselKind, number>;
+  yachtsSold: number;
+}
+
+export interface TourismState {
+  /** Visitors currently staying in the valley (integer headcount). */
+  visitors: number;
+  /** Peak visitors reached on any day (for milestone tracking). */
+  peakVisitors: number;
+  /** Cumulative visitors welcomed. */
+  totalVisitors: number;
+}
+
+export type TechBranch = 'agriculture' | 'engineering' | 'economy' | 'governance';
+export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy';
+
+export type TaxRate = 'low' | 'normal' | 'high';
+export type GameSpeed = 0 | 1 | 2 | 4;
+export type GameMode = 'campaign' | 'sandbox';
+export type CityId = 'trabzon' | 'edinburgh' | 'kyoto' | 'prague';
+export type Difficulty = 'easy' | 'normal' | 'hard';
+export type DiplomacyPact = 'trade' | 'non_aggression' | 'alliance';
 
 export interface Tile {
   terrain: TerrainId;
-  /** Remaining harvestable stock (wood for forest, stone for deposits), milli-units. */
+  /** Remaining harvestable wood or stone on this tile (permille resource units). */
   deposit: number;
   road: boolean;
-  /** Structure of the road on this tile (meaningful when `road`). */
+  /** Structure of the road on this tile (meaningful when `road` is true; defaults to 'dirt'). */
   roadType: RoadType;
-  /** Optional paved overlay; old saves remain valid as unpaved roads. */
+  /** True when a dirt street has been upgraded to an asphalt road with sidewalks. */
   paved?: boolean;
+  /** Building instance id occupying this tile, if any. */
   buildingId: string | null;
-  /** Visual variation only (0..3). */
+  /** Visual variant 0..3, deterministic from seed. */
   variant: number;
-  /** Ground elevation in levels (0 = valley floor .. 4 = high mountain). */
+  /** Elevation step 0..4 (0 = valley floor / water level). */
   height: number;
 }
-
-// ---------------------------------------------------------------- content definitions (immutable)
-
-export interface LevelRequirement {
-  townCenterLevel?: number;
-  population?: number;
-  techId?: TechId;
-}
-
-export interface LevelSpec {
-  cost: Cost;
-  buildTicks: number;
-  workerSlots: number;
-  housing: number;
-  /** Total storage granted at this level. */
-  storage: Cost;
-  /** Output per day with all worker slots filled. */
-  produces?: { resourceId: ResourceId; perDay: number };
-  /** Gold per day generated without workers (town center). */
-  goldIncome: number;
-  /** Gold per day at normal tax when fully occupied (housing). */
-  taxIncome: number;
-  upkeepGold: number;
-  requires?: LevelRequirement;
-}
-
-export type BuildingCategory =
-  'housing' | 'production' | 'storage' | 'education' | 'governance' | 'civic' | 'landmark';
-
-/** Special terrain rule of a landmark, checked for real by placement (see systems/placement.ts). */
-export type SiteRule =
-  'crag' | 'castleHill' | 'cityGarden' | 'mountainside' | 'hilltopWater' | 'grandPlain' | 'coastalPlain';
-
-export interface LandmarkStage {
-  cost: Cost;
-  days: number;
-}
-
-export interface LandmarkSpec {
-  /** Culture the monument belongs to (Atlas collection). */
-  culture: ArchitectureStyle;
-  site: SiteRule;
-  /** Construction stages; stage 1 is paid on placement, later ones when the previous finishes. */
-  stages: readonly LandmarkStage[];
-  /** Builders needed for full construction speed (progress scales with assigned builders). */
-  builders: number;
-  requires: LevelRequirement;
-  /** Tourism attraction points when complete and in good repair. */
-  attraction: number;
-  /** Culture points per day. */
-  culturePerDay: number;
-  /** Safety it adds to the city (castles, watch towers). */
-  safety: number;
-  /** Happiness for the whole city while in good repair. */
-  happiness: number;
-  /** Extra gold per visitor (museums, guided tours). */
-  museumGold: number;
-  /** Research per day (monastery libraries). */
-  researchPerDay: number;
-}
-
-export interface BuildingDefinition {
-  id: BuildingId;
-  category: BuildingCategory;
-  era: number;
-  footprint: readonly [number, number];
-  validTerrains: readonly TerrainId[];
-  /** Deposit terrain that must exist within `radius` tiles and that the building harvests. */
-  harvests?: { terrain: TerrainId; radius: number };
-  seasonal: boolean;
-  usesTools: boolean;
-  buildable: boolean;
-  demolishable: boolean;
-  levels: readonly LevelSpec[];
-  /** Footprint may span tiles of different heights (landmarks that terrace into slopes). */
-  allowSlope?: boolean;
-  /** Must stand next to river or lake water (shipyards). */
-  needsWater?: boolean;
-  /** Tourism and city services (data-driven; see systems/tourism.ts). */
-  services?: {
-    beds?: number;
-    attraction?: number;
-    marketGold?: number;
-    safety?: number;
-    safetyRadius?: number;
-    community?: number;
-    patrolRadius?: number;
-  };
-  landmark?: LandmarkSpec;
-}
-
-export type TechEffect =
-  | { type: 'outputMultiplier'; buildingId: BuildingId; permille: number }
-  | { type: 'storageMultiplier'; permille: number }
-  | { type: 'forestRegrowMultiplier'; permille: number };
-
-export interface Technology {
-  id: TechId;
-  era: number;
-  branch: 'agriculture' | 'engineering' | 'economy' | 'governance';
-  cost: number;
-  prerequisites: readonly TechId[];
-  effects: readonly TechEffect[];
-}
-
-export type Objective =
-  | { type: 'buildingCount'; buildingId: BuildingId; count: number }
-  | { type: 'staffedBuilding'; buildingId: BuildingId; workers: number }
-  | { type: 'resourceGathered'; resourceId: ResourceId; amount: number }
-  | { type: 'foodBalanceStreak'; days: number }
-  | { type: 'population'; count: number }
-  | { type: 'districtCount'; count: number }
-  | { type: 'militiaCount'; count: number }
-  | { type: 'techResearched'; techId: TechId }
-  | { type: 'prosperityStreak'; happiness: number; days: number };
-
-export type Effect =
-  | { type: 'addResource'; resourceId: ResourceId; amount: number }
-  | { type: 'revealProvince'; provinceId: ProvinceId }
-  | { type: 'completeChapter'; chapter: number };
-
-export interface Quest {
-  id: QuestId;
-  chapter: number;
-  prerequisites: readonly QuestId[];
-  objectives: readonly Objective[];
-  rewards: readonly Effect[];
-}
-
-export interface TradeOffer {
-  id: string;
-  give: Cost;
-  get: Cost;
-}
-
-// ---------------------------------------------------------------- runtime state (serializable)
 
 export type BuildingState = 'construction' | 'active' | 'upgrading';
 
 export interface BuildingInstance {
   id: string;
   definitionId: BuildingId;
-  provinceId: ProvinceId;
+  provinceId: string;
+  /** Top-left tile of the footprint. */
   x: number;
   y: number;
-  /** Completed level (1-based). During first construction this is 1 and state is 'construction'. */
+  /** 1-based level. During initial construction this is 1. */
   level: number;
   workers: number;
+  /** Ticks accumulated toward current construction or upgrade. */
   progressTicks: number;
   state: BuildingState;
-  /** Touches a road that leads to the town center. */
+  /** Cached road connectivity to the province's Town Center. */
   connected: boolean;
-  /** Upkeep could not be paid this tick; the building is idle. */
+  /** Set when hourly gold upkeep could not be paid on the most recent tick. */
   unpaid: boolean;
-  /** Architectural culture of this building (kept per building, so districts can differ). */
+  /** Architectural culture this instance is built in. */
   style: ArchitectureStyle;
-  /** Custom appearance from the Architecture Workshop; null = the culture's default look. */
+  /** Optional custom appearance; null means the culture's default look for this building & level. */
   look: BuildingLook | null;
-  /** Structural condition in basis points (10000 = perfect). Decays daily; restored by repairs. */
+  /** Structural condition 0..10000 (10000 = pristine). Below 2500 the building is worn and less effective. */
   condition: number;
-  /** Landmarks: construction stages already paid for (0 for ordinary buildings). */
+  /** For multi-stage landmarks: how many stage costs have been paid so far (1..stages.length). */
   paidStages: number;
 }
 
@@ -308,107 +170,84 @@ export interface Population {
   children: number;
   adults: number;
   elders: number;
-  lastGrowthDay: number;
-  lastMaturationDay: number;
-  /** Consecutive days that ended with unmet food demand. */
+  /** Progress toward next immigrant arrival (ticks). */
+  immigrationTicks: number;
+  /** Consecutive days with zero food at day-end. */
   starvationDays: number;
-  /** Unmet food demand accumulated today (milli-units). */
-  shortfallToday: number;
+  /** Progress toward next demographic aging step (days). */
+  agingDays: number;
 }
 
-export interface Ledger {
-  produced: ResourceMap;
-  consumed: ResourceMap;
+export interface DailyLedger {
+  produced: ResourceStock;
+  consumed: ResourceStock;
 }
 
-export interface MapPoint { x: number; y: number }
-export type TransitKind = 'rail' | 'air';
-export type TransitCargo = 'passengers' | 'stone' | 'wood' | 'food' | 'tools';
-export interface TransitLine {
-  route: MapPoint[];
-  cargo: TransitCargo;
-  passengers: number;
-  shipped: number;
-  earned: number;
-  direction?: 'export' | 'import';
-  spent?: number;
+export interface MapPoint {
+  x: number;
+  y: number;
 }
-export interface Hunt {
+
+export interface HuntParty {
   route: MapPoint[];
   workers: number;
   startTick: number;
   endTick: number;
 }
 
+export type TransitKind = 'rail' | 'air';
+export type TransitCargo = 'passengers' | 'stone' | 'wood' | 'food' | 'tools';
+
+export interface TransitLine {
+  route: MapPoint[];
+  cargo: TransitCargo;
+  direction?: 'export' | 'import';
+  passengers: number;
+  earned: number;
+  shipped: number;
+}
+
 export interface Province {
-  id: ProvinceId;
+  id: string;
   name: string;
-  biome: string;
-  neighbors: ProvinceId[];
-  ownerFactionId: FactionId | null;
-  loyalty: number;
-  unrest: number;
   width: number;
   height: number;
   tiles: Tile[];
   buildings: BuildingInstance[];
-  stocks: ResourceMap;
+  stocks: ResourceStock;
   population: Population;
+  /** 0..100 integer. */
   happiness: number;
   taxRate: TaxRate;
-  today: Ledger;
-  yesterday: Ledger;
-  hunt?: Hunt;
-  depletedHunts?: Record<string, number>;
+  /** Current day's running ledger (reset at hour 0). */
+  today: DailyLedger;
+  /** Completed ledger from the previous day, shown in UI. */
+  yesterday: DailyLedger;
+  /** Consecutive days at end-of-day with net food >= 0 (for quests). */
+  positiveFoodDays: number;
+  /** Consecutive days at end-of-day with happiness >= 75 (for quests). */
+  highHappinessDays: number;
+  hunt?: HuntParty | null;
   transit?: Partial<Record<TransitKind, TransitLine>>;
 }
 
 export type QuestStatus = 'locked' | 'active' | 'completed';
 
 export interface QuestProgress {
+  id: string;
   status: QuestStatus;
-  /** One counter per objective index (streaks, gathered amounts). */
-  counters: number[];
-  rewardGranted: boolean;
   completedTick: number | null;
 }
 
-export type EventKind = 'info' | 'success' | 'warning' | 'danger' | 'quest';
-/** Param values starting with '@' are translation keys resolved by the UI. */
-export type MessageParams = Record<string, string | number>;
+export type EventCategory = 'info' | 'warning' | 'danger' | 'success';
 
-export interface GameEvent {
+export interface EventEntry {
   id: number;
   tick: number;
-  kind: EventKind;
-  key: TKey;
-  params?: MessageParams;
-  at?: { x: number; y: number };
-}
-
-export interface TourismState {
-  /** Accumulated culture points (milli-units). */
-  culture: number;
-  /** Visitor satisfaction 0..100 (smoothed, also the city's reputation). */
-  satisfaction: number;
-  visitorsYesterday: number;
-  demandYesterday: number;
-  incomeYesterday: number;
-  totalVisitors: number;
-}
-
-export interface VesselOrder {
-  id: number;
-  kind: VesselKind;
-  /** Shipwright-hours invested. */
-  progress: number;
-}
-
-export interface ShipyardState {
-  queue: VesselOrder[];
-  fleet: Record<VesselKind, number>;
-  nextOrderId: number;
-  yachtsSold: number;
+  category: EventCategory;
+  key: string;
+  params?: Record<string, string | number>;
+  location?: { x: number; y: number };
 }
 
 export interface GameSettings {
@@ -417,55 +256,50 @@ export interface GameSettings {
 
 export interface GameState {
   schemaVersion: number;
-  gameVersion: string;
   seed: number;
-  /** Full PRNG state; restoring it reproduces all future randomness. */
+  /** Internal PRNG state (uint32). */
   rngState: number;
   mode: GameMode;
+  cityId?: CityId;
+  difficulty?: Difficulty;
+  /** Default architectural culture of the city (new buildings inherit this unless overridden). */
+  culture: ArchitectureStyle;
+  /** Total elapsed simulation ticks (1 tick = 1 in-game hour, 24 ticks = 1 day). */
   tick: number;
   speed: GameSpeed;
-  /** Optional for legacy saves; missing means normal difficulty. */
-  difficulty?: Difficulty;
-  /** Extra storage capacity granted by resource cheats (milli-units). Optional for old saves. */
-  cheatStorageBonus?: number;
-  /** When true, resource and research production runs at ten times its normal rate. */
-  cheatProduction10x?: boolean;
-  playerFactionId: FactionId;
-  /** Default culture for new buildings. Each building also stores its own style. */
-  culture: ArchitectureStyle;
-  /** Starting city, unchanged when a building is restyled. Optional for legacy saves. */
-  cityId?: CityId;
-  /** Strategically secured surrounding districts, as world province IDs. */
-  claimedDistricts?: ProvinceId[];
-  /** Diplomatic relations with neighbouring, non-player provinces. Optional in legacy saves. */
-  treaties?: Record<ProvinceId, DiplomacyPact>;
-  /** Trained guards who can hold or patrol newly secured districts. */
+  homeProvinceId: string;
+  provinces: Record<string, Province>;
+  revealedProvinceIds: string[];
+  claimedDistricts?: string[];
+  treaties?: Partial<Record<string, DiplomacyPact>>;
   militia?: number;
   specialists?: Partial<Record<UnitId, number>>;
   armyOrder?: 'defend' | 'patrol';
-  /** Last commanded road position of the local militia. */
-  armyTarget?: { x: number; y: number };
-  homeProvinceId: ProvinceId;
-  provinces: Record<ProvinceId, Province>;
-  revealedProvinceIds: ProvinceId[];
+  armyTarget?: { x: number; y: number } | null;
   researchedTechIds: TechId[];
   researchQueue: TechId[];
-  /** Research points already invested in researchQueue[0] (milli-units). */
+  /** Research points (permille) accumulated toward researchQueue[0]. */
   researchProgress: number;
-  questProgress: Partial<Record<QuestId, QuestProgress>>;
+  questProgress: Record<string, QuestProgress>;
   completedChapters: number[];
-  eventLog: GameEvent[];
-  nextEventId: number;
+  eventLog: EventEntry[];
   nextBuildingId: number;
-  settings: GameSettings;
+  nextEventId: number;
+  /** Extra storage capacity (permille) granted by entering the resource cheat code. */
+  cheatStorageBonus?: number;
+  /** True after entering the 10x production cheat code (`URETIM10X`). */
+  cheatProduction10x?: boolean;
+  cityLife?: import('../systems/cityLife').CityLifeState;
+  shipyard: ShipyardOrderState;
   tourism: TourismState;
-  shipyard: ShipyardState;
-  cityLife?: CityLifeState;
+  settings: GameSettings;
 }
 
+export type ShipyardOrderState = ShipyardState;
+
 export interface MessageRef {
-  key: TKey;
-  params?: MessageParams;
+  key: string;
+  params?: Record<string, string | number>;
 }
 
 export type CommandResult = { ok: true; state: GameState } | { ok: false; error: MessageRef };

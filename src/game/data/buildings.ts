@@ -405,6 +405,12 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
     services: { patrolRadius: 5 },
     levels: [level({ cost: { wood: u(30), stone: u(26), gold: u(8) }, buildTicks: 3 * DAY, workerSlots: 2, upkeepGold: u(0.22) })],
   },
+  fire_station: {
+    id: 'fire_station', category: 'civic', era: 1, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { patrolRadius: 7, community: 3 },
+    levels: [level({ cost: { wood: u(26), stone: u(28), gold: u(10) }, buildTicks: 3 * DAY, workerSlots: 2, upkeepGold: u(0.25) })],
+  },
   shipyard: {
     id: 'shipyard',
     category: 'production',

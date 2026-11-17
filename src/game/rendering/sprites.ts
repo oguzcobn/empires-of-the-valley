@@ -111,7 +111,7 @@ const LEVEL = 12;
 
 function cliffColor(terrain: TerrainId): number {
   if (terrain === 'terrace') return 0xa9a497;
-  if (terrain === 'rocky' || terrain === 'mountain' || terrain === 'stone') return 0x8a8579;
+  if (terrain === 'rocky' || terrain === 'mountain' || terrain === 'stone') return 0x7b766b;
   return 0x8a6a45;
 }
 
@@ -136,26 +136,39 @@ export function drawGroundTile(
   const z = h * LEVEL;
   const ox = (x - y) * 32;
   const oy = (x + y) * 16 - z;
-  // cliffs first (they hang below this tile's top)
   const edge = (to: number): number => (to < 0 ? -20 / LEVEL : to);
   const fl = edge(ctx.frontLeft);
-  if (fl < h) {
-    const zb = fl * LEVEL;
-    const c = cliffColor(terrain);
-    const pts = [ox - 32, oy + 16, ox, oy + 32, ox, oy + 32 + (z - zb), ox - 32, oy + 16 + (z - zb)];
-    g.poly(pts).fill(c);
-    if (detail >= 1) cliffTexture(g, ox - 32, oy + 16, ox, oy + 32, z - zb, terrain, c);
-  }
   const fr = edge(ctx.frontRight);
-  if (fr < h) {
-    const zb = fr * LEVEL;
-    const c = shade(cliffColor(terrain), 0.78);
-    const pts = [ox, oy + 32, ox + 32, oy + 16, ox + 32, oy + 16 + (z - zb), ox, oy + 32 + (z - zb)];
-    g.poly(pts).fill(c);
-    if (detail >= 1) cliffTexture(g, ox, oy + 32, ox + 32, oy + 16, z - zb, terrain, c);
-  }
-  const diamond = [ox, oy, ox + 32, oy + 16, ox, oy + 32, ox - 32, oy + 16];
   const grass = pal.grass[(variant + ((x + y) & 1) * 2) % pal.grass.length]!;
+
+  // Sloped cliff faces & talus aprons so highlands blend organically instead of looking like flat stacked blocks
+  if (fl < h) {
+    const drop = (h - fl) * LEVEL;
+    const c = cliffColor(terrain);
+    const pts = [ox - 32, oy + 16, ox, oy + 32, ox, oy + 32 + drop, ox - 32, oy + 16 + drop];
+    g.poly(pts).fill(c);
+    if ((terrain === 'mountain' || terrain === 'rocky' || terrain === 'hill') && ctx.frontLeft >= 0) {
+      // Diagonal talus / scree buttresses softening the elevation step
+      const scree = terrain === 'hill' ? shade(grass, 0.84) : shade(c, 0.92);
+      g.poly([ox - 32, oy + 16, ox - 14, oy + 25, ox - 4, oy + 32 + drop, ox - 32, oy + 16 + drop]).fill(scree);
+      g.poly([ox - 18, oy + 23, ox, oy + 32, ox, oy + 32 + drop, ox - 24, oy + 20 + drop]).fill(shade(c, 0.78));
+    }
+    if (detail >= 1) cliffTexture(g, ox - 32, oy + 16, ox, oy + 32, drop, terrain, c);
+  }
+  if (fr < h) {
+    const drop = (h - fr) * LEVEL;
+    const c = shade(cliffColor(terrain), 0.78);
+    const pts = [ox, oy + 32, ox + 32, oy + 16, ox + 32, oy + 16 + drop, ox, oy + 32 + drop];
+    g.poly(pts).fill(c);
+    if ((terrain === 'mountain' || terrain === 'rocky' || terrain === 'hill') && ctx.frontRight >= 0) {
+      const scree = terrain === 'hill' ? shade(grass, 0.74) : shade(c, 0.88);
+      g.poly([ox, oy + 32, ox + 18, oy + 23, ox + 26, oy + 19 + drop, ox, oy + 32 + drop]).fill(scree);
+      g.poly([ox + 14, oy + 25, ox + 32, oy + 16, ox + 32, oy + 16 + drop, ox + 6, oy + 29 + drop]).fill(shade(c, 0.72));
+    }
+    if (detail >= 1) cliffTexture(g, ox, oy + 32, ox + 32, oy + 16, drop, terrain, c);
+  }
+
+  const diamond = [ox, oy, ox + 32, oy + 16, ox, oy + 32, ox - 32, oy + 16];
   let color = grass;
   if (terrain === 'fertile') color = pal.fertile;
   else if (terrain === 'sand') color = pal.sand;
@@ -163,11 +176,12 @@ export function drawGroundTile(
   else if (terrain === 'lake') color = shade(pal.water, 0.9);
   else if (terrain === 'stone') color = shade(grass, 0.94);
   else if (terrain === 'forest') color = shade(grass, 0.9 - h * 0.02);
-  else if (terrain === 'hill') color = shade(grass, 0.97 - h * 0.03);
-  else if (terrain === 'rocky') color = pal.snow ? 0xd9dde0 : 0x9d988c;
-  else if (terrain === 'mountain') color = pal.snow || h >= 4 ? 0xe7ebee : 0x8b867b;
+  else if (terrain === 'hill') color = shade(grass, 0.96 - h * 0.03);
+  else if (terrain === 'rocky') color = pal.snow ? 0xd9dde0 : 0x8c877b;
+  else if (terrain === 'mountain') color = pal.snow ? 0xdce3e8 : 0x787368;
   else if (terrain === 'terrace') color = pal.snow ? 0xe4e8ea : shade(pal.fertile, 1.08);
   g.poly(diamond).fill(color);
+
   if (terrain === 'fertile' || terrain === 'terrace') {
     for (let i = 1; i <= 3; i++) {
       const t = i / 4;
@@ -175,14 +189,62 @@ export function drawGroundTile(
         .lineTo(ox + 32 * (1 - t), oy + 16 * (1 + t))
         .stroke({ color: terrain === 'terrace' ? shade(pal.grass[0]!, 0.9) : pal.furrow, width: 1.5, alpha: 0.7 });
     }
-  } else if ((terrain === 'rocky' || terrain === 'mountain') && detail >= 1) {
-    const rock = terrain === 'mountain' ? 0x6f6a60 : 0x7d786d;
-    g.poly([ox - 10, oy + 18, ox - 4, oy + 12, ox + 2, oy + 17]).fill(pal.snow ? 0xc9cfd3 : rock);
-    g.poly([ox + 4, oy + 22, ox + 10, oy + 15, ox + 15, oy + 21]).fill(pal.snow ? 0xc0c7cc : shade(rock, 0.9));
-    if (terrain === 'mountain' && h >= 3 && !pal.snow) g.poly([ox - 6, oy + 12, ox, oy + 6, ox + 6, oy + 12]).fill(0xf1f4f6);
-  } else if (terrain === 'hill' && !pal.snow && detail >= 1) {
-    g.ellipse(ox - 6, oy + 18, 7, 2.5).fill({ color: shade(grass, 1.08), alpha: 0.7 });
-    g.ellipse(ox + 8, oy + 14, 6, 2).fill({ color: shade(grass, 0.9), alpha: 0.7 });
+  } else if (terrain === 'mountain' && !road) {
+    // Realistic 3D multi-faceted mountain massif rising organically from the tile footprint
+    const jitterX = ((variant & 1) ? 4 : -4) + ((x + y) % 3 - 1) * 2;
+    const jitterY = ((variant & 2) ? 2 : -2);
+    const peakH = 22 + h * 5 + (variant % 3) * 3;
+    const px = ox + jitterX;
+    const py = oy + 14 + jitterY - peakH;
+    const baseRock = pal.snow ? 0xcfd6dc : 0x7c776c;
+    const litRock = pal.snow ? 0xe6edf2 : 0x999386;
+    const darkRock = pal.snow ? 0x9aa6b2 : 0x57534a;
+    const ridgeRock = pal.snow ? 0xb8c2cc : 0x686359;
+
+    // Broad mountain base & faceted slopes covering the diamond edges so adjacent mountains merge seamlessly
+    g.poly([ox - 32, oy + 16, ox, oy, px, py, ox - 12, oy + 26]).fill(litRock);
+    g.poly([ox, oy, ox + 32, oy + 16, ox + 12, oy + 26, px, py]).fill(darkRock);
+    g.poly([ox - 32, oy + 16, px, py, ox, oy + 32]).fill(baseRock);
+    g.poly([px, py, ox + 32, oy + 16, ox, oy + 32]).fill(shade(darkRock, 0.88));
+
+    // Central craggy ridge spine & secondary shoulder peak
+    const sx = ox - jitterX * 0.8 + 9;
+    const sy = py + peakH * 0.34;
+    g.poly([ox - 20, oy + 20, sx, sy, ox + 2, oy + 30]).fill(ridgeRock);
+    g.poly([sx, sy, ox + 24, oy + 18, ox + 2, oy + 30]).fill(shade(darkRock, 0.82));
+
+    // Craggy rock strata lines along the slopes
+    if (detail >= 1) {
+      line(g, [px, py], [ox - 6, oy + 25], shade(litRock, 1.12), 1.2, 0.75);
+      line(g, [px, py], [ox + 10, oy + 22], shade(darkRock, 0.75), 1.2, 0.75);
+    }
+
+    // Natural snow-dusted summit & alpine gullies on high peaks (h >= 3 or winter)
+    if (pal.snow || h >= 3) {
+      const snowY = py + peakH * (pal.snow ? 0.55 : 0.38);
+      g.poly([
+        px, py,
+        px - 11, snowY + 2,
+        px - 3, snowY + 5,
+        px + 2, snowY + 1,
+        px + 10, snowY + 3,
+      ]).fill(0xf5f8fa);
+      g.poly([
+        px, py,
+        px + 2, snowY + 1,
+        px + 10, snowY + 3,
+      ]).fill(0xdbe4ec);
+    }
+  } else if (terrain === 'rocky' && detail >= 1 && !road) {
+    // Organic rocky crag outcrops & sloped stone ledges
+    const rock = pal.snow ? 0xc9cfd3 : 0x7d786d;
+    g.poly([ox - 22, oy + 18, ox - 8, oy + 6, ox + 4, oy + 16, ox - 6, oy + 24]).fill(shade(rock, 1.08));
+    g.poly([ox - 8, oy + 6, ox + 18, oy + 14, ox + 6, oy + 24, ox - 6, oy + 24]).fill(shade(rock, 0.84));
+    g.poly([ox + 2, oy + 22, ox + 12, oy + 11, ox + 22, oy + 19, ox + 10, oy + 26]).fill(shade(rock, 0.92));
+  } else if (terrain === 'hill' && !pal.snow && detail >= 1 && !road) {
+    // Rolling highland contour shading
+    g.poly([ox - 24, oy + 16, ox, oy + 3, ox + 18, oy + 14, ox - 4, oy + 23]).fill({ color: shade(grass, 1.09), alpha: 0.65 });
+    g.poly([ox - 4, oy + 23, ox + 18, oy + 14, ox + 26, oy + 18, ox, oy + 30]).fill({ color: shade(grass, 0.86), alpha: 0.65 });
   } else if (terrain === 'grass' && variant === 0 && !pal.snow) {
     g.poly([ox - 6, oy + 18, ox - 4, oy + 13, ox - 2, oy + 18]).fill(shade(grass, 0.86));
     g.poly([ox + 5, oy + 22, ox + 7, oy + 17, ox + 9, oy + 22]).fill(shade(grass, 0.86));

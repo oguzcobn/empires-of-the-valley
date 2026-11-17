@@ -1083,9 +1083,9 @@ export class ValleyRenderer {
     else if (cart) drawCart(g, [0xb98a5a, 0xe2bb45, 0x9aa0a6][Math.floor(Math.random() * 3)]!);
     else drawVillager(g, VILLAGER_COLORS[Math.floor(Math.random() * VILLAGER_COLORS.length)]!, Math.floor(Math.random() * 8));
     c.addChild(g);
-    const flare = fanMatch && index % 3 === 0 ? new Graphics() : undefined;
+    const flare = fanMatch ? new Graphics() : undefined;
     if (flare) c.addChild(flare);
-    c.scale.set(cart ? 0.82 : fanMatch ? 0.8 : 0.66);
+    c.scale.set(cart ? 0.82 : fanMatch ? 0.84 : 0.66);
     c.cullable = true;
     this.objects.addChild(c);
     this.tintKey = -1;
@@ -1237,8 +1237,8 @@ export class ValleyRenderer {
         this.walkers.splice(i, 1);
       }
     }
-    // Simulated match days attract a small crowd in local or visiting kit.
-    // Match days are fictional world events, not imported real match schedules.
+    // Match Days: 10 supporters march together as a single synchronized cortege (5 rows x 2 columns)
+    // waving team flags and holding burning flares with dense billowing smoke!
     const match = matchDayFor(view.game);
     const key = match ? `${match.team}:${match.day}` : '';
     if (this.activeFanMatch !== key) {
@@ -1246,17 +1246,25 @@ export class ValleyRenderer {
       this.matchFans = [];
       this.activeFanMatch = key;
       if (match) {
-        const fans = Math.min(12, Math.max(3, Math.floor(totalPopulation(p) / 4)));
+        const fans = 10;
+        let leaderStart: [number, number] | null = null;
         for (let i = 0; i < fans; i++) {
           const fan = this.spawnWalker(false, match, i);
-          if (fan) this.matchFans.push(fan);
+          if (!fan) continue;
+          if (!leaderStart) leaderStart = [fan.from[0], fan.from[1]];
+          fan.from = [leaderStart[0], leaderStart[1]];
+          fan.to = [leaderStart[0], leaderStart[1]];
+          fan.prev = [leaderStart[0], leaderStart[1]];
+          fan.speed = 0.56;
+          fan.phase = i * 0.65;
+          this.matchFans.push(fan);
         }
       }
     }
     const isRoad = (x: number, y: number): boolean => !!tileAt(p, x, y)?.road;
     // Movement animation stays comfortable even at 4x world-simulation speed.
     const step = motion ? (dt / 1000) * Math.min(1.35, SPEED_FACTOR[view.game.speed] ?? 0) : 0;
-    for (const w of [...this.walkers, ...this.matchFans]) {
+    for (const w of this.walkers) {
       if (!isRoad(w.to[0], w.to[1]) && this.roadTiles.length) {
         const r = this.roadTiles[Math.floor(Math.random() * this.roadTiles.length)]!;
         w.from = [r[0], r[1]];
@@ -1276,9 +1284,7 @@ export class ValleyRenderer {
           .map(([dx, dy]) => [w.to[0] + dx, w.to[1] + dy] as [number, number])
           .filter(([x, y]) => isRoad(x, y));
         const forward = options.filter(([x, y]) => x !== w.from[0] || y !== w.from[1]);
-        const eligible = w.fan
-          ? forward.filter(([x, y]) => tileAt(p, x, y)?.paved) : forward;
-        const pool = eligible.length ? eligible : forward.length ? forward : options;
+        const pool = forward.length ? forward : options;
         w.prev = w.from;
         w.from = w.to;
         if (pool.length) w.to = pool[Math.floor(Math.random() * pool.length)]!;
@@ -1291,8 +1297,6 @@ export class ValleyRenderer {
       const dx = w.to[0] - w.from[0];
       const dy = w.to[1] - w.from[1];
       const paved = !!tileAt(p, w.from[0], w.from[1])?.paved && !!tileAt(p, w.to[0], w.to[1])?.paved;
-      // Two protected sidewalk offsets, one on each edge of a paved tile.
-      // Pedestrians never stand in the centre of a vehicle's lane.
       const sidewalk = paved && !w.cart && (dx !== 0 || dy !== 0);
       const [wx, wy] = sidewalk ? pedestrianSidewalkOffset(dx, dy, w.side) : [0, 0];
       w.c.position.set(
@@ -1301,7 +1305,77 @@ export class ValleyRenderer {
       );
       w.c.zIndex = fx + fy + 0.015;
       if (w.cart) w.c.scale.x = dx - dy < 0 ? -1 : 1;
-      if (w.flare) drawSupporterFlare(w.flare, motion ? this.time : 0, w.phase);
+    }
+
+    // Update the 10-supporter match-day cortege marching together as a single convoy
+    if (this.matchFans.length > 0 && match) {
+      const leader = this.matchFans[0]!;
+      if (!isRoad(leader.to[0], leader.to[1]) && this.roadTiles.length) {
+        const starts = this.pavedRoadTiles.length ? this.pavedRoadTiles : this.roadTiles;
+        const r = starts[Math.floor(Math.random() * starts.length)]!;
+        leader.from = [r[0], r[1]];
+        leader.to = [r[0], r[1]];
+        leader.prev = [r[0], r[1]];
+        leader.t = 1;
+      }
+      leader.t += step * leader.speed;
+      if (leader.t >= 1) {
+        const options = (
+          [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ] as const
+        )
+          .map(([dx, dy]) => [leader.to[0] + dx, leader.to[1] + dy] as [number, number])
+          .filter(([x, y]) => isRoad(x, y));
+        const forward = options.filter(([x, y]) => x !== leader.from[0] || y !== leader.from[1]);
+        const eligible = forward.filter(([x, y]) => tileAt(p, x, y)?.paved);
+        const pool = eligible.length ? eligible : forward.length ? forward : options;
+        leader.prev = leader.from;
+        leader.from = leader.to;
+        if (pool.length) leader.to = pool[Math.floor(Math.random() * pool.length)]!;
+        leader.t = 0;
+      }
+      const dx = leader.to[0] - leader.from[0];
+      const dy = leader.to[1] - leader.from[1];
+      const baseFx = leader.from[0] + dx * leader.t + 0.5;
+      const baseFy = leader.from[1] + dy * leader.t + 0.5;
+      const lift =
+        this.hz(p, leader.from[0], leader.from[1]) * (1 - leader.t) +
+        this.hz(p, leader.to[0], leader.to[1]) * leader.t;
+      const dirX = dx || (leader.from[0] - leader.prev[0]) || 1;
+      const dirY = dy || (leader.from[1] - leader.prev[1]) || 0;
+      const perpX = -dirY;
+      const perpY = dirX;
+
+      this.matchFans.forEach((fan, idx) => {
+        const row = Math.floor(idx / 2); // 0..4 (5 rows)
+        const col = (idx % 2) === 0 ? -1 : 1; // 2 columns marching side by side
+        const alongOffset = -row * 0.16;
+        const sideOffset = col * 0.11;
+        const fx = baseFx + dirX * alongOffset + perpX * sideOffset;
+        const fy = baseFy + dirY * alongOffset + perpY * sideOffset;
+        const bob = step > 0 ? Math.sin(this.time / 75 + fan.phase) * 1.3 : 0;
+        const sx = isoX(fx, fy);
+        const sy = isoY(fx, fy) + bob - lift;
+        fan.c.position.set(sx, sy);
+        fan.c.zIndex = fx + fy + 0.03 + idx * 0.001;
+        if (fan.flare) {
+          drawSupporterFlare(fan.flare, motion ? this.time : 0, fan.phase, match.jersey, match.stripe);
+        }
+        // Emit dense world-space flare smoke particles rising above the cortege
+        if (motion && step > 0 && this.particles.length < 95 && Math.random() < 0.22) {
+          const pg = new Graphics();
+          const smokeCol = idx % 3 === 0 ? match.jersey : idx % 3 === 1 ? match.stripe : 0xe2e8f0;
+          pg.circle(0, 0, 3.8 + Math.random() * 3.5).fill({ color: smokeCol, alpha: 0.55 });
+          pg.position.set(sx + 4 + (Math.random() - 0.5) * 6, sy - 22 - Math.random() * 6);
+          pg.zIndex = fx + fy + 25;
+          this.objects.addChild(pg);
+          this.particles.push({ g: pg, life: 0.85 + Math.random() * 0.45 });
+        }
+      });
     }
   }
 

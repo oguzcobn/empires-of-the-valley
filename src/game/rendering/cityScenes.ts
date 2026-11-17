@@ -7,7 +7,7 @@ import { tileAt } from '../systems/grid';
 import { defOf } from '../data/buildings';
 import { HEIGHT_PX } from '../data/balance';
 import { isoX, isoY, P } from './iso';
-import { drawCityCar } from './trafficSprites';
+import { drawCityCar, drawFireTruck } from './trafficSprites';
 import { drawVillager } from './sprites';
 
 const lerp = (a: MapPoint, b: MapPoint, t: number): MapPoint => ({
@@ -48,6 +48,7 @@ interface Actor {
   person: Graphics;
   red: Graphics;
   blue: Graphics;
+  fx: Graphics;
   key: string;
 }
 export class CityScenes {
@@ -63,14 +64,15 @@ export class CityScenes {
       car = new Graphics(),
       person = new Graphics(),
       red = new Graphics(),
-      blue = new Graphics();
-    root.addChild(car, person, red, blue);
+      blue = new Graphics(),
+      fx = new Graphics();
+    root.addChild(car, person, red, blue, fx);
     root.cullable = true;
     this.parent.addChild(root);
     drawVillager(person, 0xdfa454, 0);
-    red.circle(-1, -8, 2).fill(0xff334e);
-    blue.circle(2, -8, 2).fill(0x367eff);
-    a = { root, car, person, red, blue, key: '' };
+    red.circle(-1, -11, 2.2).fill(0xff334e);
+    blue.circle(2.5, -11, 2.2).fill(0x367eff);
+    a = { root, car, person, red, blue, fx, key: '' };
     this.actors.set(id, a);
     return a;
   }
@@ -123,22 +125,28 @@ export class CityScenes {
         a.root.zIndex = own.x + own.y + w + h - 0.9;
       }
       const paint =
-        j.kind === 'ambulance'
-          ? 0xf5f7f5
-          : j.kind === 'patrol'
-            ? 0x295383
-            : j.kind === 'delivery'
-              ? 0xb98749
-              : 0x619b98;
-      const key = `${paint}:${Math.sign(dx)},${Math.sign(dy)}`;
+        j.kind === 'fire'
+          ? 0xd62828
+          : j.kind === 'ambulance'
+            ? 0xf5f7f5
+            : j.kind === 'patrol'
+              ? 0x295383
+              : j.kind === 'delivery'
+                ? 0xb98749
+                : 0x619b98;
+      const key = `${j.kind}:${paint}:${Math.sign(dx)},${Math.sign(dy)}`;
       if (a.key !== key) {
         a.car.clear();
-        drawCityCar(a.car, paint, false, dx || 1, dy);
-        if (j.kind === 'ambulance') {
-          a.car.rect(-1, -7, 2, 6).fill(0xdc3345);
-          a.car.rect(-3, -5, 6, 2).fill(0xdc3345);
+        if (j.kind === 'fire') {
+          drawFireTruck(a.car, dx || 1, dy);
+        } else {
+          drawCityCar(a.car, paint, false, dx || 1, dy);
+          if (j.kind === 'ambulance') {
+            a.car.rect(-1, -7, 2, 6).fill(0xdc3345);
+            a.car.rect(-3, -5, 6, 2).fill(0xdc3345);
+          }
+          if (j.kind === 'delivery') a.car.roundRect(-6, -9, 10, 7, 1).fill(0xc9b994);
         }
-        if (j.kind === 'delivery') a.car.roundRect(-6, -9, 10, 7, 1).fill(0xc9b994);
         a.key = key;
       }
       a.car.visible = true;
@@ -159,12 +167,67 @@ export class CityScenes {
           isoY(personAt.x - at.x, personAt.y - at.y),
         );
       }
-      const emergency = j.kind === 'patrol' || j.kind === 'ambulance';
-      a.red.visible = emergency && !reduced && Math.floor(this.time / 280) % 2 === 0;
+      const emergency = j.kind === 'patrol' || j.kind === 'ambulance' || j.kind === 'fire';
+      a.red.visible = emergency && !reduced && Math.floor(this.time / 240) % 2 === 0;
       a.blue.visible = emergency && !reduced && !a.red.visible;
+
+      // Fire emergency flames on the target building + high-pressure water spray from the fire truck!
+      a.fx.clear();
+      if (j.kind === 'fire' && j.stage !== 'return' && j.stage !== 'walkOut') {
+        const [tw, th] = defOf(target).footprint;
+        const fireWorldX = target.x + tw * 0.48;
+        const fireWorldY = target.y + th * 0.45;
+        const fxX = isoX(fireWorldX - at.x, fireWorldY - at.y);
+        const fxY = isoY(fireWorldX - at.x, fireWorldY - at.y) - 22;
+
+        // Roaring multi-layered flames & dark smoke rising from the burning building
+        for (let k = 0; k < 5; k++) {
+          const phase = this.time / 130 + k * 1.4;
+          const ox = Math.sin(phase) * 7 + (k - 2) * 4.5;
+          const oy = Math.cos(phase * 1.2) * 3;
+          const flameH = 9 + Math.sin(phase * 1.7) * 4;
+          a.fx.poly([fxX + ox - 5, fxY + oy, fxX + ox, fxY + oy - flameH - 6, fxX + ox + 5, fxY + oy])
+            .fill({ color: 0xff3b1f, alpha: 0.85 });
+          a.fx.poly([fxX + ox - 3, fxY + oy, fxX + ox, fxY + oy - flameH, fxX + ox + 3, fxY + oy])
+            .fill({ color: 0xffb703, alpha: 0.92 });
+          // Rising dark smoke clouds above the fire
+          const smokeAge = ((this.time / 350 + k * 0.35) % 1);
+          a.fx.circle(fxX + ox + smokeAge * 8, fxY - 12 - smokeAge * 26, 4 + smokeAge * 7)
+            .fill({ color: 0x334155, alpha: (1 - smokeAge) * 0.55 });
+        }
+
+        // High-pressure water jet spraying from the fire truck's roof cannon onto the flames!
+        if (j.stage === 'park' || j.stage === 'walkIn' || j.stage === 'inside') {
+          const nozzleX = 0;
+          const nozzleY = -16;
+          const midX = (nozzleX + fxX) * 0.5;
+          const midY = Math.min(nozzleY, fxY) - 26;
+          // Continuous main water stream + bright white core
+          a.fx.moveTo(nozzleX, nozzleY)
+            .quadraticCurveTo(midX, midY, fxX, fxY - 2)
+            .stroke({ color: 0x38bdf8, width: 3.6, alpha: 0.82, cap: 'round' });
+          a.fx.moveTo(nozzleX, nozzleY)
+            .quadraticCurveTo(midX, midY - 1.5, fxX, fxY - 2)
+            .stroke({ color: 0xe0f2fe, width: 1.8, alpha: 0.92, cap: 'round' });
+          // Animated water droplets & foam splash along the jet
+          for (let d = 0; d < 8; d++) {
+            const u = ((this.time / 220 + d / 8) % 1);
+            const inv = 1 - u;
+            const wx = inv * inv * nozzleX + 2 * inv * u * midX + u * u * fxX;
+            const wy = inv * inv * nozzleY + 2 * inv * u * midY + u * u * (fxY - 2);
+            a.fx.circle(wx + Math.sin(d * 2.1 + this.time / 60) * 2.2, wy, 1.8).fill({ color: 0xbae6fd, alpha: 0.9 });
+          }
+          // Water foam splash on the burning roof
+          for (let sIdx = 0; sIdx < 4; sIdx++) {
+            const ang = (this.time / 90) + sIdx * 1.57;
+            a.fx.circle(fxX + Math.cos(ang) * 7, fxY - 2 + Math.sin(ang) * 3.5, 2.5)
+              .fill({ color: 0xe0f2fe, alpha: 0.78 });
+          }
+        }
+      }
     }
     for (const b of p.buildings) {
-      if (!isBuilt(b) || !['hospital', 'police_station'].includes(b.definitionId)) continue;
+      if (!isBuilt(b) || !['hospital', 'police_station', 'fire_station'].includes(b.definitionId)) continue;
       for (let slot = 0; slot < (b.definitionId === 'hospital' ? 2 : 1); slot++) {
         if (s.cityLife?.jobs.some((j) => j.source === b.id && slot === 0)) continue;
         const id = `idle:${b.id}:${slot}`;
@@ -172,16 +235,21 @@ export class CityScenes {
         const a = this.actor(id);
         place(a, bay(b, slot));
         a.root.zIndex = b.x + b.y + 3.1;
-        if (a.key !== 'idle') {
+        if (a.key !== `idle:${b.definitionId}`) {
           a.car.clear();
-          drawCityCar(a.car, b.definitionId === 'hospital' ? 0xf5f7f5 : 0x295383, false, 1, 0);
-          if (b.definitionId === 'hospital') {
-            a.car.rect(-1, -7, 2, 6).fill(0xdc3345);
-            a.car.rect(-3, -5, 6, 2).fill(0xdc3345);
+          if (b.definitionId === 'fire_station') {
+            drawFireTruck(a.car, 1, 0);
+          } else {
+            drawCityCar(a.car, b.definitionId === 'hospital' ? 0xf5f7f5 : 0x295383, false, 1, 0);
+            if (b.definitionId === 'hospital') {
+              a.car.rect(-1, -7, 2, 6).fill(0xdc3345);
+              a.car.rect(-3, -5, 6, 2).fill(0xdc3345);
+            }
           }
-          a.key = 'idle';
+          a.key = `idle:${b.definitionId}`;
         }
         a.person.visible = a.red.visible = a.blue.visible = false;
+        a.fx.clear();
       }
     }
     for (const f of s.cityLife?.flights ?? []) {
@@ -196,6 +264,7 @@ export class CityScenes {
       a.root.y = isoY(at.x, at.y) - (tileAt(p, b.x, b.y)?.height ?? 0) * HEIGHT_PX - at.alt;
       a.root.zIndex = b.x + b.y + 11.1 + (at.alt > 0 ? 100 : 0);
       a.person.visible = a.red.visible = a.blue.visible = false;
+      a.fx.clear();
       if (a.key !== `${at.heading}`) {
         a.car.clear();
         const pts = [

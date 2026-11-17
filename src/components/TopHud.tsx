@@ -92,8 +92,12 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
         >
           {settings.view3d ? '3B Açık' : '3B / 2B'}
         </button>
-        <button type="button" className="chip hud-city" onClick={() => openPanel('world')}
-          title={`Şehir merkezi (${p.width}×${p.height} kare) · Haritayı ve bölgeleri görmek için tıkla`}>
+        <button
+          type="button"
+          className="chip hud-city"
+          onClick={() => openPanel('world')}
+          title={`Şehir merkezi (${p.width}×${p.height} kare) · Haritayı ve bölgeleri büyütmek için tıkla`}
+        >
           {cityOf(game.cityId, game.culture).name} · {p.width}×{p.height}
         </button>
         <span className="chip" title={DIFFICULTY_RULES[difficultyOf(game.difficulty)].description} data-testid="hud-difficulty">
@@ -101,7 +105,7 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
         </span>
         {match && (
           <span className="chip matchday-chip" title="Gerçek maç takvimi değil; oyun içi kurgusal maç atmosferi">
-            ⚽ Maç günü · {match.teamName}{match.home ? '' : ' (ziyaretçi taraftarı)'} · Şehirde taraftarlar!
+            ⚽ Maç günü · {match.teamName}{match.home ? '' : ' (ziyaretçi taraftarı)'} · 10 kişilik taraftar korteji meşale ve bayraklarla yürüyüşte!
           </span>
         )}
         <div className={`hud-date season-${cal.season}`} title={t('hud.dateTip')}>

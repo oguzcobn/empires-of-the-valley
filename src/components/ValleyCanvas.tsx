@@ -79,7 +79,6 @@ export function ValleyCanvas(): ReactElement {
     };
     let disposed = false;
     let renderer: ValleyView | null = null;
-    // Switching view modes should never leave an old renderer error on screen.
     setError(null);
     const callbacks: RendererHost = {
       getView() {
@@ -196,16 +195,12 @@ export function ValleyCanvas(): ReactElement {
       })
       .catch((e: unknown) => {
         if (disposed) return;
-        const message = e instanceof Error ? e.message : String(e);
         if (view3d) {
-          // A stale cached HTML/module graph can refer to a hashed 3D chunk
-          // that has been removed by a newer GitHub Pages deployment. The
-          // classic 2D renderer is bundled with the app and remains available.
           useApp.getState().updateSettings({ view3d: false });
           useApp.getState().toast('info', '3B harita yüklenemedi. Oyun ve kayıtlarınız korunarak 2B haritaya geçildi.');
           return;
         }
-        setError(message);
+        setError(e instanceof Error ? e.message : String(e));
       });
     return () => {
       disposed = true;
@@ -280,8 +275,12 @@ export function ValleyCanvas(): ReactElement {
       </div>}
       {tool.kind === 'demolish' && (
         <div className="road-plan-controls" aria-label="Yıkım ve arazi temizleme aracı">
-          <p role="status">🪓 <b>Yık / Arazi Temizle:</b> Bina ve yolları kaldır; boş ağaç, taş ve engebeli alanları temizleyerek yeni inşaat kareleri aç.</p>
-          <div><button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'select' })}>Kapat</button></div>
+          <p role="status">
+            🪓 <b>Yık / Arazi Temizle:</b> Bina veya yolu yıkmak ya da <b>ağaçları, taşları ve engebeleri temizleyip düz inşaat alanı açmak (+15 odun/taş)</b> için kareye tıkla.
+          </p>
+          <div>
+            <button type="button" className="btn" onClick={() => useApp.getState().setTool({ kind: 'select' })}>Kapat</button>
+          </div>
         </div>
       )}
       {tool.kind === 'hunt' && game && (
