@@ -62,22 +62,31 @@ function personShape(shirt: number, trousers = 0x3a4250, hat?: number): THREE.Bu
 
 function boatShape(kind: VesselKind): THREE.BufferGeometry {
   const b = new Builder();
-  const len = kind === 'cargo' ? 0.62 : kind === 'yacht' ? 0.5 : 0.36;
-  const wid = kind === 'cargo' ? 0.2 : 0.14;
-  const hull = kind === 'yacht' ? 0xf4f4f0 : kind === 'cargo' ? 0x5a4636 : 0x8f5f3b;
+  const len = kind === 'cargo' ? 0.66 : kind === 'yacht' ? 0.52 : 0.38;
+  const wid = kind === 'cargo' ? 0.21 : 0.145;
+  const hull = kind === 'yacht' ? 0xf4f4f0 : kind === 'cargo' ? 0x6b2232 : 0x8f5f3b;
+  // V-shaped water wake foam trailing behind the vessel
+  b.box(-len * 0.48, 0.004, -wid * 0.58, len * 0.42, 0.006, 0.025, 0xe8f7fb, 0.24);
+  b.box(-len * 0.48, 0.004, wid * 0.58, len * 0.42, 0.006, 0.025, 0xe8f7fb, -0.24);
+  b.box(-len * 0.38, 0.005, 0, len * 0.28, 0.005, wid * 0.55, 0xd8f1f8);
+  // Hull & prow
   b.box(0, -0.02, 0, len * 0.72, 0.08, wid, hull);
   b.box(len * 0.4, -0.02, 0, wid * 0.72, 0.08, wid * 0.72, hull, Math.PI / 4);
   b.box(0, 0.06, 0, len * 0.7, 0.012, wid * 0.9, kind === 'yacht' ? 0xd9b98a : 0xb98a5a);
   if (kind === 'cargo') {
-    b.box(-len * 0.24, 0.072, 0, 0.13, 0.11, wid * 0.7, 0xe8e2d2);
-    for (let i = 0; i < 3; i++) b.box(0.02 + i * 0.1, 0.072, 0, 0.08, 0.06, wid * 0.6, [0xc94a3a, 0x3f7fb5, 0xe3b23c][i]!);
+    b.box(-len * 0.24, 0.072, 0, 0.13, 0.12, wid * 0.72, 0xe8e2d2);
+    b.box(-len * 0.19, 0.14, 0, 0.03, 0.035, wid * 0.65, 0x2b4256);
+    b.cyl(-len * 0.27, 0.19, 0, 0.018, 0.022, 0.06, 0xc94a3a, 6);
+    for (let i = 0; i < 3; i++) b.box(0.02 + i * 0.1, 0.072, 0, 0.085, 0.065, wid * 0.64, [0xc94a3a, 0x3f7fb5, 0xe3b23c][i]!);
   } else if (kind === 'yacht') {
-    b.box(-0.03, 0.072, 0, 0.16, 0.05, wid * 0.6, 0xe8ecef);
+    b.box(-0.03, 0.072, 0, 0.17, 0.055, wid * 0.64, 0xe8ecef);
+    b.box(0.03, 0.095, 0, 0.06, 0.025, wid * 0.58, 0x2b4256);
     b.cyl(0.04, 0.072, 0, 0.006, 0.008, 0.46, 0x6a5a48, 5);
     b.gable(-0.12, -0.004, 0.04, 0.004, 0.14, 0.38, 0xfbfaf4, true);
   } else {
     b.cyl(0, 0.072, 0, 0.006, 0.008, 0.28, 0x6a5a48, 5);
-    b.box(-0.06, 0.072, 0, 0.1, 0.04, wid * 0.5, 0x6a8a9a);
+    b.box(-0.06, 0.072, 0, 0.11, 0.045, wid * 0.55, 0x6a8a9a);
+    b.gable(-0.08, -0.004, 0.02, 0.004, 0.11, 0.2, 0xf2ead8, true);
   }
   return b.build();
 }
@@ -117,6 +126,19 @@ interface Boat {
   ty: number;
   t: number;
 }
+interface Bird {
+  root: THREE.Group;
+  wingL: THREE.Mesh;
+  wingR: THREE.Mesh;
+  cx: number;
+  cz: number;
+  rx: number;
+  rz: number;
+  angle: number;
+  speed: number;
+  alt: number;
+  phase: number;
+}
 
 const yawOf = (hx: number, hz: number): number => Math.atan2(-hz, hx);
 
@@ -134,8 +156,8 @@ export interface ActorView {
 }
 
 /**
- * Everything that moves: traffic, pedestrians, the fleet, the militia, wildlife, hunters and the
- * rail/air links. Visual only — the simulation never reads any of it.
+ * Everything that moves: traffic, pedestrians, the fleet, the militia, wildlife, hunters, flying
+ * bird flocks, and the rail/air links. Visual only — the simulation never reads any of it.
  */
 export class Actors3D {
   readonly group = new THREE.Group();
@@ -148,6 +170,7 @@ export class Actors3D {
   private cars: Roamer[] = [];
   private walkers: Roamer[] = [];
   private boats: Boat[] = [];
+  private birds: Bird[] = [];
   private soldiers: THREE.Mesh[] = [];
   private militiaPos: GridPoint | null = null;
   private militiaRoute: GridPoint[] = [];
@@ -173,7 +196,7 @@ export class Actors3D {
   }
 
   get count(): number {
-    return this.cars.length + this.walkers.length + this.boats.length + this.soldiers.length;
+    return this.cars.length + this.walkers.length + this.boats.length + this.soldiers.length + this.birds.length;
   }
 
   setShadows(on: boolean): void {
@@ -195,6 +218,72 @@ export class Actors3D {
 
   private drop(obj: THREE.Object3D): void {
     this.group.remove(obj);
+  }
+
+  // ---------------------------------------------------------------- birds / seagulls
+
+  private updateBirds(p: Province, dtMs: number, motion: boolean): void {
+    const desired = 7;
+    if (this.birds.length < desired) {
+      const bodyGeo = this.geo('bird-body', () => {
+        const b = new Builder();
+        b.box(0, 0, 0, 0.14, 0.035, 0.045, 0xf7f9fb);
+        b.box(0.08, 0.01, 0, 0.035, 0.022, 0.025, 0xe8b931);
+        b.box(-0.08, 0.005, 0, 0.05, 0.015, 0.065, 0x6b7b8c);
+        return b.build();
+      });
+      const wingLGeo = this.geo('bird-wing-l', () => {
+        const b = new Builder();
+        b.box(0, 0, -0.09, 0.065, 0.012, 0.18, 0xeef3f7);
+        b.box(-0.01, 0, -0.17, 0.045, 0.012, 0.05, 0x3b4856);
+        return b.build();
+      });
+      const wingRGeo = this.geo('bird-wing-r', () => {
+        const b = new Builder();
+        b.box(0, 0, 0.09, 0.065, 0.012, 0.18, 0xeef3f7);
+        b.box(-0.01, 0, 0.17, 0.045, 0.012, 0.05, 0x3b4856);
+        return b.build();
+      });
+      while (this.birds.length < desired) {
+        const i = this.birds.length;
+        const root = new THREE.Group();
+        const body = new THREE.Mesh(bodyGeo, this.mat);
+        const wingL = new THREE.Mesh(wingLGeo, this.mat);
+        const wingR = new THREE.Mesh(wingRGeo, this.mat);
+        body.castShadow = this.shadows;
+        wingL.castShadow = this.shadows;
+        wingR.castShadow = this.shadows;
+        root.add(body, wingL, wingR);
+        this.group.add(root);
+        this.birds.push({
+          root,
+          wingL,
+          wingR,
+          cx: p.width * (0.28 + ((i * 19) % 45) / 100),
+          cz: p.height * (0.25 + ((i * 31) % 50) / 100),
+          rx: 4.5 + (i % 4) * 1.6,
+          rz: 3.6 + ((i + 2) % 4) * 1.4,
+          angle: (i * Math.PI * 2) / desired,
+          speed: 0.28 + (i % 3) * 0.06,
+          alt: 2.3 + (i % 3) * 0.45,
+          phase: i * 1.3,
+        });
+      }
+    }
+    const sec = motion ? dtMs / 1000 : 0;
+    for (const b of this.birds) {
+      b.angle += sec * b.speed;
+      const x = b.cx + Math.cos(b.angle) * b.rx;
+      const z = b.cz + Math.sin(b.angle) * b.rz;
+      const vx = -Math.sin(b.angle) * b.rx;
+      const vz = Math.cos(b.angle) * b.rz;
+      const flap = motion ? Math.sin(this.time * 9.5 + b.phase) * 0.48 : 0.1;
+      b.wingL.rotation.x = flap;
+      b.wingR.rotation.x = -flap;
+      b.root.position.set(x, b.alt + Math.sin(this.time * 2.2 + b.phase) * 0.12, z);
+      b.root.rotation.y = yawOf(vx, vz);
+      b.root.rotation.z = -0.14;
+    }
   }
 
   // ---------------------------------------------------------------- traffic
@@ -598,6 +687,7 @@ export class Actors3D {
     this.updateMilitia(view, p, dtMs, roads, motion);
     this.updateWildlife(view, p);
     this.updateTransit(view, p);
+    this.updateBirds(p, dtMs, motion);
     this.lastTick = view.game.tick;
     this.lastTiles = p.tiles;
   }

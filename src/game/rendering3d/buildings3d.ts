@@ -188,10 +188,14 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
   },
   hut(c, w, d) {
     const floors = c.look.floors;
-    house(c, 0.2, 0.18, w - 0.2, d - 0.34, floors);
+    // Front lawn, stone walkway and garden tree so adjacent 1x1 residences have green breathing room
+    c.b.block(0.05, 0.05, w - 0.05, d - 0.05, 0, 0.012, 0x6ea152);
+    c.b.block(0.41, d - 0.36, 0.57, d - 0.04, 0.012, 0.02, 0xc9c2b2);
+    house(c, 0.21, 0.14, w - 0.23, d - 0.36, floors);
+    hedge(c, 0.08, d - 0.13, 0.38, d - 0.07);
+    tree(c, w - 0.15, d - 0.17, 0.72, (c.seed & 1) === 0 ? 0x4f9a48 : 0x5ca852);
     if (c.look.garden !== 'none') {
-      hedge(c, 0.08, d - 0.14, w - 0.5, d - 0.08);
-      c.b.sphere(w - 0.2, 0.05, d - 0.16, 0.05, c.look.garden === 'flowers' ? 0xe4829c : 0x4c8a45, 0.8, 6);
+      c.b.sphere(0.24, 0.05, d - 0.22, 0.05, c.look.garden === 'flowers' ? 0xe4829c : 0x4c8a45, 0.8, 6);
     }
   },
   warehouse(c, w, d, level) {
@@ -544,11 +548,17 @@ function modern(c: Ctx, id: BuildingId, w: number, d: number): void {
   c.b.block(.15,.2,7.85,1.25,.015,.025,0x394452);
   for(let x=.3;x<7.8;x+=.55)c.b.block(x,.7,x+.25,.74,.025,.03,0xffffff);
   c.b.block(.4,1.4,7.5,1.75,.015,.025,0x67717c);
+  // Jet bridges / boarding gates between apron and terminal
+  for(const gx of [2.6, 4.1, 5.6]) c.b.block(gx,1.68,gx+.18,2.02,.18,.34,0xb8c5cc);
   c.b.block(2,2,6.3,3.6,.015,.7,0xd9e8ed);
-  for(let x=2.15;x<6;x+=.4)c.b.block(x,3.6,x+.28,3.62,.2,.55,0x4b94ae);
+  c.b.block(1.92,1.94,6.38,3.66,.7,.77,0x466d82);
+  for(let x=2.15;x<6;x+=.4){c.b.block(x,3.6,x+.28,3.62,.2,.55,0x4b94ae);c.lit.block(x,3.62,x+.28,3.625,.2,.55,0xcfeef8);}
   c.b.block(6.8,2.7,7.2,3.1,0,1.5,0xbbc9d1);
   c.b.block(6.55,2.45,7.45,3.35,1.5,1.85,0x326c85);
+  c.lit.block(6.54,2.44,7.46,3.36,1.56,1.8,0x9ce2f7);
   c.b.block(6.5,2.4,7.5,3.4,1.85,1.9,0xe2ebed);
+  tree(c, 1.15, 3.3, 1.05);
+  tree(c, 7.6, 3.45, 0.95);
  }else{
   const h=id==='hotel'?1.9:id==='factory'?1:.7;
   c.b.block(.12,.12,w-.12,1.12,.015,h,id==='club'?0x323047:id==='hospital'?0xe8eff2:0xdac9b5);
@@ -556,6 +566,7 @@ function modern(c: Ctx, id: BuildingId, w: number, d: number): void {
   for(let y=.2;y<h-.1;y+=.4)for(let x=.22;x<w-.25;x+=.36){c.b.block(x,1.12,x+.22,1.13,y,y+.23,0x44768c);c.lit.block(x,1.13,x+.22,1.135,y,y+.23,0xffe08a);if(id==='hotel')c.b.block(x-.03,1.13,x+.26,1.3,y-.03,y+.01,0xe5ded1);}
   c.b.block(w/2-.14,1.13,w/2+.14,1.14,0,.32,0x23434f);
   if(id==='market'||id==='hospital'||id==='police_station'){c.b.block(.12,1.5,1.88,1.95,.015,.025,0x545e68);for(let x=.14;x<1.9;x+=.55)c.b.block(x,1.5,x+.015,1.94,.025,.03,0xffffff);}
+  if(id==='hospital'){c.b.block(w-.38,.45,w-.2,.53,h+.08,h+.14,0xdc3345);c.b.block(w-.33,.4,w-.25,.58,h+.08,h+.14,0xdc3345);}
   if(id==='factory'){for(const x of [.5,1,1.5])c.b.block(x,.3,x+.18,.5,1,1.85,0x9b5d4e);c.b.block(.3,1.2,2.7,1.8,.015,.2,0x68747c);}
   if(id==='hotel'||id==='hospital')c.b.block(.65,1.15,1.35,1.5,.32,.38,0x3b7481);
   if(id==='restaurant'){c.b.block(.15,1.12,1.85,1.48,.4,.46,0xb64f40);for(const x of [.45,1.35]){c.b.block(x-.16,1.55,x+.16,1.82,.15,.2,0xa97947);for(const z of [1.47,1.87])c.b.block(x-.1,z,x+.1,z+.1,.02,.12,0x4f6459);}}

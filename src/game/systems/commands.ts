@@ -41,6 +41,8 @@ import { UNIT_IDS, UNITS, specialistCount } from '../data/units';
 import type { UnitId } from '../data/units';
 import { forecastBattle } from './combat';
 import { huntRoute, planTransit, routeFrom, TRANSIT_COST, transitUnlocked, wildlife } from './frontier';
+import { expandProvinceGrid } from './terrain';
+import { emptyCityLife } from './cityLife';
 
 export type Command =
   | { type: 'hunt'; x: number; y: number; workers: number }
@@ -62,6 +64,7 @@ export type Command =
   | { type: 'orderVessel'; kind: VesselKind }
   | { type: 'cancelVessel'; orderId: number }
   | { type: 'sellYacht' }
+  | { type: 'dispatchFlight'; airportId: string }
   | { type: 'placeRoad'; x: number; y: number }
   | { type: 'placeRoadRoute'; start: RoadPoint; end: RoadPoint; bridge?: boolean; paved?: boolean }
   | { type: 'paveRoad'; x: number; y: number }
@@ -333,6 +336,14 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       return s.shipyard.queue.some((o) => o.id === cmd.orderId) ? null : { key: 'err.invalid' };
     case 'sellYacht':
       return s.shipyard.fleet.yacht > 0 ? null : { key: 'err.noYacht' };
+    case 'dispatchFlight': {
+      const b = buildingById(p, cmd.airportId);
+      if (!b || b.definitionId !== 'airport' || !isBuilt(b) || !b.connected || b.workers <= 0 || b.unpaid)
+        return { key: 'err.invalid' };
+      if (s.cityLife?.flights.some((f) => f.airport === b.id) || (s.cityLife?.flights.length ?? 0) >= 4)
+        return { key: 'err.busy' };
+      return missingFor(p, { gold: 1000 });
+    }
     case 'placeRoad': {
       const quote = roadQuote(s, cmd.x, cmd.y);
       return 'error' in quote ? quote.error : missingFor(p, quote.cost);
@@ -647,6 +658,14 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
       p.stocks.gold += VESSELS.yacht.salePrice ?? 0;
       logEvent(s, 'success', 'event.yachtSold', { gold: (VESSELS.yacht.salePrice ?? 0) / 1000 });
       break;
+    case 'dispatchFlight': {
+      const life = (s.cityLife ??= emptyCityLife());
+      pay(p, { gold: 1000 });
+      p.today.consumed.gold += 1000;
+      life.operatingCosts += 1000;
+      life.flights.push({ airport: cmd.airportId, phase: 'landing', age: 0, passengers: 0 });
+      break;
+    }
     case 'setTaxRate':
       p.taxRate = cmd.taxRate;
       break;
@@ -675,6 +694,7 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
       (s.claimedDistricts ??= []).push(cmd.provinceId);
       if (s.treaties) delete s.treaties[cmd.provinceId];
       if (!s.revealedProvinceIds.includes(cmd.provinceId)) s.revealedProvinceIds.push(cmd.provinceId);
+      expandProvinceGrid(s.seed, p, 4);
       logEvent(s, 'success', 'event.districtClaimed', { n: s.claimedDistricts.length });
       break;
     }
@@ -701,6 +721,7 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
         (s.claimedDistricts ??= []).push(cmd.provinceId);
         if (s.treaties) delete s.treaties[cmd.provinceId];
         if (!s.revealedProvinceIds.includes(cmd.provinceId)) s.revealedProvinceIds.push(cmd.provinceId);
+        expandProvinceGrid(s.seed, p, 4);
         logEvent(s, 'success', 'event.battleWon', { losses: battle.casualties });
       } else {
         logEvent(s, 'warning', 'event.battleLost', { losses: battle.casualties });

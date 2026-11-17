@@ -444,6 +444,7 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
           <Row label="Arazi">{t(`biome.${pickedProvince.biome}`)}</Row>
           <Row label="Bağlantılar">{pickedProvince.neighbors.length}</Row>
           <Row label="Kontrol edilen bölge">{owned.length} / {WORLD_PROVINCES.length}</Row>
+          <Row label="Vadi inşa alanı">{homeProvince(game).width} × {homeProvince(game).height} kare</Row>
           {!claimed && (
             <>
               <p className="hint">Genişleme: {cost} altın · en az 20 nüfus · 1. bölüm tamamlanmış olmalı.</p>
@@ -474,7 +475,7 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
 
             </>
           )}
-          <p className="hint">Bölgeler stratejik haritada genişler. Ayrı ilçelerde bina inşası sonraki geliştirme aşamasıdır.</p>
+          <p className="hint">Yönetime katılan veya fethedilen her ilçe, vadinin güney ve doğu sınırlarını +4 kare genişleterek yeni inşa alanı açar (maks. 64×64).</p>
         </aside>
       </div>
     </>
