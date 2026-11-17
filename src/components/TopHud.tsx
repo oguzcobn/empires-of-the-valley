@@ -30,7 +30,7 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
   const dispatch = useApp((s) => s.dispatch);
   const openPanel = useApp((s) => s.openPanel);
   const settings = useApp((s) => s.settings);
-  const setSettings = useApp((s) => s.setSettings);
+  const updateSettings = useApp((s) => s.updateSettings);
   const p = homeProvince(game);
   const flows = useMemo(() => computeFlows(game), [game]);
   const caps = useMemo(() => storageCaps(game, p), [game, p]);
@@ -86,7 +86,7 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
           type="button"
           className={`btn speed-btn ${settings.view3d ? 'active' : ''}`}
           aria-pressed={settings.view3d}
-          onClick={() => setSettings({ view3d: !settings.view3d })}
+          onClick={() => updateSettings({ view3d: !settings.view3d })}
           title="3B Tilt-Shift Diorama Görünümü / Klasik 2B Görünüm"
           data-testid="toggle-3d"
         >
