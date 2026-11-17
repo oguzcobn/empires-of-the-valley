@@ -73,7 +73,7 @@ export function loadSaveFile(raw: unknown): LoadResult {
   }
   const parsed = parseGameState(migrated.data);
   if (!parsed.ok)
-    return { ok: false, error: { key: 'save.err.invalid', params: { detail: parsed.issues[0] ?? '' } } };
+    return { ok: false, error: { key: 'save.err.invalid', params: { detail: parsed.reason } } };
   if (!parsed.state.provinces[parsed.state.homeProvinceId])
     return { ok: false, error: { key: 'save.err.invalid', params: { detail: 'homeProvince' } } };
   // Older campaign saves do not know about future chapters. Restore only
