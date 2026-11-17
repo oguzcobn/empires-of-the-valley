@@ -167,11 +167,29 @@ function minaret(c: Ctx, x: number, z: number, h: number): void {
   c.b.cone(x, h, z, 0.055, 0.2, ROOF_HEX.lead, 8);
 }
 
+function addSign(c: Ctx, title: string, start: number, width: number, y: number, z: number, bg: number): void {
+  const glyphs = [...title].map((ch) => LETTERS[ch] ?? LETTERS.I!);
+  const cols = glyphs.reduce((n, g) => n + g[0]!.length + 1, 0);
+  const step = width / Math.max(1, cols);
+  c.b.block(start - 0.03, z - 0.01, start + width + 0.03, z, y - 0.03, y + 0.22, bg);
+  let x = start;
+  for (const glyph of glyphs) {
+    glyph.forEach((row, j) =>
+      [...row].forEach((bit, i) => {
+        if (bit === '1') {
+          c.b.block(x + i * step, z, x + (i + 0.8) * step, z + 0.005, y + 0.17 - j * 0.034, y + 0.2 - j * 0.034, 0xffffff);
+        }
+      }),
+    );
+    x += (glyph[0]!.length + 1) * step;
+  }
+}
+
 type Maker = (c: Ctx, w: number, d: number, level: number) => void;
 
 const MAKERS: Partial<Record<BuildingId, Maker>> = {
   town_center(c, w, d, level) {
-    const floors = level >= 2 ? 3 : 2;
+    const floors = level >= 4 ? 4 : level >= 2 ? 3 : 2;
     c.b.block(0.08, 0.08, w - 0.08, d - 0.08, 0, 0.02, 0xc9c2b2);
     const top = house(c, 0.3, 0.42, w - 0.3, d - 0.5, floors);
     // clock tower on the corner facing the camera
@@ -186,12 +204,19 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     c.b.cyl(0.42, 0.07, d - 0.3, 0.02, 0.02, 0.12, 0x8b8578, 6);
     tree(c, w - 0.28, d - 0.26, 1.1);
   },
-  hut(c, w, d) {
+  hut(c, w, d, level) {
     const floors = c.look.floors;
     // Front lawn, stone walkway and garden tree so adjacent 1x1 residences have green breathing room
     c.b.block(0.05, 0.05, w - 0.05, d - 0.05, 0, 0.012, 0x6ea152);
     c.b.block(0.41, d - 0.36, 0.57, d - 0.04, 0.012, 0.02, 0xc9c2b2);
-    house(c, 0.21, 0.14, w - 0.23, d - 0.36, floors);
+    const top = house(c, 0.21, 0.14, w - 0.23, d - 0.36, floors);
+    if (level >= 4) {
+      // Modern glazed balcony & rooftop solar panel on Levels 4–5
+      c.lit.block(0.26, d - 0.36, w - 0.28, d - 0.34, 0.04 + FH, 0.04 + FH + 0.08, 0x38bdf8);
+      if (level >= 5) {
+        c.b.block(0.28, 0.22, w - 0.3, 0.48, top - 0.04, top - 0.02, 0x1e3a8a);
+      }
+    }
     hedge(c, 0.08, d - 0.13, 0.38, d - 0.07);
     tree(c, w - 0.15, d - 0.17, 0.72, (c.seed & 1) === 0 ? 0x4f9a48 : 0x5ca852);
     if (c.look.garden !== 'none') {
@@ -201,7 +226,7 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
   warehouse(c, w, d, level) {
     c.b.block(0.1, 0.1, w - 0.1, d - 0.1, 0, 0.02, 0xbcae94);
     const z1 = d - 0.6;
-    const top = 0.04 + (level >= 2 ? 1.5 : 1.2) * FH;
+    const top = 0.04 + (level >= 4 ? 2.1 : level >= 2 ? 1.5 : 1.2) * FH;
     c.b.block(0.2, 0.25, w - 0.2, z1, 0, top, c.wall);
     c.b.box(w / 2 - 0.3, 0, z1 + 0.004, 0.3, 0.3, 0.02, 0x6b4a2c);
     c.b.box(w / 2 + 0.3, 0, z1 + 0.004, 0.3, 0.3, 0.02, 0x6b4a2c);
@@ -213,13 +238,14 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
   granary(c, w, d, level) {
     c.b.block(0.1, 0.1, w - 0.1, d - 0.1, 0, 0.02, 0xc9b88f);
     const n = level >= 2 ? 2 : 1;
+    const h = level >= 4 ? 0.92 : 0.7;
     for (let i = 0; i < n; i++) {
       const x = 0.55 + i * 0.75, z = 0.6;
-      c.b.cyl(x, 0.02, z, 0.3, 0.3, 0.7, mixHex(c.wall, 0xe6d9b8, 0.5), 14);
+      c.b.cyl(x, 0.02, z, 0.3, 0.3, h, mixHex(c.wall, 0xe6d9b8, 0.5), 14);
       c.b.cyl(x, 0.3, z, 0.305, 0.305, 0.03, 0x9a8a68, 14);
-      c.b.cone(x, 0.72, z, 0.34, 0.3, c.roof, 14);
+      c.b.cone(x, h + 0.02, z, 0.34, 0.3, c.roof, 14);
     }
-    house(c, w - 0.85, d - 0.8, w - 0.25, d - 0.3, 1, 'gable');
+    house(c, w - 0.85, d - 0.8, w - 0.25, d - 0.3, level >= 4 ? 2 : 1, 'gable');
     c.b.box(0.4, 0.02, d - 0.35, 0.18, 0.1, 0.12, 0xd8c27a);
     c.b.box(0.62, 0.02, d - 0.3, 0.18, 0.1, 0.12, 0xcdb56c, 0.5);
   },
@@ -235,8 +261,8 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     for (let i = 0; i < 2; i++) c.b.box(0.5, 0.02 + i * 0.075, d - 0.35 + i * 0.03, 0.55, 0.07, 0.07, 0x916238, 0.3);
     c.b.cyl(1.5, 0, 0.45, 0.05, 0.06, 0.07, 0x8a5c34, 7);
   },
-  farm(c, w, d) {
-    house(c, 0.2, 0.2, 0.95, 0.75, 1);
+  farm(c, w, d, level) {
+    house(c, 0.2, 0.2, 0.95, 0.75, level >= 4 ? 2 : 1);
     // barn
     c.b.block(w - 0.85, 0.22, w - 0.2, 0.95, 0, 0.42, 0xa8462f);
     c.b.box(w - 0.52, 0, 0.955, 0.24, 0.3, 0.02, 0xf0e6d2);
@@ -248,7 +274,7 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     c.b.cyl(1.0, 0, 1.02, 0.1, 0.13, 0.14, 0xd8bf62, 9);
     c.b.cone(1.0, 0.14, 1.02, 0.11, 0.1, 0xcdb256, 9);
   },
-  quarry(c, w, d) {
+  quarry(c, w, d, level) {
     c.b.block(0.08, 0.08, w - 0.08, d - 0.08, 0, 0.015, 0xa9a59a);
     // stepped rock face
     c.b.block(0.15, 0.15, 1.2, 0.8, 0, 0.5, 0x8f8c84);
@@ -260,11 +286,11 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     c.b.box(w - 0.68, 0.7, 0.5, 0.55, 0.03, 0.03, COLORS.woodDark);
     c.b.box(w - 0.92, 0.52, 0.5, 0.008, 0.18, 0.008, 0x3a3a3a);
     c.b.box(w - 0.92, 0.42, 0.5, 0.1, 0.1, 0.1, 0xc8c4b8);
-    house(c, 0.25, d - 0.6, 0.8, d - 0.22, 1, 'gable');
+    house(c, 0.25, d - 0.6, 0.8, d - 0.22, level >= 4 ? 2 : 1, 'gable');
   },
   school(c, w, d) {
     c.b.block(0.08, 0.08, w - 0.08, d - 0.08, 0, 0.015, 0xcdbf9f);
-    const top = house(c, 0.25, 0.25, w - 0.25, 1.0, Math.min(2, c.look.floors));
+    const top = house(c, 0.25, 0.25, w - 0.25, 1.0, Math.min(3, c.look.floors));
     c.b.block(w / 2 - 0.12, 0.5, w / 2 + 0.12, 0.74, top - 0.2, top + 0.16, c.wall);
     c.b.pyramid(w / 2 - 0.16, 0.46, w / 2 + 0.16, 0.78, top + 0.16, 0.2, c.roof);
     c.lit.box(w / 2, top, 0.745, 0.08, 0.1, 0.012, 0xcaa24a);
@@ -272,9 +298,9 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     tree(c, 0.38, d - 0.4, 1.1);
     flagpole(c, w - 0.35, 0, d - 0.4, 0.5);
   },
-  market(c, w, d) {
+  market(c, w, d, level) {
     c.b.block(0.06, 0.06, w - 0.06, d - 0.06, 0, 0.02, 0xcfc4ac);
-    house(c, 0.25, 0.2, w - 0.25, 0.75, 1, 'hip');
+    house(c, 0.25, 0.2, w - 0.25, 0.75, level >= 4 ? 2 : 1, 'hip');
     const awnings = [0xc9463c, 0x3f7fb5, 0xe3b23c, 0x4f9a5a];
     for (let i = 0; i < 4; i++) {
       const x = 0.4 + (i % 2) * (w - 0.8);
@@ -303,17 +329,18 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     tree(c, w - 0.4, d - 0.35, 1.05);
     void top;
   },
-  watchtower(c, w, d) {
+  watchtower(c, w, d, level) {
     const cx = w / 2, cz = d / 2;
-    c.b.block(cx - 0.2, cz - 0.2, cx + 0.2, cz + 0.2, 0, 0.9, STONE.granite);
-    c.b.block(cx - 0.25, cz - 0.25, cx + 0.25, cz + 0.25, 0.9, 0.96, mixHex(STONE.granite, 0x000000, 0.15));
-    crenels(c, cx - 0.22, cz - 0.22, cx + 0.22, cz + 0.22, 0.96, STONE.granite);
-    c.lit.box(cx, 0.6, cz + 0.203, 0.06, 0.12, 0.012, GLASS);
-    c.lit.box(cx + 0.203, 0.6, cz, 0.012, 0.12, 0.06, GLASS);
+    const h = 0.78 + level * 0.12;
+    c.b.block(cx - 0.2, cz - 0.2, cx + 0.2, cz + 0.2, 0, h, STONE.granite);
+    c.b.block(cx - 0.25, cz - 0.25, cx + 0.25, cz + 0.25, h, h + 0.06, mixHex(STONE.granite, 0x000000, 0.15));
+    crenels(c, cx - 0.22, cz - 0.22, cx + 0.22, cz + 0.22, h + 0.06, STONE.granite);
+    c.lit.box(cx, h * 0.65, cz + 0.203, 0.06, 0.12, 0.012, GLASS);
+    c.lit.box(cx + 0.203, h * 0.65, cz, 0.012, 0.12, 0.06, GLASS);
     c.b.box(cx, 0, cz + 0.203, 0.1, 0.18, 0.012, DOOR);
-    flagpole(c, cx, 0.96, cz, 0.34);
+    flagpole(c, cx, h + 0.06, cz, 0.34);
   },
-  barracks(c, w, d) {
+  barracks(c, w, d, level) {
     c.b.block(0.06, 0.06, w - 0.06, d - 0.06, 0, 0.015, 0xb8a988);
     const wallHex = STONE.granite;
     c.b.block(0.1, 0.1, w - 0.1, 0.17, 0, 0.3, wallHex);
@@ -321,7 +348,7 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     c.b.block(w - 0.17, 0.1, w - 0.1, d - 0.1, 0, 0.3, wallHex);
     c.b.block(0.1, d - 0.17, w / 2 - 0.2, d - 0.1, 0, 0.3, wallHex);
     c.b.block(w / 2 + 0.2, d - 0.17, w - 0.1, d - 0.1, 0, 0.3, wallHex);
-    house(c, 0.3, 0.28, w - 0.3, 0.85, 1, 'gable');
+    house(c, 0.3, 0.28, w - 0.3, 0.85, level >= 4 ? 2 : 1, 'gable');
     for (const [x, z] of [[0.14, 0.14], [w - 0.14, 0.14], [0.14, d - 0.14], [w - 0.14, d - 0.14]] as const) {
       c.b.block(x - 0.09, z - 0.09, x + 0.09, z + 0.09, 0, 0.42, mixHex(wallHex, 0xffffff, 0.08));
       c.b.pyramid(x - 0.11, z - 0.11, x + 0.11, z + 0.11, 0.42, 0.14, c.roof);
@@ -400,24 +427,47 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     c.b.box(0.5, 0.03, d - 0.28, 0.3, 0.07, 0.14, 0xf2f2f2);
     c.b.box(0.5, 0.1, d - 0.28, 0.16, 0.05, 0.13, 0x2f4f7f);
   },
-  shipyard(c, w, d) {
-    c.b.block(0.06, 0.06, w - 0.06, d - 0.06, 0, 0.03, 0xa98f63);
-    house(c, 0.2, 0.2, 0.95, 0.9, 1, 'gable');
-    // slipway with a hull on the stocks
-    c.b.block(1.05, 0.25, w - 0.2, d - 0.2, 0.03, 0.05, 0x8a6a45);
-    const hx = (1.05 + w - 0.2) / 2;
-    c.b.box(hx, 0.1, d / 2, 0.3, 0.14, d - 0.75, 0x8f5f3b);
-    c.b.box(hx, 0.1, 0.42, 0.2, 0.14, 0.14, 0x8f5f3b, Math.PI / 4);
-    c.b.box(hx, 0.24, d / 2, 0.32, 0.02, d - 0.75, 0xd2a868);
-    for (let i = 0; i < 4; i++) {
-      const z = 0.55 + i * ((d - 1.1) / 3);
-      c.b.box(hx - 0.2, 0.05, z, 0.03, 0.2, 0.03, COLORS.woodDark);
-      c.b.box(hx + 0.2, 0.05, z, 0.03, 0.2, 0.03, COLORS.woodDark);
+  shipyard(c, w, d, level) {
+    // Damen Shipyards Antalya (DSA1–DSA6) 3D model:
+    // Concrete ASBAŞ Free Zone pier, high-bay white/silver production hall with Royal Blue DAMEN fascia,
+    // 560-ton blue Travel Lift straddle gantry, Syncrolift slipway, and Damen vessel hull
+    c.b.block(0.06, 0.06, w - 0.06, d - 0.06, 0, 0.03, 0xcbd5e1);
+    const hallH = 0.52 + Math.min(4, level - 1) * 0.08;
+    // High-bay DSA production hall
+    c.b.block(0.14, 0.14, 1.04, 1.12, 0.03, hallH, 0xf1f5f9);
+    // Royal Blue DAMEN fascia band
+    c.b.block(0.12, 0.12, 1.06, 1.14, hallH - 0.11, hallH, 0x004b87);
+    // High-bay blue industrial roll-up doors
+    c.b.block(0.24, 1.12, 0.54, 1.14, 0.03, hallH - 0.15, 0x0284c7);
+    c.b.block(0.64, 1.12, 0.94, 1.14, 0.03, hallH - 0.15, 0x0284c7);
+    c.lit.block(0.2, 0.13, 0.98, 0.15, hallH - 0.22, hallH - 0.14, 0xbae6fd);
+    if (level >= 4) {
+      // Rooftop solar panel array on DSA hall
+      c.b.block(0.2, 0.22, 0.98, 1.02, hallH, hallH + 0.02, 0x1e3a8a);
     }
-    c.b.cyl(0.4, 0.03, d - 0.4, 0.025, 0.035, 0.7, COLORS.woodDark, 6);
-    c.b.box(0.62, 0.68, d - 0.4, 0.5, 0.03, 0.03, COLORS.woodDark);
-    c.b.box(0.84, 0.5, d - 0.4, 0.008, 0.18, 0.008, 0x3a3a3a);
-    for (let i = 0; i < 3; i++) c.b.box(0.35 + i * 0.16, 0.03, 1.15, 0.5, 0.05, 0.06, 0xb98a5a, 0.2);
+    // Syncrolift slipway & yellow keel blocks
+    c.b.block(1.12, 0.22, w - 0.14, d - 0.14, 0.03, 0.055, 0x64748b);
+    const hx = (1.12 + w - 0.14) / 2;
+    for (let i = 0; i < 4; i++) {
+      const z = 0.45 + i * 0.34;
+      c.b.box(hx, 0.065, z, 0.24, 0.03, 0.06, 0xfacc15);
+    }
+    // Damen vessel hull on the stocks (1906 SAR orange -> FCS 5009 red -> SeaXplorer 58 navy)
+    const hullCol = level >= 5 ? 0x0f172a : level >= 3 ? 0xdc2626 : 0xea580c;
+    c.b.box(hx, 0.12, d / 2 + 0.08, 0.32, 0.14, d - 0.72, hullCol);
+    c.b.box(hx, 0.21, d / 2 + 0.08, 0.3, 0.04, d - 0.76, 0xf8fafc);
+    c.b.box(hx, 0.28, d / 2 - 0.05, 0.22, 0.11, 0.36, 0xf8fafc);
+    c.lit.box(hx, 0.3, d / 2 + 0.13, 0.18, 0.05, 0.02, 0x38bdf8);
+    // 560-ton Blue Travel Lift straddle gantry over the slipway
+    const gh = 0.76 + level * 0.04;
+    for (const gx of [1.16, w - 0.18]) {
+      for (const gz of [0.52, 1.48]) {
+        c.b.box(gx, 0.03, gz, 0.04, gh, 0.04, 0x0284c7);
+      }
+      c.b.block(gx - 0.02, 0.5, gx + 0.02, 1.5, gh, gh + 0.045, 0x0284c7);
+    }
+    c.b.block(1.14, 0.5, w - 0.16, 0.55, gh, gh + 0.045, 0x0369a1);
+    c.b.block(1.14, 1.45, w - 0.16, 1.5, gh, gh + 0.045, 0x0369a1);
   },
   terrace_farm(c, w, d) {
     for (let i = 0; i < Math.round(d / 0.2); i++) {
@@ -541,65 +591,235 @@ const fallback: Maker = (c, w, d) => {
   house(c, 0.25, 0.25, w - 0.25, d - 0.45, Math.max(1, Math.min(3, c.look.floors)));
 };
 
-function modern(c: Ctx, id: BuildingId, w: number, d: number, style: ArchitectureStyle = 'turkish'): void {
- const title=CITY_BUILDINGS[id]!;
- const scottish = style === 'scottish';
- c.b.block(.05,.05,w-.05,d-.05,0,.015,scottish?0x848c94:0x919d96);
- if(id==='airport'){
-  c.b.block(.15,.2,7.85,1.25,.015,.025,0x394452);
-  for(let x=.3;x<7.8;x+=.55)c.b.block(x,.7,x+.25,.74,.025,.03,0xffffff);
-  c.b.block(.4,1.4,7.5,1.75,.015,.025,0x67717c);
-  // Jet bridges / boarding gates between apron and terminal
-  for(const gx of [2.6, 4.1, 5.6]) c.b.block(gx,1.68,gx+.18,2.02,.18,.34,0xb8c5cc);
-  c.b.block(2,2,6.3,3.6,.015,.7,scottish?0xcfd6dc:0xd9e8ed);
-  c.b.block(1.92,1.94,6.38,3.66,.7,.77,scottish?0x334155:0x7b1e3a);
-  for(let x=2.15;x<6;x+=.4){c.b.block(x,3.6,x+.28,3.62,.2,.55,0x4b94ae);c.lit.block(x,3.62,x+.28,3.625,.2,.55,0xcfeef8);}
-  c.b.block(6.8,2.7,7.2,3.1,0,1.5,0xbbc9d1);
-  c.b.block(6.55,2.45,7.45,3.35,1.5,1.85,0x326c85);
-  c.lit.block(6.54,2.44,7.46,3.36,1.56,1.8,0x9ce2f7);
-  c.b.block(6.5,2.4,7.5,3.4,1.85,1.9,0xe2ebed);
-  tree(c, 1.15, 3.3, 1.05);
-  tree(c, 7.6, 3.45, 0.95);
- }else{
-  const h=id==='hotel'?1.9:id==='factory'?1:id==='fire_station'?.82:.7;
-  const wallCol=id==='fire_station'?(scottish?0xd6cfc2:0xf1ebe1):id==='club'?0x323047:id==='hospital'?0xe8eff2:scottish?0xc4b59b:0xe5d3bc;
-  c.b.block(.12,.12,w-.12,1.12,.015,h,wallCol);
-  const roofCol=id==='fire_station'?0xb91c1c:scottish?0x3b4452:0xa8422b;
-  c.b.block(.08,.08,w-.08,1.16,h,h+.08,roofCol);
-  if(scottish){
-   c.b.block(.22,.18,.36,.32,h+.08,h+.26,0x78716c);
-   c.b.block(w-.36,.18,w-.22,.32,h+.08,h+.26,0x78716c);
-  }else{
-   c.b.block(.2,.2,w-.2,1.02,h+.08,h+.16,0xbf4f36);
+function modern(c: Ctx, id: BuildingId, w: number, d: number, style: ArchitectureStyle = 'turkish', level = 1): void {
+  const title = CITY_BUILDINGS[id]!;
+  const scottish = style === 'scottish';
+  c.b.block(0.05, 0.05, w - 0.05, d - 0.05, 0, 0.015, scottish ? 0x848c94 : 0x919d96);
+
+  if (id === 'airport') {
+    c.b.block(0.15, 0.2, 7.85, 1.25, 0.015, 0.025, 0x394452);
+    for (let x = 0.3; x < 7.8; x += 0.55) c.b.block(x, 0.7, x + 0.25, 0.74, 0.025, 0.03, 0xffffff);
+    c.b.block(0.4, 1.4, 7.5, 1.75, 0.015, 0.025, 0x67717c);
+    // Jet bridges / boarding gates between apron and terminal
+    for (const gx of [2.6, 4.1, 5.6]) c.b.block(gx, 1.68, gx + 0.18, 2.02, 0.18, 0.34, 0xb8c5cc);
+    const termH = 0.7 + (level - 1) * 0.06;
+    c.b.block(2, 2, 6.3, 3.6, 0.015, termH, scottish ? 0xcfd6dc : 0xd9e8ed);
+    c.b.block(1.92, 1.94, 6.38, 3.66, termH, termH + 0.07, scottish ? 0x334155 : 0x7b1e3a);
+    for (let x = 2.15; x < 6; x += 0.4) {
+      c.b.block(x, 3.6, x + 0.28, 3.62, 0.2, 0.55, 0x4b94ae);
+      c.lit.block(x, 3.62, x + 0.28, 3.625, 0.2, 0.55, 0xcfeef8);
+    }
+    const atcH = 1.5 + (level - 1) * 0.08;
+    c.b.block(6.8, 2.7, 7.2, 3.1, 0, atcH, 0xbbc9d1);
+    c.b.block(6.55, 2.45, 7.45, 3.35, atcH, atcH + 0.35, 0x326c85);
+    c.lit.block(6.54, 2.44, 7.46, 3.36, atcH + 0.06, atcH + 0.3, 0x9ce2f7);
+    c.b.block(6.5, 2.4, 7.5, 3.4, atcH + 0.35, atcH + 0.4, 0xe2ebed);
+    tree(c, 1.15, 3.3, 1.05);
+    tree(c, 7.6, 3.45, 0.95);
+    addSign(c, title, 2.15, 3.9, termH + 0.04, 3.63, 0x244a72);
+    return;
   }
-  for(let y=.2;y<h-.1;y+=.4)for(let x=.22;x<w-.25;x+=.36){
-   if(id==='fire_station'&&y<.45)continue;
-   c.b.block(x,1.12,x+.22,1.13,y,y+.23,0x44768c);
-   c.lit.block(x,1.13,x+.22,1.135,y,y+.23,0xffe08a);
-   if(id==='hotel')c.b.block(x-.03,1.13,x+.26,1.3,y-.03,y+.01,0xe5ded1);
+
+  if (id === 'corporate_plaza') {
+    // 5-level stepped glass-and-steel corporate sky-rise plaza + marble forecourt + rooftop helipad
+    c.b.block(0.08, 0.08, w - 0.08, d - 0.08, 0.015, 0.03, 0xe2e8f0);
+    // Podium lobby
+    c.b.block(0.16, 0.18, w - 0.16, 1.38, 0.03, 0.42, 0xcbd5e1);
+    c.lit.block(0.22, 1.38, w - 0.22, 1.39, 0.05, 0.36, 0xbae6fd);
+    // Main glass curtain-wall tower
+    const towerH = 1.45 + (level - 1) * 0.26;
+    c.b.block(0.24, 0.22, w - 0.24, 1.18, 0.42, towerH, scottish ? 0x1e293b : 0x0f172a);
+    // Illuminated glass bands & steel mullions
+    for (let y = 0.5; y < towerH - 0.15; y += 0.22) {
+      c.lit.block(0.28, 1.18, w - 0.28, 1.19, y, y + 0.14, y > towerH - 0.4 ? 0xfef08a : 0x38bdf8);
+      c.lit.block(w - 0.24, 0.26, w - 0.23, 1.14, y, y + 0.14, 0x0284c7);
+    }
+    for (const mx of [0.26, 0.62, 1.0, 1.38, 1.74]) {
+      c.b.block(mx - 0.015, 1.175, mx + 0.015, 1.195, 0.42, towerH, 0x94a3b8);
+    }
+    // Crown & rooftop helipad
+    c.b.block(0.32, 0.28, w - 0.32, 1.12, towerH, towerH + 0.12, 0x334155);
+    if (level >= 3) {
+      c.b.cyl(1.0, towerH + 0.12, 0.7, 0.28, 0.28, 0.025, 0x1e293b, 14);
+      c.lit.box(1.0, towerH + 0.15, 0.7, 0.16, 0.01, 0.16, 0xfacc15);
+    }
+    // Forecourt reflection fountain
+    c.b.block(0.24, 1.52, 0.86, 1.88, 0.03, 0.06, 0x0284c7);
+    tree(c, 1.72, 1.72, 0.85);
+    addSign(c, title, 0.26, w - 0.52, towerH - 0.18, 1.19, 0x0f172a);
+    return;
   }
-  if(id==='fire_station'){
-   for(const bx of [.24,.94]){
-    c.b.block(bx,1.12,bx+.54,1.14,.015,.38,0xd62828);
-    c.lit.block(bx+.06,1.14,bx+.48,1.145,.2,.32,0xbae6fd);
-   }
-   c.b.block(1.46,.16,1.84,.54,h,h+.52,scottish?0x64748b:0xd62828);
-   c.lit.block(1.6,.3,1.7,.4,h+.52,h+.58,0xff2e4c);
-  }else{
-   c.b.block(w/2-.14,1.13,w/2+.14,1.14,0,.32,0x23434f);
+
+  if (id === 'aquapark') {
+    // Palomaqua & Grida Splash Park 3D model: turquoise multi-lobed pools, wooden slide tower & spiral tubular slides
+    c.b.block(0.06, 0.06, w - 0.06, d - 0.06, 0.015, 0.03, 0xf5deb3);
+    // Main turquoise landing pool + kids' splash pool
+    c.b.block(0.68, 0.24, 1.88, 1.78, 0.03, 0.065, 0x06b6d4);
+    c.lit.block(0.74, 0.3, 1.82, 1.72, 0.065, 0.072, 0x67e8f9);
+    // Wooden sunbed deck
+    c.b.cyl(1.55, 0.03, 1.52, 0.24, 0.24, 0.04, 0xd97706, 12);
+    // Multi-story timber-framed slide launch tower with pitched wooden roof
+    const twH = 0.88 + (level - 1) * 0.12;
+    for (const [px, pz] of [[0.2, 0.22], [0.58, 0.22], [0.2, 0.62], [0.58, 0.62]] as const) {
+      c.b.box(px, 0.03, pz, 0.045, twH, 0.045, 0x92400e);
+    }
+    c.b.block(0.16, 0.18, 0.62, 0.66, twH * 0.55, twH * 0.55 + 0.04, 0xb45309);
+    c.b.block(0.16, 0.18, 0.62, 0.66, twH - 0.04, twH, 0xb45309);
+    c.b.pyramid(0.12, 0.14, 0.66, 0.7, twH, 0.24, 0x78350f);
+
+    // Spiralling tubular water slides descending from tower into the turquoise pool!
+    const slides = [
+      { col: 0xfacc15, zOff: 0.32, yStart: twH - 0.06 }, // Yellow Windigo
+      { col: 0xf97316, zOff: 0.54, yStart: twH - 0.14 }, // Orange Looping Rocket
+      { col: 0x22c55e, zOff: 0.78, yStart: twH * 0.62 }, // Green Surf Safari
+      { col: 0x2563eb, zOff: 1.04, yStart: twH * 0.52 }, // Blue Aquatube
+    ];
+    const slideCount = Math.min(slides.length, 2 + Math.floor(level / 2));
+    for (let s = 0; s < slideCount; s++) {
+      const sl = slides[s]!;
+      const pts: [number, number, number][] = [];
+      for (let k = 0; k <= 8; k++) {
+        const t = k / 8;
+        const sx = 0.56 + t * 0.85 + Math.sin(t * Math.PI * 2 + s) * 0.12;
+        const sy = sl.yStart * (1 - t) + 0.08;
+        const sz = sl.zOff + t * 0.45 + Math.cos(t * Math.PI * 2 + s) * 0.1;
+        pts.push([sx, sy, sz]);
+      }
+      c.b.ribbon(pts, 0.095, sl.col, 0.025);
+      // White splash foam at landing
+      const end = pts.at(-1)!;
+      c.lit.sphere(end[0], 0.075, end[2], 0.075, 0xe0f2fe, 0.85, 6);
+    }
+    // Tipping Splash Bucket on kids' Aqua Tower
+    if (level >= 2) {
+      c.b.cyl(1.15, 0.06, 1.38, 0.025, 0.025, 0.36, 0x0284c7, 6);
+      c.b.cyl(1.15, 0.42, 1.38, 0.065, 0.055, 0.09, 0xef4444, 8);
+    }
+    tree(c, 0.24, 1.72, 0.88);
+    addSign(c, title, 0.2, 1.5, 0.18, 1.86, 0x0284c7);
+    return;
   }
-  if(id==='market'||id==='hospital'||id==='police_station'||id==='fire_station'){c.b.block(.12,1.5,1.88,1.95,.015,.025,0x545e68);for(let x=.14;x<1.9;x+=.55)c.b.block(x,1.5,x+.015,1.94,.025,.03,id==='fire_station'?0xfacc15:0xffffff);}
-  if(id==='hospital'){c.b.block(w-.38,.45,w-.2,.53,h+.08,h+.14,0xdc3345);c.b.block(w-.33,.4,w-.25,.58,h+.08,h+.14,0xdc3345);}
-  if(id==='factory'){for(const x of [.5,1,1.5])c.b.block(x,.3,x+.18,.5,1,1.85,0x9b5d4e);c.b.block(.3,1.2,2.7,1.8,.015,.2,0x68747c);}
-  if(id==='hotel'||id==='hospital')c.b.block(.65,1.15,1.35,1.5,.32,.38,scottish?0x1e3a8a:0x3b7481);
-  if(id==='restaurant'){c.b.block(.15,1.12,1.85,1.48,.4,.46,scottish?0x1e3a8a:0x7b1e3a);for(const x of [.45,1.35]){c.b.block(x-.16,1.55,x+.16,1.82,.15,.2,0xa97947);for(const z of [1.47,1.87])c.b.block(x-.1,z,x+.1,z+.1,.02,.12,0x4f6459);}}
-  if(id==='club')for(const x of [.17,1.8]){c.b.block(x,1.16,x+.04,1.17,.02,.72,0xe85aff);c.lit.block(x,1.17,x+.04,1.18,.02,.72,0xe85aff);}
- }
- const width=id==='airport'?3.9:w-.36, start=id==='airport'?2.15:.18, z=id==='airport'?3.63:1.15;
- const y=id==='airport'?.74:id==='hotel'?1.61:id==='factory'?.72:id==='fire_station'?.54:.42;
- const glyphs=[...title].map(ch=>LETTERS[ch]??LETTERS.I!),cols=glyphs.reduce((n,g)=>n+g[0]!.length+1,0),step=width/cols;
- c.b.block(start-.04,z-.01,start+width+.04,z,y-.03,y+.23,id==='fire_station'?0xd62828:id==='hospital'?0xc43c4b:0x244a72);
- let x=start;for(const glyph of glyphs){glyph.forEach((row,j)=>[...row].forEach((bit,i)=>{if(bit==='1')c.b.block(x+i*step,z,x+(i+.8)*step,z+.005,y+.18-j*.035,y+.21-j*.035,0xffffff);}));x+=(glyph[0]!.length+1)*step;}
+
+  if (id === 'hotel') {
+    // 5-Level Diversified Resort & Hotel Models (Fourhills -> Mercure/Sealife -> Paloma Grida -> Paloma Finesse -> Crowne Plaza/Porto Bello)
+    if (level === 3) {
+      // Lv.3: Paloma Grida Belek — Lagoon & Lake Suites around a turquoise Lake Villa Pool + wooden pergola
+      c.b.block(0.12, 0.58, 1.88, 1.86, 0.015, 0.06, 0x06b6d4);
+      c.lit.block(0.18, 0.64, 1.82, 1.8, 0.06, 0.066, 0x67e8f9);
+      // 3 Lake Suite villas with terracotta hip roofs & wooden swim-up piers
+      for (const [vx0, vx1] of [[0.14, 0.64], [0.74, 1.26], [1.36, 1.86]] as const) {
+        c.b.block(vx0, 0.14, vx1, 0.58, 0.015, 0.64, 0xfef3c7);
+        c.b.pyramid(vx0 - 0.02, 0.12, vx1 + 0.02, 0.6, 0.64, 0.18, 0xc2410c);
+        c.lit.block(vx0 + 0.08, 0.58, vx1 - 0.08, 0.59, 0.12, 0.52, 0xfef08a);
+        // Wooden sunbed pier jutting into the Lagoon Pool
+        c.b.block(vx0 + 0.1, 0.58, vx1 - 0.1, 0.84, 0.06, 0.075, 0xd97706);
+      }
+      // Circular wooden pergola restaurant by the lagoon
+      c.b.cyl(1.52, 0.06, 1.48, 0.24, 0.24, 0.18, 0xb45309, 10);
+      c.b.cone(1.52, 0.24, 1.48, 0.27, 0.12, 0x78350f, 10);
+      addSign(c, title, 0.25, 1.5, 0.42, 0.59, 0xb45309);
+      return;
+    }
+    if (level === 4) {
+      // Lv.4: Paloma Finesse Side — Minimalist white vertical-colonnade architecture, mirror pool & Zen pebble sculpture
+      c.b.block(0.12, 0.14, 1.88, 1.02, 0.015, 1.18, 0xf8fafc);
+      c.lit.block(0.18, 1.02, 1.82, 1.03, 0.08, 1.08, 0x38bdf8);
+      // Iconic white vertical colonnade fins across the facade
+      for (let x = 0.18; x <= 1.82; x += 0.16) {
+        c.b.block(x - 0.015, 1.01, x + 0.015, 1.05, 0.015, 1.18, 0xf1f5f9);
+      }
+      // Reflective mirror pool + Swim-Up terrace pool
+      c.b.block(0.16, 1.08, 1.84, 1.72, 0.015, 0.055, 0x0ea5e9);
+      c.lit.block(0.22, 1.14, 1.78, 1.66, 0.055, 0.062, 0x7dd3fc);
+      // Stacked white Zen pebble sculpture in the mirror pool (from Finesse Factsheet cover)
+      c.b.sphere(1.0, 0.11, 1.42, 0.14, 0xf8fafc, 0.65, 10);
+      c.b.sphere(1.0, 0.22, 1.42, 0.1, 0xffffff, 0.65, 10);
+      c.b.sphere(1.0, 0.3, 1.42, 0.065, 0xf8fafc, 0.65, 10);
+      // Private wooden beach cabanas
+      for (const cx of [0.34, 1.66]) {
+        c.b.block(cx - 0.12, 1.68, cx + 0.12, 1.9, 0.05, 0.22, 0xd97706);
+      }
+      addSign(c, title, 0.25, 1.5, 0.95, 1.05, 0x0284c7);
+      return;
+    }
+  }
+
+  const h = id === 'hotel' ? 1.15 + level * 0.22 : id === 'factory' ? 0.9 + level * 0.08 : id === 'fire_station' ? 0.82 : 0.7 + (level - 1) * 0.06;
+  const wallCol =
+    id === 'fire_station'
+      ? scottish
+        ? 0xd6cfc2
+        : 0xf1ebe1
+      : id === 'club'
+        ? 0x323047
+        : id === 'hospital'
+          ? 0xe8eff2
+          : scottish
+            ? 0xc4b59b
+            : 0xe5d3bc;
+  c.b.block(0.12, 0.12, w - 0.12, 1.12, 0.015, h, wallCol);
+  const roofCol = id === 'fire_station' ? 0xb91c1c : scottish ? 0x3b4452 : 0xa8422b;
+  c.b.block(0.08, 0.08, w - 0.08, 1.16, h, h + 0.08, roofCol);
+  if (scottish) {
+    c.b.block(0.22, 0.18, 0.36, 0.32, h + 0.08, h + 0.26, 0x78716c);
+    c.b.block(w - 0.36, 0.18, w - 0.22, 0.32, h + 0.08, h + 0.26, 0x78716c);
+  } else {
+    c.b.block(0.2, 0.2, w - 0.2, 1.02, h + 0.08, h + 0.16, 0xbf4f36);
+  }
+  if (id === 'hotel' && level === 1) {
+    // Fourhills Boutique Hotel & Traditional Turkish Hammam dome
+    c.b.dome(1.52, h + 0.16, 0.62, 0.26, ROOF_HEX.lead, 0.85);
+  }
+  if (id === 'hotel') {
+    // Outdoor resort pool in front of hotel
+    c.b.block(0.22, 1.42, 1.78, 1.88, 0.015, 0.05, 0x06b6d4);
+    c.lit.block(0.26, 1.46, 1.74, 1.84, 0.05, 0.056, 0x67e8f9);
+  }
+  for (let y = 0.2; y < h - 0.1; y += 0.4)
+    for (let x = 0.22; x < w - 0.25; x += 0.36) {
+      if (id === 'fire_station' && y < 0.45) continue;
+      c.b.block(x, 1.12, x + 0.22, 1.13, y, y + 0.23, 0x44768c);
+      c.lit.block(x, 1.13, x + 0.22, 1.135, y, y + 0.23, 0xffe08a);
+      if (id === 'hotel') c.b.block(x - 0.03, 1.13, x + 0.26, 1.3, y - 0.03, y + 0.01, 0xe5ded1);
+    }
+  if (id === 'fire_station') {
+    for (const bx of [0.24, 0.94]) {
+      c.b.block(bx, 1.12, bx + 0.54, 1.14, 0.015, 0.38, 0xd62828);
+      c.lit.block(bx + 0.06, 1.14, bx + 0.48, 1.145, 0.2, 0.32, 0xbae6fd);
+    }
+    c.b.block(1.46, 0.16, 1.84, 0.54, h, h + 0.52, scottish ? 0x64748b : 0xd62828);
+    c.lit.block(1.6, 0.3, 1.7, 0.4, h + 0.52, h + 0.58, 0xff2e4c);
+  } else {
+    c.b.block(w / 2 - 0.14, 1.13, w / 2 + 0.14, 1.14, 0, 0.32, 0x23434f);
+  }
+  if (id === 'market' || id === 'hospital' || id === 'police_station' || id === 'fire_station') {
+    c.b.block(0.12, 1.5, 1.88, 1.95, 0.015, 0.025, 0x545e68);
+    for (let x = 0.14; x < 1.9; x += 0.55) c.b.block(x, 1.5, x + 0.015, 1.94, 0.025, 0.03, id === 'fire_station' ? 0xfacc15 : 0xffffff);
+  }
+  if (id === 'hospital') {
+    c.b.block(w - 0.38, 0.45, w - 0.2, 0.53, h + 0.08, h + 0.14, 0xdc3345);
+    c.b.block(w - 0.33, 0.4, w - 0.25, 0.58, h + 0.08, h + 0.14, 0xdc3345);
+  }
+  if (id === 'factory') {
+    for (const x of [0.5, 1, 1.5]) c.b.block(x, 0.3, x + 0.18, 0.5, 1, 1.85, 0x9b5d4e);
+    c.b.block(0.3, 1.2, 2.7, 1.8, 0.015, 0.2, 0x68747c);
+  }
+  if (id === 'hotel' || id === 'hospital') c.b.block(0.65, 1.15, 1.35, 1.5, 0.32, 0.38, scottish ? 0x1e3a8a : 0x3b7481);
+  if (id === 'restaurant') {
+    c.b.block(0.15, 1.12, 1.85, 1.48, 0.4, 0.46, scottish ? 0x1e3a8a : 0x7b1e3a);
+    for (const x of [0.45, 1.35]) {
+      c.b.block(x - 0.16, 1.55, x + 0.16, 1.82, 0.15, 0.2, 0xa97947);
+      for (const z of [1.47, 1.87]) c.b.block(x - 0.1, z, x + 0.1, z + 0.1, 0.02, 0.12, 0x4f6459);
+    }
+  }
+  if (id === 'club')
+    for (const x of [0.17, 1.8]) {
+      c.b.block(x, 1.16, x + 0.04, 1.17, 0.02, 0.72, 0xe85aff);
+      c.lit.block(x, 1.17, x + 0.04, 1.18, 0.02, 0.72, 0xe85aff);
+    }
+
+  const y = id === 'hotel' ? h - 0.28 : id === 'factory' ? 0.72 : id === 'fire_station' ? 0.54 : 0.42;
+  addSign(c, title, 0.18, w - 0.36, y, 1.15, id === 'fire_station' ? 0xd62828 : id === 'hospital' ? 0xc43c4b : 0x244a72);
 }
 
 function finish(c: Ctx): BuildingModel {
@@ -629,7 +849,7 @@ export function buildModel(ref: ModelRef, seed = 0): BuildingModel {
   const def = BUILDINGS[ref.definitionId];
   const [w, d] = def.footprint;
   const c = context(ref, seed);
-  if (CITY_BUILDINGS[ref.definitionId]) modern(c, ref.definitionId, w, d, ref.style);
+  if (CITY_BUILDINGS[ref.definitionId]) modern(c, ref.definitionId, w, d, ref.style, ref.level);
   else (MAKERS[ref.definitionId] ?? fallback)(c, w, d, ref.level);
   return finish(c);
 }

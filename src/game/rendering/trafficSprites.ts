@@ -4,10 +4,9 @@ import { COLORS } from './palette';
 import { P, shade } from './iso';
 import type { Pt } from './iso';
 
-/**
- * Compact isometric vehicle drawn in local screen space around (0, 0).
- * Heading is expressed in tile-grid deltas: (+x, -x, +y, -y).
- */
+/** Distinct, visually recognizable 2.5D road vehicles. Geometry is projected from a
+ * miniature 3D body, not a flat icon, so the doors, glass, bonnet and wheel arches
+ * remain in proportion on each of the four isometric headings. */
 export function drawCityCar(
   g: Graphics,
   paint: number,
@@ -16,180 +15,104 @@ export function drawCityCar(
   dy: number,
   variant = 0,
 ): void {
-  const forwardX = dx - dy >= 0 ? 1 : -1;
-  const forwardY = dx + dy >= 0 ? 1 : -1;
-  const kind = Math.abs(variant) % 5;
-  const roofColor = shade(paint, 1.1);
-  const sideColor = shade(paint, 0.74);
-  const noseColor = shade(paint, 0.88);
-  const glass = 0x9bd3e6;
-  const tyre = 0x1f252c;
-  const rim = 0xa7b3c0;
+  const kind = Math.abs(variant) % 6;
+  const directionX = dx || (dy ? 0 : 1);
+  const directionY = dy;
+  const len = kind === 3 ? 0.94 : kind === 2 ? 0.88 : kind === 4 ? 0.87 : kind === 5 ? 0.82 : 0.78;
+  const half = len / 2;
+  const width = kind === 2 || kind === 3 || kind === 4 ? 0.34 : 0.30;
+  const side = width / 2;
+  const bottom = 1.8;
+  const belt = kind === 2 || kind === 3 ? 9.3 : 7.6;
+  const roofH = kind === 2 || kind === 3 ? 15.8 : kind === 4 ? 13.2 : kind === 5 ? 10.5 : 12.4;
+  const roofRear = kind === 0 ? -0.22 : kind === 1 ? -0.27 : kind === 2 ? -0.27 : kind === 3 ? -0.36 : kind === 4 ? 0.01 : -0.17;
+  const roofFront = kind === 3 ? 0.32 : kind === 4 ? 0.30 : kind === 5 ? 0.21 : 0.19;
+  const roofWidth = side * 0.82;
+  const glass = electric ? 0x8ecfc4 : 0x749db6;
+  const bright = shade(paint, 1.16);
+  const dark = shade(paint, 0.72);
+  const mid = shade(paint, 0.87);
+  const chrome = 0xcbd5e1;
+  const headlamp = 0xfff5c7;
 
-  const spec = [
-    { tail: 8.4, nose: 8.8, width: 4.6, roofTail: 3.6, roofNose: 4.7, roofY: -4.4, roofPeak: -7.0, cabinInset: 0.1 },
-    { tail: 7.7, nose: 7.9, width: 4.8, roofTail: 2.7, roofNose: 3.7, roofY: -4.0, roofPeak: -6.5, cabinInset: 0.3 },
-    { tail: 8.9, nose: 8.7, width: 5.1, roofTail: 4.3, roofNose: 4.8, roofY: -4.9, roofPeak: -7.6, cabinInset: 0.1 },
-    { tail: 9.2, nose: 8.5, width: 5.2, roofTail: 5.0, roofNose: 5.1, roofY: -5.2, roofPeak: -7.2, cabinInset: 0.2 },
-    { tail: 8.8, nose: 8.3, width: 4.9, roofTail: 1.9, roofNose: 3.7, roofY: -3.8, roofPeak: -6.5, cabinInset: 0.2 },
-  ][kind]!;
+  const point = (u: number, v: number, z = 0): Pt =>
+    P(u * directionX - v * directionY, u * directionY + v * directionX, z);
+  const face = (coords: [number, number, number][], color: number, alpha = 1): void => {
+    g.poly(coords.flatMap(([u, v, z]) => point(u, v, z))).fill({ color, alpha });
+  };
+  const line = (a: [number, number, number], b: [number, number, number], color: number, width = 0.8): void => {
+    const p0 = point(...a), p1 = point(...b);
+    g.moveTo(p0[0], p0[1]).lineTo(p1[0], p1[1]).stroke({ color, width, cap: 'round' });
+  };
+  const circle = (u: number, v: number, z: number, r: number, color: number): void => {
+    const at = point(u, v, z);
+    g.circle(at[0], at[1], r).fill(color);
+  };
 
-  const tailX = -spec.tail * forwardX;
-  const noseX = spec.nose * forwardX;
-  const shoulderY = 3.4;
-  const sillY = 5.5;
+  // Contact shadow, axles and four independent dark wheel arches.
+  g.ellipse(0, 2.8, 15.4, 5.2).fill({ color: COLORS.shadow, alpha: 0.3 });
+  const backAxle = -half * 0.57;
+  const frontAxle = half * 0.59;
+  for (const u of [backAxle, frontAxle]) for (const v of [-side * 0.95, side * 0.95]) {
+    circle(u, v, 2.6, kind === 2 || kind === 3 ? 2.65 : 2.3, 0x19212b);
+    circle(u, v, 2.6, 1.35, chrome);
+    circle(u, v, 2.6, 0.56, 0x536577);
+  }
+  // Chassis has true top and near-side polygons instead of a single lozenge.
+  face([[-half, -side, bottom], [half, -side, bottom], [half, side, bottom], [-half, side, bottom]], 0x303943);
+  face([[-half, side, bottom], [half, side, bottom], [half, side, belt], [-half, side, belt]], mid);
+  face([[-half, -side, bottom], [half, -side, bottom], [half, -side, belt], [-half, -side, belt]], dark);
+  face([[half, -side, bottom], [half, side, bottom], [half, side, belt], [half, -side, belt]], shade(paint, 0.79));
+  face([[-half, -side, belt], [half, -side, belt], [half, side, belt], [-half, side, belt]], bright);
 
-  g.ellipse(0, 1.8, spec.tail + 2.1, spec.width + 0.75).fill({ color: COLORS.shadow, alpha: 0.24 });
+  // Cabin: large glazed side panels, windscreen, roof and separate rear glass.
+  const rear = Math.max(-half + 0.04, roofRear);
+  const front = Math.min(half - 0.04, roofFront);
+  const roofBack = kind === 1 || kind === 3 ? rear - 0.015 : rear + 0.025;
+  face([[rear, -side * 0.89, belt], [front, -side * 0.89, belt], [front - 0.045, -roofWidth, roofH], [roofBack, -roofWidth, roofH]], glass);
+  face([[rear, side * 0.89, belt], [front, side * 0.89, belt], [front - 0.045, roofWidth, roofH], [roofBack, roofWidth, roofH]], shade(glass, 0.83));
+  face([[front, -side * 0.89, belt], [front, side * 0.89, belt], [front - 0.045, roofWidth, roofH], [front - 0.045, -roofWidth, roofH]], 0x9ec9db);
+  face([[rear, -side * 0.89, belt], [rear, side * 0.89, belt], [roofBack, roofWidth, roofH], [roofBack, -roofWidth, roofH]], shade(glass, 0.73));
+  face([[roofBack, -roofWidth, roofH], [front - 0.045, -roofWidth, roofH], [front - 0.045, roofWidth, roofH], [roofBack, roofWidth, roofH]], kind === 5 ? 0x292f3a : bright);
 
-  // Main body shell
-  g.poly([
-    tailX, -1.3,
-    0, -5.9,
-    noseX, -1,
-    0, shoulderY,
-  ]).fill(paint);
-  g.poly([
-    tailX, -1.3,
-    0, shoulderY,
-    0, sillY,
-    tailX, 0.7,
-  ]).fill(sideColor);
-  g.poly([
-    0, shoulderY,
-    noseX, -1,
-    noseX, 1.25,
-    0, sillY,
-  ]).fill(noseColor);
-
-  // Bumpers / rocker panels
-  g.poly([
-    tailX * 0.96, 0.5,
-    -1.8 * forwardX, 4.25,
-    -1.5 * forwardX, 4.95,
-    tailX * 0.98, 1.25,
-  ]).fill(0x313841);
-  g.poly([
-    1.5 * forwardX, 4.3,
-    noseX * 0.95, 0.95,
-    noseX * 0.95, 1.55,
-    1.6 * forwardX, 5.0,
-  ]).fill(0x39414a);
-
-  if (kind === 4) {
-    // Pickup bed
-    g.poly([
-      -7.5 * forwardX, -0.5,
-      -2.4 * forwardX, -3.1,
-      -0.7 * forwardX, -0.7,
-      -5.8 * forwardX, 1.8,
-    ]).fill(0x2d3136);
-    g.poly([
-      -7.1 * forwardX, -0.2,
-      -2.5 * forwardX, -2.5,
-      -2.5 * forwardX, -1.9,
-      -6.8 * forwardX, 0.25,
-    ]).fill(shade(paint, 0.92));
+  // A-pillars, B-pillars, door split and long door handles give the vehicle scale.
+  for (const v of [-side * 0.91, side * 0.91]) {
+    line([front, v, belt], [front - 0.045, Math.sign(v) * roofWidth, roofH], shade(paint, 0.6), 1.1);
+    line([rear, v, belt], [roofBack, Math.sign(v) * roofWidth, roofH], shade(paint, 0.6), 0.9);
+    if (kind !== 4) {
+      const midU = (rear + front) * 0.5;
+      line([midU, v, belt + 0.1], [midU, Math.sign(v) * roofWidth, roofH - 0.2], 0x344b5c, 1);
+      line([midU, v, belt - 1.2], [midU, v, 2.9], shade(paint, 0.63), 0.55);
+    }
+    line([-0.03, v * 1.01, belt - 2.4], [0.05, v * 1.01, belt - 2.4], chrome, 1.0);
+    line([-0.21, v * 1.01, belt - 2.3], [-0.15, v * 1.01, belt - 2.3], chrome, 1.0);
   }
 
-  const roofTail = -spec.roofTail * forwardX;
-  const roofNose = spec.roofNose * forwardX;
-  g.poly([
-    roofTail, spec.roofY,
-    spec.cabinInset * forwardX, spec.roofPeak,
-    roofNose, spec.roofY + (kind === 3 ? -0.2 : 0.25),
-    0, -1.75,
-  ]).fill(roofColor);
-
-  // Windows / greenhouse
-  g.poly([
-    (roofTail + 0.8 * forwardX), spec.roofY + 0.45,
-    0.2 * forwardX, spec.roofPeak + 0.9,
-    (roofNose - 0.8 * forwardX), spec.roofY + 0.55,
-    0, -2.0,
-  ]).fill({ color: glass, alpha: 0.82 });
-  g.moveTo((-0.1) * forwardX, spec.roofPeak + 0.65).lineTo(0, -2.05).stroke({ color: 0xd7f3fb, alpha: 0.45, width: 0.7 });
-  if (kind !== 3) {
-    g.moveTo((-2.0) * forwardX, -3.65).lineTo((-0.4) * forwardX, -2.35).stroke({ color: shade(glass, 0.8), width: 0.7 });
-    g.moveTo((2.0) * forwardX, -3.5).lineTo((0.4) * forwardX, -2.3).stroke({ color: shade(glass, 0.8), width: 0.7 });
+  if (kind === 4) { // Pickup: open black cargo bed and tall rear gate.
+    face([[-half + 0.045, -side * 0.83, belt + 0.2], [rear, -side * 0.83, belt + 0.2], [rear, side * 0.83, belt + 0.2], [-half + 0.045, side * 0.83, belt + 0.2]], 0x232c35);
+    line([-half + 0.05, -side, belt], [rear, -side, belt], chrome, 0.8);
+    line([-half + 0.05, side, belt], [rear, side, belt], chrome, 0.8);
   }
-
-  // Roof details / racks depending on type
-  if (kind === 2 || kind === 3) {
-    g.moveTo(-2.2 * forwardX, spec.roofY - 0.2).lineTo(-0.4 * forwardX, spec.roofPeak + 0.3).stroke({ color: 0xcbd5e1, width: 0.8 });
-    g.moveTo(0.5 * forwardX, spec.roofPeak + 0.2).lineTo(2.2 * forwardX, spec.roofY - 0.15).stroke({ color: 0xcbd5e1, width: 0.8 });
+  if (kind === 2 || kind === 3) { // SUV and van roof rails.
+    for (const v of [-roofWidth * 0.7, roofWidth * 0.7]) line([roofBack + 0.04, v, roofH + 1.3], [front - 0.09, v, roofH + 1.3], 0xc6d0d7, 1.1);
   }
-  if (electric) {
-    g.roundRect(-1.2, spec.roofPeak - 0.8, 2.4, 1.6, 0.6).fill(0x3ad29f);
+  if (kind === 5) { // Sports coupe spoiler and pronounced nose.
+    line([-half + 0.045, -side, belt + 2], [-half + 0.045, side, belt + 2], 0x262e38, 1.6);
   }
-
-  // Wheel arches and wheels
-  const rearWheel = kind === 3 ? -4.9 : -4.4;
-  const frontWheel = kind === 3 ? 4.8 : 4.3;
-  for (const [wx, wy] of [[rearWheel, 2.35], [frontWheel, 0.25]] as const) {
-    g.circle(wx, wy, kind === 2 || kind === 3 ? 1.85 : 1.7).fill(tyre);
-    g.circle(wx, wy, 0.82).fill(rim);
-  }
-
-  // Mirrors / grille / door lines
-  g.circle(5.3 * forwardX, -0.95, 0.35).fill(0xdfe7ef);
-  g.circle(-5.3 * forwardX, 0.55, 0.35).fill(0x4e5761);
-  g.moveTo(-0.4 * forwardX, -2.1).lineTo(-0.1 * forwardX, 3.9).stroke({ color: shade(paint, 0.6), width: 0.7, alpha: 0.55 });
-  g.moveTo(-6.0 * forwardX, -0.3).lineTo(-0.2 * forwardX, -3.45).stroke({ color: shade(paint, 1.18), width: 0.6, alpha: 0.5 });
-  g.moveTo(0.2 * forwardX, -3.45).lineTo(6.0 * forwardX, -0.3).stroke({ color: shade(paint, 1.18), width: 0.6, alpha: 0.5 });
-
-  // Lights
-  const noseLightY = forwardY > 0 ? 0.95 : -2.6;
-  const tailLightY = -noseLightY + 0.05;
-  g.circle(6.3 * forwardX, noseLightY, 1.05).fill(0xfff5ba);
-  g.circle(5.3 * forwardX, noseLightY - 0.15 * forwardY, 0.45).fill(0xe8dcc1);
-  g.circle(-6.2 * forwardX, tailLightY, 0.95).fill(0xe23b3b);
-  g.circle(-5.4 * forwardX, tailLightY + 0.12 * forwardY, 0.38).fill(0xffb38c);
-
-  // Type accents to make each vehicle silhouette distinct.
-  if (kind === 1) {
-    g.moveTo(1.2 * forwardX, -2.25).lineTo(4.4 * forwardX, -0.95).stroke({ color: 0x1f252c, width: 0.8, alpha: 0.45 });
-  } else if (kind === 2) {
-    g.roundRect(-7.0, -0.15, 2.5, 0.72, 0.25).fill(0x2a2e33);
-    g.roundRect(4.2, -1.65, 2.0, 0.72, 0.25).fill(0x2a2e33);
-  } else if (kind === 3) {
-    g.roundRect(-6.8, -0.1, 12.9, 0.7, 0.25).fill(0x3a4149);
-    g.moveTo(-1.8 * forwardX, -4.2).lineTo(-1.8 * forwardX, 3.6).stroke({ color: 0x7ea3b4, width: 0.7, alpha: 0.5 });
-    g.moveTo(1.8 * forwardX, -4.2).lineTo(1.8 * forwardX, 3.1).stroke({ color: 0x7ea3b4, width: 0.7, alpha: 0.5 });
-  } else if (kind === 4) {
-    g.moveTo(-3.0 * forwardX, -2.9).lineTo(-5.6 * forwardX, -1.6).stroke({ color: 0xd7dde3, width: 0.75 });
-  }
-}
-
-/** Dedicated silhouettes and signage for emergency and service traffic. */
-export function drawServiceVehicle(
-  g: Graphics,
-  service: 'ambulance' | 'patrol' | 'delivery',
-  dx: number,
-  dy: number,
-): void {
-  const forwardX = dx - dy >= 0 ? 1 : -1;
-  if (service === 'ambulance') {
-    drawCityCar(g, 0xf5f7f5, false, dx, dy, 3);
-    g.roundRect(-6.4, -7.0, 12.8, 1.6, 0.4).fill(0xd6303f);
-    g.rect(-1.1, -10.3, 2.2, 5.1).fill(0xd6303f);
-    g.rect(-3.4, -8.7, 6.8, 1.8).fill(0xd6303f);
-    g.roundRect(-3.2, -9.7, 6.4, 1.2, 0.4).fill(0xfafafa);
-    g.circle(-2.2 * forwardX, -9.3, 1.0).fill(0x2083da);
-    g.circle(2.2 * forwardX, -9.3, 1.0).fill(0xe83b42);
-  } else if (service === 'patrol') {
-    drawCityCar(g, 0x285084, false, dx, dy, 2);
-    g.roundRect(-6.1, -1.0, 12.2, 1.35, 0.35).fill(0xf2f5f9);
-    g.roundRect(-4.6, -2.0, 8.7, 1.4, 0.35).fill(0x1b365b);
-    g.roundRect(-3.8, -8.9, 7.6, 1.25, 0.3).fill(0x333f4e);
-    g.rect(-3.4, -8.7, 3.2, 0.95).fill(0x2e7bff);
-    g.rect(0.2, -8.7, 3.2, 0.95).fill(0xf23a42);
+  if (electric) { // Subtle EV signature grille, not a green dot on the roof.
+    line([half + 0.008, -side * 0.47, 4.3], [half + 0.008, side * 0.47, 4.3], 0x37a7a0, 1.1);
   } else {
-    drawCityCar(g, 0xb98749, false, dx, dy, 3);
-    g.poly([-6.9, -6.7, -2.1, -9.6, 4.1, -6.8, -0.8, -4.1]).fill(0xe5d7bd);
-    g.poly([-6.9, -6.7, -0.8, -4.1, -0.8, 0.8, -6.9, -2.3]).fill(0xc5aa7b);
-    g.moveTo(-6.2, -3.9).lineTo(-1.6, -6.4).stroke({ color: 0x937750, width: 0.8 });
-    g.roundRect(-4.8, -4.2, 2.6, 1.3, 0.35).fill(0xf4ead8);
+    line([half + 0.008, -side * 0.42, 4], [half + 0.008, side * 0.42, 4], 0x333a45, 1.0);
   }
+
+  // Mirrors, two front lamps, two brake lights, trim and plates.
+  for (const v of [-side * 0.76, side * 0.76]) {
+    circle(half + 0.006, v, belt - 1.1, 1.04, headlamp);
+    circle(-half - 0.005, v, belt - 1.2, 0.94, 0xe44b4b);
+    circle(front - 0.05, Math.sign(v) * side * 1.14, belt + 0.1, 0.76, shade(paint, 0.58));
+  }
+  line([half + 0.009, -side * 0.3, 2.8], [half + 0.009, side * 0.3, 2.8], 0xe9edf0, 1.7);
+  line([-half - 0.009, -side * 0.3, 2.8], [-half - 0.009, side * 0.3, 2.8], 0xe6e8e8, 1.3);
 }
 
 /**

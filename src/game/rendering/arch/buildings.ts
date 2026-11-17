@@ -377,9 +377,13 @@ function dressFront(ctx: DrawCtx, look: BuildingLook, w: number, h: number, pal:
 function house(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level: number, pal: SeasonPalette): void {
   const big = look.floors >= 3;
   const [u0, v0, u1, v1] = big ? [0.13, 0.15, 0.87, 0.85] : look.floors === 2 ? [0.16, 0.18, 0.84, 0.82] : [0.18, 0.22, 0.82, 0.8];
+  if (level >= 4) {
+    // Modern stone driveway pad & manicured border at Levels 4–5
+    poly(ctx, [P(0.06, 0.06), P(0.94, 0.06), P(0.94, 0.94), P(0.06, 0.94)], style === 'scottish' ? 0xb8b5aa : 0xd8cdb8, 0.72);
+  }
   shadowFor(ctx, u0, v0, u1, v1, look.floors * FLOOR_H + 12);
   dressBack(ctx, look, 1, 1, pal);
-  mass(ctx, look, u0, v0, u1, v1, {
+  const { zTop } = mass(ctx, look, u0, v0, u1, v1, {
     axis: style === 'scottish' ? 'u' : undefined,
     spacing: big ? 0.24 : 0.3,
   });
@@ -431,6 +435,21 @@ function house(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level
       }
     }
   }
+  // Level 4–5 modern residence / luxury apartment penthouse terrace & solar array
+  if (level >= 4 && ctx.detail >= 1) {
+    const frontFace = faceL(u0, u1, v1);
+    // Modern ground entrance canopy & panoramic glass balustrade
+    quad(ctx, frontFace, u0 + 0.18, u1 - 0.18, zTop - FLOOR_H + 1, zTop - FLOOR_H + 4.6, 0x38bdf8, 0.55);
+    if (level >= 5) {
+      // Rooftop solar panel array & penthouse skylight on Level 5 luxury residence
+      poly(
+        ctx,
+        [P(u0 + 0.16, v0 + 0.18, zTop + 5), P(u1 - 0.16, v0 + 0.18, zTop + 5), P(u1 - 0.16, v0 + 0.44, zTop + 3), P(u0 + 0.16, v0 + 0.44, zTop + 3)],
+        0x1e3a8a,
+      );
+      line(ctx, P(u0 + 0.16, v0 + 0.31, zTop + 4), P(u1 - 0.16, v0 + 0.31, zTop + 4), 0x93c5fd, 0.8);
+    }
+  }
   dressFront(ctx, look, 1, 1, pal);
 }
 
@@ -441,9 +460,10 @@ function townCenter(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, 
     for (let i = 1; i < 8; i++) line(ctx, P(0.1, i * 0.24), P(1.9, i * 0.24), 0x000000, 0.4, 0.12);
   }
   const flag = CULTURES[style].flag;
+  const towerH = level >= 5 ? 74 : level >= 4 ? 68 : level >= 2 ? 62 : 52;
   if (style === 'scottish') {
     // tolbooth: steeple at the back, harled hall with crow-stepped gables, mercat cross in front
-    const top = tower(ctx, look, style, 0.22, 0.22, 0.42, level >= 2 ? 62 : 52, true);
+    const top = tower(ctx, look, style, 0.22, 0.22, 0.42, towerH, true);
     shadowFor(ctx, 0.2, 0.85, 1.85, 1.75, 30);
     mass(ctx, look, 0.62, 0.9, 1.85, 1.72, { axis: 'u', door: 'L', doorT: 1.24, spacing: 0.26 });
     const flagAt = P(0.43, 0.43, top);
@@ -463,7 +483,7 @@ function townCenter(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, 
     box(ctx, cu - 0.16, cv - 0.16, cu + 0.16, cv + 0.16, 0, 3, STONE.sandstone);
     poly(ctx, [P(cu - 0.12, cv - 0.12, 3), P(cu + 0.12, cv - 0.12, 3), P(cu + 0.12, cv + 0.12, 3), P(cu - 0.12, cv + 0.12, 3)], pal.snow ? 0xcfe7f2 : 0x4fa9d6);
     box(ctx, cu - 0.03, cv - 0.03, cu + 0.03, cv + 0.03, 3, 8, STONE.quoin);
-    const top = tower(ctx, look, style, 0.32, 1.18, 0.3, level >= 2 ? 64 : 54, true);
+    const top = tower(ctx, look, style, 0.32, 1.18, 0.3, towerH + 2, true);
     drawFlagPole(ctx, P(0.47, 1.33, top - 0.3 * 70 + 2), flag, 0);
     // konak (government house) with wide eaves
     shadowFor(ctx, 0.85, 0.15, 1.85, 1.85, 34);
@@ -535,16 +555,16 @@ function school(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, leve
   if (style === 'turkish') {
     // medrese: domed cells around a courtyard, a large dome over the lecture hall and a carved portal
     shadowFor(ctx, 0.15, 0.15, 1.85, 1.85, 30);
-    mass(ctx, look, 0.15, 0.15, 1.85, 0.68, { floors: 1, door: null, windows: 'arched', spacing: 0.34, roof: 'dome', chimneys: false, balcony: false });
-    mass(ctx, look, 1.32, 0.68, 1.85, 1.85, { floors: 1, door: null, windows: 'arched', spacing: 0.34, roof: 'dome', chimneys: false, balcony: false });
-    drawDome(ctx, 0.66, 0.42, FLOOR_H + 2 + 0.5, 0.3);
+    mass(ctx, look, 0.15, 0.15, 1.85, 0.68, { floors: level >= 4 ? 2 : 1, door: null, windows: 'arched', spacing: 0.34, roof: 'dome', chimneys: false, balcony: false });
+    mass(ctx, look, 1.32, 0.68, 1.85, 1.85, { floors: level >= 4 ? 2 : 1, door: null, windows: 'arched', spacing: 0.34, roof: 'dome', chimneys: false, balcony: false });
+    drawDome(ctx, 0.66, 0.42, (level >= 4 ? 2 : 1) * FLOOR_H + 2 + 0.5, 0.3);
     // courtyard with a fountain
     poly(ctx, [P(0.2, 0.7), P(1.3, 0.7), P(1.3, 1.8), P(0.2, 1.8)], 0xe8dcbf, 0.9);
     const c = P(0.75, 1.25, 0);
     ctx.g.ellipse(c[0], c[1], 10, 5).fill(shade(STONE.sandstone, 0.95));
     ctx.g.ellipse(c[0], c[1] - 1, 8, 4).fill(pal.snow ? 0xcfe7f2 : 0x4fa9d6);
     // portal (taç kapı)
-    const ph = level >= 2 ? 30 : 26;
+    const ph = level >= 4 ? 34 : level >= 2 ? 30 : 26;
     const L = faceL(0.42, 0.92, 1.86);
     const R = faceR(1.62, 1.86, 0.92);
     paintWall(ctx, L, 0, ph, 'sandstone', look.facade);
@@ -578,16 +598,16 @@ function lumberCamp(ctx: DrawCtx, look: BuildingLook, level: number): void {
   groundPad(ctx, 2, 2, COLORS.earth, 0.55);
   const s = level >= 2 ? 1.1 : 0.95;
   shadowFor(ctx, 0.16, 0.16, s, s, 22);
-  mass(ctx, look, 0.16, 0.16, s, s, { floors: 1, door: 'L', windows: 'small', spacing: 0.4, axis: 'u' });
-  const logs = level >= 2 ? 4 : 3;
+  mass(ctx, look, 0.16, 0.16, s, s, { floors: level >= 4 ? 2 : 1, door: 'L', windows: 'small', spacing: 0.4, axis: 'u' });
+  const logs = level >= 4 ? 5 : level >= 2 ? 4 : 3;
   for (let i = 0; i < logs; i++) {
-    const v = 0.26 + i * 0.17;
+    const v = 0.24 + i * 0.16;
     box(ctx, 1.22, v, 1.86, v + 0.13, 0, 5, COLORS.trunk);
     poly(ctx, [P(1.86, v, 0.5), P(1.86, v + 0.13, 0.5), P(1.86, v + 0.13, 4.5), P(1.86, v, 4.5)], 0xe0bd86);
   }
   box(ctx, 1.3, 0.34, 1.86, 0.47, 5, 10, COLORS.trunk);
   box(ctx, 1.3, 0.51, 1.86, 0.64, 5, 10, COLORS.trunk);
-  box(ctx, 1.18, 1.26, 1.8, 1.7, 0, level >= 2 ? 8 : 5, COLORS.plank);
+  box(ctx, 1.18, 1.26, 1.8, 1.7, 0, level >= 4 ? 11 : level >= 2 ? 8 : 5, COLORS.plank);
   box(ctx, 0.42, 1.36, 0.6, 1.54, 0, 6, COLORS.trunk);
   line(ctx, P(0.5, 1.45, 6), P(0.62, 1.38, 15), 0x6b6f75, 2);
   ctx.smoke.push(P(0.5, 1.45, 8));
@@ -626,7 +646,7 @@ function farm(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level:
     for (let u = 0.04; u <= 1.97; u += 0.32) line(ctx, P(u, 1.96, 0), P(u, 1.96, 7), COLORS.woodDark, 1.5);
   }
   shadowFor(ctx, 1.16, 0.14, 1.86, 0.86, 22);
-  mass(ctx, look, 1.16, 0.14, 1.86, 0.86, { floors: level >= 2 ? 2 : 1, door: 'L', windows: 'small', spacing: 0.45, axis: 'v', balcony: false });
+  mass(ctx, look, 1.16, 0.14, 1.86, 0.86, { floors: level >= 4 ? 3 : level >= 2 ? 2 : 1, door: 'L', windows: 'small', spacing: 0.45, axis: 'v', balcony: false });
   if (level >= 2) {
     // hay stack
     const c = P(0.4, 0.4, 0);
@@ -652,9 +672,9 @@ function quarry(ctx: DrawCtx, look: BuildingLook, level: number): void {
     }
   }
   if (level >= 2) box(ctx, 0.1, 0.1, 0.45, 0.32, 22, 30, shade(COLORS.rock, 1.1));
-  box(ctx, 1.2, 1.3, 1.5, 1.6, 0, 7, 0xc9cdd2);
-  box(ctx, 1.55, 1.05, 1.78, 1.28, 0, 5, 0xb9bdc2);
-  mass(ctx, look, 0.15, 1.05, 0.7, 1.6, { floors: 1, door: 'L', windows: 'small', spacing: 0.5, axis: 'u', balcony: false });
+  box(ctx, 1.2, 1.3, 1.5, 1.6, 0, level >= 4 ? 10 : 7, 0xc9cdd2);
+  box(ctx, 1.55, 1.05, 1.78, 1.28, 0, level >= 4 ? 8 : 5, 0xb9bdc2);
+  mass(ctx, look, 0.15, 1.05, 0.7, 1.6, { floors: level >= 4 ? 2 : 1, door: 'L', windows: 'small', spacing: 0.5, axis: 'u', balcony: false });
   line(ctx, P(1.5, 0.5, 0), P(1.5, 0.5, 34), COLORS.woodDark, 3);
   line(ctx, P(1.5, 0.5, 34), P(1.2, 1.2, 28), COLORS.woodDark, 2.5);
   line(ctx, P(1.2, 1.2, 28), P(1.2, 1.2, 10), 0x3a2a1c, 1);
@@ -681,7 +701,7 @@ function terraceFarm(ctx: DrawCtx, look: BuildingLook, level: number, pal: Seaso
       }
     }
   }
-  mass(ctx, look, 1.5, 0.1, 1.92, 0.5, { z0: 11, floors: 1, door: 'L', windows: 'small', spacing: 0.5, axis: 'v', balcony: false, chimneys: level >= 2 });
+  mass(ctx, look, 1.5, 0.1, 1.92, 0.5, { z0: 11, floors: level >= 4 ? 2 : 1, door: 'L', windows: 'small', spacing: 0.5, axis: 'v', balcony: false, chimneys: level >= 2 });
 }
 
 function awning(ctx: DrawCtx, u0: number, u1: number, v: number, z: number, a: number, b: number): void {
@@ -705,9 +725,9 @@ function market(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, leve
   if (style === 'turkish') {
     // arasta: a vaulted row of shops with domes, and a striped awning over the stalls
     shadowFor(ctx, 0.15, 0.15, 1.85, 0.85, 22);
-    mass(ctx, look, 0.15, 0.15, 1.85, 0.85, { floors: 1, door: 'L', doorT: 1.0, windows: 'arched', spacing: 0.24, chimneys: false, balcony: false });
+    mass(ctx, look, 0.15, 0.15, 1.85, 0.85, { floors: level >= 4 ? 2 : 1, door: 'L', doorT: 1.0, windows: 'arched', spacing: 0.24, chimneys: false, balcony: false });
     awning(ctx, 0.15, 1.85, 0.85, 10, 0xc0392b, 0xf3ead8);
-    if (level >= 2) mass(ctx, look, 1.3, 0.85, 1.85, 1.6, { floors: 1, door: 'L', windows: 'arched', spacing: 0.3, chimneys: false, balcony: false });
+    if (level >= 2) mass(ctx, look, 1.3, 0.85, 1.85, 1.6, { floors: level >= 5 ? 2 : 1, door: 'L', windows: 'arched', spacing: 0.3, chimneys: false, balcony: false });
     stall(ctx, 0.3, 1.25, 0xd9852a, [0xd23a32, 0xe8b23a, 0x6fae4a]);
     stall(ctx, 0.75, 1.5, 0x3d7fb5, [0x8a5a36, 0xe0d2b4, 0xc94f8e]);
   } else {
@@ -731,7 +751,7 @@ function inn(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level: 
     // kervansaray: walled courtyard with rooms behind a tall carved portal
     groundPad(ctx, 2, 2, 0xdcc9a0, 0.7);
     shadowFor(ctx, 0.1, 0.1, 1.9, 1.9, 24);
-    const walls = level >= 2 ? 2 : 1;
+    const walls = level >= 4 ? 3 : level >= 2 ? 2 : 1;
     mass(ctx, look, 0.1, 0.1, 1.9, 0.6, { floors: walls, door: null, windows: 'small', spacing: 0.3, chimneys: false, balcony: false });
     mass(ctx, look, 1.4, 0.6, 1.9, 1.9, { floors: walls, door: null, windows: 'small', spacing: 0.3, chimneys: false, balcony: false });
     for (const [u, v] of [
@@ -768,8 +788,8 @@ function inn(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level: 
 function barracks(ctx: DrawCtx, look: BuildingLook, level: number): void {
   groundPad(ctx, 2, 2, 0x9b9c8c, 0.75);
   shadowFor(ctx, 0.12, 0.12, 1.86, 0.82, 28);
-  mass(ctx, { ...look, floors: level > 1 ? 2 : 1 }, 0.12, 0.12, 1.88, 0.82, { door: 'L', doorT: 0.98, chimneys: false, balcony: false });
-  mass(ctx, { ...look, floors: 1 }, 1.25, 0.85, 1.88, 1.78, { door: 'L', chimneys: false, balcony: false });
+  mass(ctx, { ...look, floors: level >= 4 ? 3 : level > 1 ? 2 : 1 }, 0.12, 0.12, 1.88, 0.82, { door: 'L', doorT: 0.98, chimneys: false, balcony: false });
+  mass(ctx, { ...look, floors: level >= 3 ? 2 : 1 }, 1.25, 0.85, 1.88, 1.78, { door: 'L', chimneys: false, balcony: false });
   drawFlagPole(ctx, P(0.4, 1.45, 1), 0x972e29, 15);
 }
 
@@ -836,30 +856,76 @@ function watchtower(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle):
   drawFlagPole(ctx, P(0.5, 0.5, h + 16), CULTURES[style].flag, 2);
 }
 
-function shipyard(ctx: DrawCtx, look: BuildingLook, level: number): void {
-  // timber slipway sloping to the water, a ship on the stocks, a crane and the shipwrights' shed
-  poly(ctx, [P(0.05, 0.05), P(1.95, 0.05), P(1.95, 1.95), P(0.05, 1.95)], 0xcbb38a, 0.9);
-  for (let v = 0.9; v <= 1.95; v += 0.12) poly(ctx, [P(0.35, v), P(1.95, v), P(1.95, v + 0.05), P(0.35, v + 0.05)], shade(COLORS.plank, 0.85));
-  shadowFor(ctx, 0.1, 0.1, 0.95, 0.8, 24);
-  mass(ctx, look, 0.1, 0.1, 0.95, 0.8, { door: 'L', windows: 'small', spacing: 0.4, axis: 'u', balcony: false });
-  box(ctx, 1.1, 0.2, 1.5, 0.45, 0, 5, COLORS.trunk);
-  box(ctx, 1.1, 0.48, 1.5, 0.7, 0, 4, COLORS.plank);
-  // hull on the stocks
-  const hull = 0x7a4a2a;
-  const keel: Pt[] = [P(0.55, 1.42, 4), P(1.85, 1.42, 4), P(1.95, 1.42, 12), P(0.45, 1.42, 12)];
-  poly(ctx, keel, shade(hull, 0.9));
-  poly(ctx, [P(0.45, 1.42, 12), P(1.95, 1.42, 12), P(1.85, 1.2, 14), P(0.55, 1.2, 14)], shade(hull, 1.15));
-  for (let u = 0.6; u < 1.85; u += 0.18) line(ctx, P(u, 1.42, 4), P(u, 1.42, 12), shade(hull, 0.7), 0.7);
-  if (level >= 2) {
-    box(ctx, 1.05, 1.25, 1.35, 1.4, 14, 20, 0xeee2c4);
-    line(ctx, P(1.2, 1.32, 20), P(1.2, 1.32, 44), STONE.timber, 1.4);
+/**
+ * Damen Shipyards Antalya (DSA1–DSA6) inspired shipyard in Antalya Free Zone (ASBAŞ):
+ * - High-bay white/silver production hall with Royal Blue DAMEN fascia band (`0x004b87`) & tall blue roll-up doors
+ * - 560-ton blue Travel Lift straddle gantry crane & 2,000-ton Syncrolift slipway
+ * - Yellow keel blocks & vessel on the slipway (1906 SAR -> FCS 5009 -> SeaXplorer 58 Superyacht)
+ */
+function shipyard(ctx: DrawCtx, look: BuildingLook, level: number, style: ArchitectureStyle): void {
+  const scottish = style === 'scottish';
+  // Concrete ASBAŞ Free Zone pier & heavy-load Syncrolift apron
+  poly(ctx, [P(0.04, 0.04), P(1.96, 0.04), P(1.96, 1.96), P(0.04, 1.96)], scottish ? 0x9ca3af : 0xcbd5e1, 0.94);
+  // Slipway rails sloping to the water
+  for (let v = 0.96; v <= 1.92; v += 0.12) {
+    poly(ctx, [P(0.42, v), P(1.92, v), P(1.92, v + 0.05), P(0.42, v + 0.05)], 0x64748b);
   }
-  for (const u of [0.6, 1.0, 1.4, 1.8]) line(ctx, P(u, 1.6, 0), P(u, 1.45, 6), STONE.timber, 1.2);
-  // crane
-  line(ctx, P(1.75, 0.6, 0), P(1.75, 0.6, 40), COLORS.woodDark, 2.5);
-  line(ctx, P(1.75, 0.6, 40), P(1.2, 1.25, 34), COLORS.woodDark, 2);
-  line(ctx, P(1.2, 1.25, 34), P(1.2, 1.25, 18), 0x3a2a1c, 0.8);
-  if (P(1.75, 0.6, 40)[1] < ctx.topY) ctx.topY = P(1.75, 0.6, 40)[1];
+  // Yellow keel blocks along the slipway
+  for (let u = 0.62; u <= 1.72; u += 0.26) {
+    box(ctx, u, 1.38, u + 0.08, 1.48, 0, 3.5, 0xfacc15);
+  }
+
+  // High-bay Damen Production Hall (DSA1..DSA6)
+  const hallH = 22 + Math.min(4, level - 1) * 4;
+  shadowFor(ctx, 0.08, 0.08, 1.08, 0.94, hallH);
+  box(ctx, 0.08, 0.08, 1.08, 0.94, 0, hallH, scottish ? 0xe2e8f0 : 0xf1f5f9);
+  // Royal Blue DAMEN fascia band along the roofline
+  const L = faceL(0.08, 1.08, 0.94);
+  const R = faceR(0.08, 0.94, 1.08);
+  const damenBlue = scottish ? 0x1e3a8a : 0x004b87;
+  quad(ctx, L, 0.08, 1.08, hallH - 5.5, hallH - 1, damenBlue);
+  quad(ctx, R, 0.08, 0.94, hallH - 5.5, hallH - 1, shade(damenBlue, 0.88));
+  // High-bay blue industrial roll-up doors (DSA1 / DSA2)
+  quad(ctx, L, 0.16, 0.52, 0, hallH - 7, 0x0284c7);
+  quad(ctx, L, 0.62, 0.98, 0, hallH - 7, 0x0284c7);
+  for (let z = 3; z < hallH - 7; z += 3.5) {
+    line(ctx, fp(L, 0.16, z), fp(L, 0.52, z), 0xe0f2fe, 0.7);
+    line(ctx, fp(L, 0.62, z), fp(L, 0.98, z), 0xe0f2fe, 0.7);
+  }
+  // Illuminated clerestory windows on the side wall (ensures ctx.lights.length > 0)
+  for (const v of [0.24, 0.5, 0.76]) {
+    drawWindow(ctx, R, v, hallH - 11, 'sash', 0xcbd5e1);
+  }
+  // Rooftop solar panels on Level 4–5 (sustainable Damen yard roof)
+  if (level >= 4) {
+    poly(ctx, [P(0.14, 0.14, hallH + 0.5), P(1.02, 0.14, hallH + 0.5), P(1.02, 0.86, hallH + 0.5), P(0.14, 0.86, hallH + 0.5)], 0x1e3a8a);
+  }
+
+  // Vessel under construction / launch on the Syncrolift slipway
+  const hullCol = level >= 5 ? 0x0f172a : level >= 3 ? 0xdc2626 : 0xea580c; // SeaXplorer navy / FCS red / 1906 SAR orange
+  const keel: Pt[] = [P(0.54, 1.44, 3.5), P(1.84, 1.44, 3.5), P(1.94, 1.44, 12), P(0.46, 1.44, 12)];
+  poly(ctx, keel, shade(hullCol, 0.92));
+  poly(ctx, [P(0.46, 1.44, 12), P(1.94, 1.44, 12), P(1.84, 1.2, 14), P(0.54, 1.2, 14)], 0xf8fafc);
+  // Wheelhouse / superyacht superstructure
+  box(ctx, 0.92, 1.24, 1.42, 1.4, 12, 19 + Math.min(3, level), 0xf8fafc);
+  const shipF = faceL(0.92, 1.42, 1.4);
+  quad(ctx, shipF, 0.98, 1.36, 14, 17.5, 0x0284c7);
+
+  // Iconic 560-ton Blue Travel Lift Straddle Gantry over the slipway (Levels 2–5)
+  const gantryH = 34 + level * 2;
+  const gantryCol = 0x0284c7;
+  for (const u of [0.68, 1.56]) {
+    line(ctx, P(u, 1.12, 0), P(u, 1.12, gantryH), gantryCol, 2.4);
+    line(ctx, P(u, 1.62, 0), P(u, 1.62, gantryH), gantryCol, 2.4);
+    line(ctx, P(u, 1.12, gantryH), P(u, 1.62, gantryH), shade(gantryCol, 1.15), 2.6);
+  }
+  line(ctx, P(0.68, 1.12, gantryH), P(1.56, 1.12, gantryH), gantryCol, 2.2);
+  line(ctx, P(0.68, 1.62, gantryH), P(1.56, 1.62, gantryH), gantryCol, 2.2);
+  // Lifting slings holding the vessel
+  line(ctx, P(0.88, 1.38, gantryH - 1), P(0.88, 1.38, 10), 0xfacc15, 1.1);
+  line(ctx, P(1.42, 1.38, gantryH - 1), P(1.42, 1.38, 10), 0xfacc15, 1.1);
+  if (P(1.56, 1.12, gantryH)[1] < ctx.topY) ctx.topY = P(1.56, 1.12, gantryH)[1];
+  void look;
 }
 
 // ------------------------------------------------------------------ entry point
@@ -901,7 +967,7 @@ export function drawStyledBuilding(
   const wear = b.condition >= 5000 ? 0 : b.condition >= 2500 ? 1 : 2;
   const ctx = newCtx(g, detail, seed, pal.snow, wear, illuminated);
   const look = renderLook(b);
-  if (drawCityBuilding(ctx, b.definitionId, b.style)) return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
+  if (drawCityBuilding(ctx, b.definitionId, b.style, b.level)) return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
   switch (b.definitionId) {
     case 'hut':
       house(ctx, b.look ? look : houseDesign(look, seed, wear > 0), b.style, b.level, pal);
@@ -950,9 +1016,18 @@ export function drawStyledBuilding(
       civicBuilding(ctx, b.definitionId, look, b.style);
       break;
     case 'shipyard':
-      shipyard(ctx, look, b.level);
+      shipyard(ctx, look, b.level, b.style);
       break;
-    case 'hospital': case 'fire_station': case 'factory': case 'hotel': case 'club': case 'restaurant': case 'airport': break;
+    case 'hospital':
+    case 'fire_station':
+    case 'factory':
+    case 'hotel':
+    case 'club':
+    case 'restaurant':
+    case 'airport':
+    case 'corporate_plaza':
+    case 'aquapark':
+      break;
     default:
       drawLandmark(ctx, b.definitionId, pal);
   }

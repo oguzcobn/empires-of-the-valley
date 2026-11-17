@@ -64,31 +64,40 @@ function personShape(shirt: number, trousers = 0x3a4250, hat?: number): THREE.Bu
 
 function boatShape(kind: VesselKind): THREE.BufferGeometry {
   const b = new Builder();
-  const len = kind === 'cargo' ? 0.66 : kind === 'yacht' ? 0.52 : 0.38;
-  const wid = kind === 'cargo' ? 0.21 : 0.145;
-  const hull = kind === 'yacht' ? 0xf4f4f0 : kind === 'cargo' ? 0x6b2232 : 0x8f5f3b;
-  // V-shaped water wake foam trailing behind the vessel
-  b.box(-len * 0.48, 0.004, -wid * 0.58, len * 0.42, 0.006, 0.025, 0xe8f7fb, 0.24);
-  b.box(-len * 0.48, 0.004, wid * 0.58, len * 0.42, 0.006, 0.025, 0xe8f7fb, -0.24);
-  b.box(-len * 0.38, 0.005, 0, len * 0.28, 0.005, wid * 0.55, 0xd8f1f8);
-  // Hull & prow
-  b.box(0, -0.02, 0, len * 0.72, 0.08, wid, hull);
-  b.box(len * 0.4, -0.02, 0, wid * 0.72, 0.08, wid * 0.72, hull, Math.PI / 4);
-  b.box(0, 0.06, 0, len * 0.7, 0.012, wid * 0.9, kind === 'yacht' ? 0xd9b98a : 0xb98a5a);
+  const len = kind === 'cargo' ? 0.72 : kind === 'yacht' ? 0.62 : 0.44;
+  const wid = kind === 'cargo' ? 0.22 : kind === 'yacht' ? 0.17 : 0.15;
+  const hull = kind === 'yacht' ? 0x0f172a : kind === 'cargo' ? 0x991b1b : 0x1e3a8a;
+  // Layered V-shaped water wake foam trailing behind the vessel
+  b.box(-len * 0.52, 0.004, -wid * 0.64, len * 0.48, 0.006, 0.028, 0xe0f2fe, 0.25);
+  b.box(-len * 0.52, 0.004, wid * 0.64, len * 0.48, 0.006, 0.028, 0xe0f2fe, -0.25);
+  b.box(-len * 0.4, 0.005, 0, len * 0.34, 0.005, wid * 0.65, 0xbae6fd);
+  // Hull & Sea Axe prow
+  b.box(0, -0.02, 0, len * 0.74, 0.085, wid, hull);
+  b.box(len * 0.41, -0.02, 0, wid * 0.74, 0.085, wid * 0.74, hull, Math.PI / 4);
+  b.box(0, 0.065, 0, len * 0.72, 0.014, wid * 0.92, kind === 'yacht' ? 0xf8fafc : kind === 'fishing' ? 0xea580c : 0xcbd5e1);
   if (kind === 'cargo') {
-    b.box(-len * 0.24, 0.072, 0, 0.13, 0.12, wid * 0.72, 0xe8e2d2);
-    b.box(-len * 0.19, 0.14, 0, 0.03, 0.035, wid * 0.65, 0x2b4256);
-    b.cyl(-len * 0.27, 0.19, 0, 0.018, 0.022, 0.06, 0xc94a3a, 6);
-    for (let i = 0; i < 3; i++) b.box(0.02 + i * 0.1, 0.072, 0, 0.085, 0.065, wid * 0.64, [0xc94a3a, 0x3f7fb5, 0xe3b23c][i]!);
+    // Damen FCS 5009: forward high-visibility bridge superstructure + aft container stacks
+    b.box(len * 0.2, 0.078, 0, 0.15, 0.13, wid * 0.78, 0xf8fafc);
+    b.box(len * 0.25, 0.15, 0, 0.04, 0.04, wid * 0.72, 0x0f172a);
+    b.cyl(len * 0.18, 0.21, 0, 0.012, 0.015, 0.09, 0x94a3b8, 6);
+    for (let i = 0; i < 3; i++) {
+      b.box(-0.22 + i * 0.11, 0.078, 0, 0.095, 0.075, wid * 0.7, [0xea580c, 0x0284c7, 0x16a34a][i]!);
+    }
   } else if (kind === 'yacht') {
-    b.box(-0.03, 0.072, 0, 0.17, 0.055, wid * 0.64, 0xe8ecef);
-    b.box(0.03, 0.095, 0, 0.06, 0.025, wid * 0.58, 0x2b4256);
-    b.cyl(0.04, 0.072, 0, 0.006, 0.008, 0.46, 0x6a5a48, 5);
-    b.gable(-0.12, -0.004, 0.04, 0.004, 0.14, 0.38, 0xfbfaf4, true);
+    // Damen SeaXplorer 58 Superyacht: multi-tier white superstructure, panoramic glazing, satellite radomes & aft helipad
+    b.box(-len * 0.24, 0.076, 0, 0.16, 0.012, wid * 0.84, 0x0284c7);
+    b.box(0.04, 0.078, 0, 0.26, 0.065, wid * 0.76, 0xf8fafc);
+    b.box(0.06, 0.11, 0, 0.22, 0.028, wid * 0.8, 0x0f172a);
+    b.box(0.06, 0.143, 0, 0.17, 0.05, wid * 0.64, 0xf1f5f9);
+    b.box(0.08, 0.165, 0, 0.14, 0.024, wid * 0.68, 0x0284c7);
+    b.cyl(0.05, 0.193, 0, 0.008, 0.01, 0.14, 0xcbd5e1, 6);
+    b.sphere(0.05, 0.34, 0, 0.026, 0xffffff, 1, 8);
   } else {
-    b.cyl(0, 0.072, 0, 0.006, 0.008, 0.28, 0x6a5a48, 5);
-    b.box(-0.06, 0.072, 0, 0.11, 0.045, wid * 0.55, 0x6a8a9a);
-    b.gable(-0.08, -0.004, 0.02, 0.004, 0.11, 0.2, 0xf2ead8, true);
+    // Damen 1906 SAR Search & Rescue vessel: safety orange collar, white wheelhouse & radar mast
+    b.box(0.02, 0.078, 0, 0.16, 0.062, wid * 0.72, 0xf8fafc);
+    b.box(0.06, 0.105, 0, 0.09, 0.028, wid * 0.76, 0x0284c7);
+    b.cyl(0.0, 0.14, 0, 0.007, 0.009, 0.12, 0xcbd5e1, 6);
+    b.sphere(0.0, 0.26, 0, 0.018, 0xf97316, 1, 6);
   }
   return b.build();
 }
@@ -122,6 +131,8 @@ interface Roamer {
 interface Boat {
   mesh: THREE.Mesh;
   kind: VesselKind;
+  px: number;
+  py: number;
   x: number;
   y: number;
   tx: number;
@@ -548,16 +559,35 @@ export class Actors3D {
       want.forEach((kind, i) => {
         const at = pool[(i * 7) % Math.max(1, pool.length)];
         if (!at) return;
-        this.boats.push({ mesh: this.spawn(this.geo(`boat|${kind}`, () => boatShape(kind))), kind, x: at[0], y: at[1], tx: at[0], ty: at[1], t: 1 });
+        this.boats.push({
+          mesh: this.spawn(this.geo(`boat|${kind}`, () => boatShape(kind))),
+          kind,
+          px: at[0],
+          py: at[1],
+          x: at[0],
+          y: at[1],
+          tx: at[0],
+          ty: at[1],
+          t: 1,
+        });
       });
     }
     for (const b of this.boats) {
-      b.t += seconds * 0.35;
+      const vesselSpeed = b.kind === 'fishing' ? 0.44 : b.kind === 'yacht' ? 0.38 : 0.3;
+      b.t += seconds * vesselSpeed;
       if (b.t >= 1) {
+        const prevDx = b.tx - b.x;
+        const prevDy = b.ty - b.y;
+        b.px = b.x;
+        b.py = b.y;
         b.x = b.tx;
         b.y = b.ty;
         const options = NEIGHBORS4.map(([dx, dy]) => [b.x + dx, b.y + dy] as [number, number]).filter(([x, y]) => isWater(x, y));
-        const next = options.length ? options[Math.floor(Math.random() * options.length)]! : ([b.x, b.y] as [number, number]);
+        // Strongly prefer continuing straight ahead on open sea, then gentle turns, avoiding 180° reversals unless dead-ended
+        const straight = options.filter(([x, y]) => x - b.x === prevDx && y - b.y === prevDy);
+        const forward = options.filter(([x, y]) => x !== b.px || y !== b.py);
+        const pool = straight.length && Math.random() < 0.72 ? straight : forward.length ? forward : options;
+        const next = pool.length ? pool[Math.floor(Math.random() * pool.length)]! : ([b.x, b.y] as [number, number]);
         b.tx = next[0];
         b.ty = next[1];
         b.t = 0;
@@ -565,13 +595,16 @@ export class Actors3D {
       const fx = b.x + (b.tx - b.x) * b.t + 0.5;
       const fy = b.y + (b.ty - b.y) * b.t + 0.5;
       const level = (tileAt(p, b.x, b.y)?.height ?? 0) * LEVEL_H - 0.07;
-      b.mesh.position.set(fx, level + Math.sin(this.time * 2 + b.x) * 0.008, fy);
+      b.mesh.position.set(fx, level + Math.sin(this.time * 2.2 + b.x) * 0.008, fy);
+      // Gentle ocean wave pitch and roll
+      b.mesh.rotation.z = Math.sin(this.time * 2.6 + b.x * 0.7) * 0.035;
+      b.mesh.rotation.x = Math.cos(this.time * 2.1 + b.y * 0.7) * 0.025;
       if (b.tx !== b.x || b.ty !== b.y) {
         const target = yawOf(b.tx - b.x, b.ty - b.y);
         let diff = target - b.mesh.rotation.y;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
-        b.mesh.rotation.y += diff * Math.min(1, seconds * 3 + 0.02);
+        b.mesh.rotation.y += diff * Math.min(1, seconds * 3.8 + 0.03);
       }
     }
   }
@@ -734,13 +767,22 @@ export class Actors3D {
 
   private planeShape(): THREE.BufferGeometry {
     const b = new Builder();
-    b.box(0, 0.05, 0, 0.6, 0.085, 0.085, 0xf2f4f6);
-    b.sphere(0.3, 0.092, 0, 0.043, 0xf2f4f6, 1, 7);
-    b.box(-0.02, 0.075, 0, 0.14, 0.012, 0.74, 0xdfe4e8);
-    b.box(-0.27, 0.09, 0, 0.08, 0.012, 0.26, 0xdfe4e8);
-    b.box(-0.28, 0.1, 0, 0.09, 0.13, 0.012, 0x2f5fa7);
-    for (const z of [-0.2, 0.2]) b.box(0.01, 0.045, z, 0.1, 0.035, 0.04, 0x8d98a2);
-    b.box(0.05, 0.1, 0, 0.42, 0.016, 0.088, 0x4b6a84);
+    b.box(0, 0.05, 0, 0.68, 0.095, 0.095, 0xf8fafc);
+    b.sphere(0.35, 0.095, 0, 0.048, 0xf8fafc, 1, 8);
+    b.box(0.31, 0.115, 0, 0.07, 0.03, 0.082, 0x0f172a);
+    b.box(0.02, 0.098, 0, 0.56, 0.02, 0.098, 0x0284c7);
+    // Swept main wings + winglets
+    b.box(-0.02, 0.078, 0, 0.17, 0.014, 0.84, 0xcbd5e1);
+    b.box(-0.06, 0.11, -0.41, 0.07, 0.055, 0.015, 0x0284c7);
+    b.box(-0.06, 0.11, 0.41, 0.07, 0.055, 0.015, 0x0284c7);
+    // Tailplane + vertical stabilizer
+    b.box(-0.3, 0.095, 0, 0.1, 0.014, 0.3, 0xcbd5e1);
+    b.box(-0.3, 0.11, 0, 0.12, 0.15, 0.016, 0x0284c7);
+    // Twin under-wing turbofan engines
+    for (const z of [-0.21, 0.21]) {
+      b.box(0.02, 0.045, z, 0.12, 0.04, 0.045, 0x475569);
+      b.box(0.08, 0.045, z, 0.015, 0.034, 0.038, 0x0f172a);
+    }
     return b.build();
   }
 

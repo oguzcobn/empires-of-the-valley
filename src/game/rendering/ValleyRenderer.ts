@@ -199,7 +199,7 @@ export class ValleyRenderer {
   private militiaRouteT = 0;
   private militiaTargetKey = '';
   private particles: Particle[] = [];
-  private boats: { c: Container; kind: 'fishing' | 'cargo' | 'yacht'; x: number; y: number; tx: number; ty: number; t: number }[] = [];
+  private boats: { c: Container; kind: 'fishing' | 'cargo' | 'yacht'; px: number; py: number; x: number; y: number; tx: number; ty: number; t: number }[] = [];
   private birds: BirdSprite[] = [];
   private lastTiles: Tile[] | null = null;
   private lastSeason: Season | null = null;
@@ -220,193 +220,148 @@ export class ValleyRenderer {
 
   private constructor(private cb: RendererHost) {}
 
-  static async create(host: HTMLElement, cb: RendererHost, opts?: Partial<RendererOptions>): Promise<ValleyRenderer> {
+  static async create(parent: HTMLElement, cb: RendererHost, opts: RendererOptions): Promise<ValleyRenderer> {
     const r = new ValleyRenderer(cb);
-    r.opts = { ...r.opts, ...opts };
+    r.opts = opts;
+    const dpr = Math.min(opts.resolution, window.devicePixelRatio || 1);
     await r.app.init({
-      resizeTo: host,
-      antialias: r.opts.antialias,
-      backgroundAlpha: 0,
-      resolution: Math.min(window.devicePixelRatio || 1, r.opts.resolution),
+      resizeTo: parent,
+      background: COLORS.bg,
+      antialias: opts.antialias,
+      resolution: dpr,
       autoDensity: true,
-      preference: 'webgl',
     });
     if (r.destroyed) {
-      r.app.destroy({ removeView: true }, { children: true });
+      r.app.destroy(true);
       return r;
     }
     r.ready = true;
-    const canvas = r.app.canvas;
-    canvas.style.touchAction = 'none';
-    canvas.style.display = 'block';
-    canvas.setAttribute('aria-label', 'Vadi haritası');
-    host.appendChild(canvas);
+    parent.appendChild(r.app.canvas);
     r.objects.sortableChildren = true;
     r.world.addChild(r.ground, r.waterFx, r.transportGround, r.under, r.objects, r.ghost);
     r.app.stage.addChild(r.world, r.fx);
-    r.bindInput(canvas);
-    r.resetCamera();
-    r.app.ticker.add(r.frame);
+    const view = cb.getView();
+    if (view) r.size = homeProvince(view.game).width;
+    r.centerCamera();
+    r.bindInput(r.app.canvas);
+    r.app.ticker.add(r.onFrame);
     return r;
+  }
+
+  centerCamera(): void {
+    if (!this.ready) return;
+    const { width, height } = this.app.screen;
+    this.cameraViewport = { width, height };
+    const midY = (this.size * TH) / 2;
+    this.world.scale.set(1);
+    this.world.position.set(width / 2, height / 2 - midY * 0.85);
+  }
+
+  private keepCameraCenteredOnResize(): void {
+    const { width, height } = this.app.screen;
+    const prev = this.cameraViewport;
+    if (width <= 0 || height <= 0) return;
+    if (prev.width === 0 || prev.height === 0) {
+      this.centerCamera();
+      return;
+    }
+    if (prev.width === width && prev.height === height) return;
+    this.world.position.x += (width - prev.width) / 2;
+    this.world.position.y += (height - prev.height) / 2;
+    this.cameraViewport = { width, height };
+  }
+
+  zoomBy(factor: number, cx?: number, cy?: number): void {
+    if (!this.ready) return;
+    const x = cx ?? this.app.screen.width / 2;
+    const y = cy ?? this.app.screen.height / 2;
+    const old = this.world.scale.x;
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, old * factor));
+    const wx = (x - this.world.x) / old;
+    const wy = (y - this.world.y) / old;
+    this.world.scale.set(next);
+    this.world.position.set(x - wx * next, y - wy * next);
+  }
+
+  panBy(dx: number, dy: number): void {
+    if (!this.ready) return;
+    this.world.x += dx;
+    this.world.y += dy;
+  }
+
+  getStats(): RendererStats {
+    return {
+      fps: this.ready ? Math.round(this.app.ticker.FPS) : 0,
+      night: Math.round(this.night * 100),
+      weather: this.dropKind,
+      textures: this.atlas.size,
+      buildings: this.buildingViews.size,
+      props: this.propViews.size,
+      walkers:
+        this.walkers.length +
+        this.matchFans.length +
+        this.trafficCars.length +
+        this.cityScenes.count +
+        this.workScenes.count +
+        this.birds.length,
+      particles: this.particles.length + this.drops.length,
+    };
   }
 
   destroy(): void {
     this.destroyed = true;
     for (const fn of this.cleanup) fn();
+    this.cleanup = [];
+    this.cityScenes.destroy();
+    this.workScenes.destroy();
+    this.frontier.destroy();
+    for (const e of this.atlas.values()) e.tex.destroy(true);
+    this.atlas.clear();
     if (this.ready) {
-      this.app.ticker.remove(this.frame);
-      this.cityScenes.destroy();
-      this.workScenes.destroy();
-      for (const a of this.atlas.values()) a.tex.destroy(true);
-      this.atlas.clear();
-      // Never pass `true` as the first argument: it releases Pixi's global resources and breaks the
-      // other live renderers (workshop preview, offscreen thumbnails).
-      this.app.destroy({ removeView: true }, { children: true, texture: true });
+      this.app.ticker.remove(this.onFrame);
+      this.app.destroy(true, { children: true });
+      this.ready = false;
     }
   }
 
-  getStats(): RendererStats {
-    return {
-      fps: Math.round(this.app.ticker.FPS),
-      night: Math.round(this.night * 100) / 100,
-      weather: this.dropKind,
-      textures: this.atlas.size,
-      buildings: this.buildingViews.size,
-      props: this.propViews.size,
-      walkers: this.walkers.length + this.workScenes.count + this.birds.length,
-      particles: this.particles.length,
-    };
-  }
-
-  // ------------------------------------------------------------------ camera
-
-  resetCamera(): void {
-    const { width, height } = this.app.screen;
-    // Fit the complete isometric diamond, including mountains, into the
-    // available iframe/viewport. Keep room for the top HUD and bottom tools.
-    const usableWidth = Math.max(160, width - 48);
-    const usableHeight = Math.max(160, height - 146);
-    const boundsWidth = this.size * TW;
-    const boundsHeight = this.size * TH + MAX_HEIGHT * HEIGHT_PX;
-    const scale = Math.max(MIN_ZOOM, Math.min(1.2, usableWidth / boundsWidth, usableHeight / boundsHeight));
-    this.world.scale.set(scale);
-    this.cameraViewport = { width, height };
-    this.centerOnTile(this.size / 2, this.size / 2 + 0.5);
-  }
-
-  centerOnTile(x: number, y: number): void {
-    const { width, height } = this.app.screen;
-    const s = this.world.scale.x;
-    this.world.position.set(width / 2 - isoX(x, y) * s, height / 2 - isoY(x, y) * s);
-    this.clampCamera();
-  }
-
-  /** Client (viewport) coordinates of a tile centre — used by automated browser tests. */
-  tileToClient(x: number, y: number): { x: number; y: number } {
-    const rect = this.app.canvas.getBoundingClientRect();
-    const s = this.world.scale.x;
-    const view = this.cb.getView();
-    const h = view ? this.hz(homeProvince(view.game), x, y) : 0;
-    return {
-      x: rect.left + this.world.x + isoX(x + 0.5, y + 0.5) * s,
-      y: rect.top + this.world.y + (isoY(x + 0.5, y + 0.5) - h) * s,
-    };
-  }
-
-  /** Elevation of a tile in screen pixels. */
   private hz(p: Province, x: number, y: number): number {
     return (tileAt(p, x, y)?.height ?? 0) * HEIGHT_PX;
   }
 
-  zoomBy(factor: number, sx = this.app.screen.width / 2, sy = this.app.screen.height / 2): void {
-    const old = this.world.scale.x;
-    const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, old * factor));
-    const wx = (sx - this.world.x) / old;
-    const wy = (sy - this.world.y) / old;
-    this.world.scale.set(next);
-    this.world.position.set(sx - wx * next, sy - wy * next);
-    this.clampCamera();
-  }
-
-  panBy(dx: number, dy: number): void {
-    this.world.x += dx;
-    this.world.y += dy;
-    this.clampCamera();
-  }
-
-  /** Keeps the valley on screen: the view centre may not leave the map's bounding box. */
-  private clampCamera(): void {
-    const { width, height } = this.app.screen;
-    const s = this.world.scale.x;
-    const cx = (width / 2 - this.world.x) / s;
-    const cy = (height / 2 - this.world.y) / s;
-    const half = (this.size * TW) / 2;
-    const ccx = Math.max(-half, Math.min(half, cx));
-    const ccy = Math.max(0, Math.min(this.size * TH, cy));
-    this.world.position.set(width / 2 - ccx * s, height / 2 - ccy * s);
-  }
-
-  // ------------------------------------------------------------------ input
-
-  private tileFromEvent(e: { clientX: number; clientY: number }): { fx: number; fy: number } {
+  private screenToTile(clientX: number, clientY: number): { x: number; y: number } | null {
     const rect = this.app.canvas.getBoundingClientRect();
-    const s = this.world.scale.x;
-    const px = (e.clientX - rect.left - this.world.x) / s;
-    const py = (e.clientY - rect.top - this.world.y) / s;
-    const view = this.cb.getView();
-    const flat = worldToTile(px, py);
-    if (!view) return { fx: flat.x, fy: flat.y };
-    // raised ground: the visible tile is the front-most one whose top surface is under the pointer
-    const p = homeProvince(view.game);
-    let best: { x: number; y: number } | null = null;
-    for (let h = MAX_HEIGHT; h >= 0; h--) {
-      const t = worldToTile(px, py + h * HEIGHT_PX);
-      const tile = tileAt(p, Math.floor(t.x), Math.floor(t.y));
-      if (tile && tile.height === h && (!best || t.x + t.y > best.x + best.y)) best = t;
-    }
-    const t = best ?? flat;
-    return { fx: t.x, fy: t.y };
-  }
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+    const wx = (sx - this.world.x) / this.world.scale.x;
+    const wy = (sy - this.world.y) / this.world.scale.y;
 
-  private setHover(tile: { x: number; y: number } | null): void {
-    if (tile?.x === this.hover?.x && tile?.y === this.hover?.y) return;
-    this.hover = tile;
-    this.cb.onHover(tile);
-  }
-
-  private pickBuilding(p: Province, fx: number, fy: number): string | null {
-    for (const k of [2, 1.5, 1, 0.5]) {
-      const id = tileAt(p, Math.floor(fx + k), Math.floor(fy + k))?.buildingId;
-      if (!id) continue;
-      const b = buildingById(p, id);
-      if (!b) continue;
-      const [w, h] = defOf(b).footprint;
-      // apparent height above the footprint centre (sprite heights are measured from its top vertex)
-      const height = (this.buildingViews.get(id)?.info.height ?? 14) + (w + h) * 8;
-      if (height >= 32 * k - 6) return id;
+    const p = this.prov;
+    if (p) {
+      for (const bv of this.buildingViews.values()) {
+        const b = bv.c;
+        const dx = wx - b.x;
+        const dy = wy - b.y;
+        const w = (bv.info.height > 0 ? 48 : 32);
+        if (dx >= -w && dx <= w && dy >= -bv.info.height && dy <= 32) {
+          for (const inst of p.buildings) {
+            if (this.buildingViews.get(inst.id) === bv) return { x: inst.x, y: inst.y };
+          }
+        }
+      }
+      // Height-aware ray pick: test from highest terrace down so raised tiles win over tiles behind them.
+      for (let h = MAX_HEIGHT; h >= 0; h--) {
+        const t = worldToTile(wx, wy + h * HEIGHT_PX);
+        const tile = tileAt(p, t.x, t.y);
+        if (tile && tile.height === h) return t;
+      }
     }
-    return tileAt(p, Math.floor(fx), Math.floor(fy))?.buildingId ?? null;
+    const t = worldToTile(wx, wy);
+    if (t.x < 0 || t.y < 0 || t.x >= this.size || t.y >= this.size) return null;
+    return t;
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
-    const on = <K extends keyof HTMLElementEventMap>(
-      type: K,
-      fn: (e: HTMLElementEventMap[K]) => void,
-      opts?: AddEventListenerOptions,
-    ): void => {
-      canvas.addEventListener(type, fn, opts);
-      this.cleanup.push(() => canvas.removeEventListener(type, fn, opts));
-    };
-    const paint = (e: PointerEvent): void => {
-      const { fx, fy } = this.tileFromEvent(e);
-      const x = Math.floor(fx);
-      const y = Math.floor(fy);
-      const key = `${x},${y}`;
-      if (key === this.lastPaint) return;
-      this.lastPaint = key;
-      this.cb.onRoadPaint(x, y);
-    };
-    on('pointerdown', (e) => {
+    const onDown = (e: PointerEvent): void => {
       canvas.setPointerCapture(e.pointerId);
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (this.pointers.size === 2) {
@@ -416,32 +371,38 @@ export class ValleyRenderer {
         return;
       }
       const view = this.cb.getView();
-      const isPaint = (view?.tool.kind === 'road' || view?.tool.kind === 'pave') && e.button === 0;
-      this.drag = { lastX: e.clientX, lastY: e.clientY, total: 0, button: e.button, paint: isPaint };
+      const paint = e.button === 0 && view?.tool.kind === 'road';
+      this.drag = { lastX: e.clientX, lastY: e.clientY, total: 0, button: e.button, paint };
       this.lastPaint = '';
-      if (isPaint) paint(e);
-    });
-    on('pointermove', (e) => {
-      const { fx, fy } = this.tileFromEvent(e);
-      const tx = Math.floor(fx);
-      const ty = Math.floor(fy);
-      const inside = tx >= 0 && ty >= 0 && tx < this.size && ty < this.size;
-      if (e.pointerType === 'mouse' || this.drag?.paint) this.setHover(inside ? { x: tx, y: ty } : null);
-      if (!this.pointers.has(e.pointerId)) return;
-      const prev = this.pointers.get(e.pointerId)!;
-      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (this.pinch && this.pointers.size === 2) {
+      if (paint) {
+        const t = this.screenToTile(e.clientX, e.clientY);
+        if (t) {
+          this.lastPaint = `${t.x},${t.y}`;
+          this.cb.onRoadPaint(t.x, t.y);
+        }
+      }
+    };
+
+    const onMove = (e: PointerEvent): void => {
+      if (this.pointers.has(e.pointerId)) {
+        this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+      if (this.pointers.size === 2 && this.pinch) {
         const [a, b] = [...this.pointers.values()];
         const dist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
-        const rect = canvas.getBoundingClientRect();
-        this.zoomBy(
-          dist / Math.max(1, this.pinch.dist),
-          (a!.x + b!.x) / 2 - rect.left,
-          (a!.y + b!.y) / 2 - rect.top,
-        );
+        if (this.pinch.dist > 8) {
+          const rect = canvas.getBoundingClientRect();
+          const cx = (a!.x + b!.x) / 2 - rect.left;
+          const cy = (a!.y + b!.y) / 2 - rect.top;
+          this.zoomBy(dist / this.pinch.dist, cx, cy);
+        }
         this.pinch.dist = dist;
-        this.panBy((e.clientX - prev.x) / 2, (e.clientY - prev.y) / 2);
         return;
+      }
+      const t = this.screenToTile(e.clientX, e.clientY);
+      if (t?.x !== this.hover?.x || t?.y !== this.hover?.y) {
+        this.hover = t;
+        this.cb.onHover(t);
       }
       if (!this.drag) return;
       const dx = e.clientX - this.drag.lastX;
@@ -449,304 +410,292 @@ export class ValleyRenderer {
       this.drag.lastX = e.clientX;
       this.drag.lastY = e.clientY;
       this.drag.total += Math.abs(dx) + Math.abs(dy);
-      if (this.drag.paint) paint(e);
-      else if (this.drag.total > 5) this.panBy(dx, dy);
-    });
-    const up = (e: PointerEvent): void => {
-      const drag = this.drag;
-      const wasSingle = this.pointers.size === 1 && this.pointers.has(e.pointerId);
+      if (this.drag.paint) {
+        if (t) {
+          const key = `${t.x},${t.y}`;
+          if (key !== this.lastPaint) {
+            this.lastPaint = key;
+            this.cb.onRoadPaint(t.x, t.y);
+          }
+        }
+      } else {
+        this.world.x += dx;
+        this.world.y += dy;
+      }
+    };
+
+    const onUp = (e: PointerEvent): void => {
       this.pointers.delete(e.pointerId);
       if (this.pointers.size < 2) this.pinch = null;
+      const d = this.drag;
       this.drag = null;
-      if (!drag || !wasSingle || e.type === 'pointercancel') return;
-      if (drag.paint || drag.total > 5) return;
-      if (drag.button === 2) {
+      if (!d) return;
+      if (d.button === 2 && d.total < 6) {
         this.cb.onCancel();
         return;
       }
-      if (drag.button !== 0) return;
-      const view = this.cb.getView();
-      if (!view) return;
-      const { fx, fy } = this.tileFromEvent(e);
-      const p = homeProvince(view.game);
-      const pickTall = view.tool.kind === 'select' || view.tool.kind === 'demolish';
-      const x = Math.floor(fx);
-      const y = Math.floor(fy);
-      const buildingId = pickTall ? this.pickBuilding(p, fx, fy) : (tileAt(p, x, y)?.buildingId ?? null);
-      if (e.pointerType !== 'mouse') this.setHover(tileAt(p, x, y) ? { x, y } : null);
-      this.cb.onTileClick(x, y, buildingId);
+      if (d.button === 0 && !d.paint && d.total < 6) {
+        const t = this.screenToTile(e.clientX, e.clientY);
+        const view = this.cb.getView();
+        if (t && view) {
+          const p = homeProvince(view.game);
+          const tile = tileAt(p, t.x, t.y);
+          this.cb.onTileClick(t.x, t.y, tile?.buildingId ?? null);
+        }
+      }
     };
-    on('pointerup', up);
-    on('pointercancel', up);
-    on('pointerleave', () => {
-      if (!this.drag) this.setHover(null);
+
+    const onWheel = (e: WheelEvent): void => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      this.zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left, e.clientY - rect.top);
+    };
+
+    const onCtx = (e: MouseEvent): void => e.preventDefault();
+
+    canvas.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('contextmenu', onCtx);
+    this.cleanup.push(() => {
+      canvas.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener('contextmenu', onCtx);
     });
-    on('contextmenu', (e) => e.preventDefault());
-    on(
-      'wheel',
-      (e) => {
-        e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
-        this.zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left, e.clientY - rect.top);
-      },
-      { passive: false },
-    );
   }
 
-  // ------------------------------------------------------------------ frame
-
-  private frame = (ticker: Ticker): void => {
+  private onFrame = (ticker: Ticker): void => {
+    this.keepCameraCenteredOnResize();
     const view = this.cb.getView();
-    if (!view || this.destroyed) return;
-    const dt = Math.min(ticker.deltaMS, 100);
-    this.time += dt;
+    if (!view) return;
+    const dt = ticker.deltaMS;
+    const motion = !view.reducedMotion;
+    if (motion) this.time += dt;
+
     const p = homeProvince(view.game);
     this.prov = p;
-    // Respond to parent-iframe resizing; do not reset the user's zoom on
-    // every simulation tick or React state update.
-    if (this.app.screen.width !== this.cameraViewport.width ||
-        this.app.screen.height !== this.cameraViewport.height) this.resetCamera();
-    if (p.width !== this.size) {
+    if (this.size !== p.width) {
       this.size = p.width;
-      this.resetCamera();
+      this.centerCamera();
     }
-    const cal = calendar(view.game.tick);
-    const pal = SEASON_PALETTE[cal.season];
-    const motion = !view.reducedMotion;
+    const { season, day } = calendar(view.game.tick);
+    const pal = SEASON_PALETTE[season];
 
-    if (p.tiles !== this.lastTiles || cal.season !== this.lastSeason) {
-      const seasonChanged = this.lastSeason !== null && cal.season !== this.lastSeason;
-      const previous = this.lastTiles;
-      const groundChanged = !previous || seasonChanged || previous.length !== p.tiles.length ||
-        p.tiles.some((tile, i) => {
-          const old = previous[i]!;
-          return tile !== old && (tile.terrain !== old.terrain || tile.variant !== old.variant ||
-            tile.height !== old.height || tile.road !== old.road || tile.roadType !== old.roadType || tile.paved !== old.paved);
-        });
-      if (groundChanged) this.syncGround(p, pal);
-      this.syncProps(p, pal, cal.season);
-      if (seasonChanged) this.pruneAtlas(cal.season);
+    if (this.lastTiles !== p.tiles || this.lastSeason !== season) {
+      if (this.lastSeason !== null && this.lastSeason !== season) this.pruneAtlas(season);
       this.lastTiles = p.tiles;
-      this.lastSeason = cal.season;
+      this.lastSeason = season;
+      this.drawGround(p, pal, view.detail);
     }
-    // Lighting follows the exact clock displayed by the HUD. Keeping a
-    // separate visual hour previously left the city sunny after 19:00.
-    this.updateLight(view, clockHour(view.game.tick), dt);
-    this.updateWeather(view, cal.day, cal.season, dt, motion);
-    this.watchFps(view);
-    this.syncBuildings(view, p, pal, cal.season, dt, motion);
-    const workerStep = motion ? (dt / 1000) * Math.min(1.35, SPEED_FACTOR[view.game.speed] ?? 0) : 0;
-    this.workScenes.update(p, cal.season, view.selectedBuildingId, workerStep, !motion);
-    this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt');
+
+    this.waterTimer += dt;
+    if (motion && this.waterTimer > 110) {
+      this.waterTimer = 0;
+      this.animateWater(p);
+    }
+
+    this.flagTimer += dt;
+    const tickFlags = motion && this.flagTimer > 70;
+    if (tickFlags) this.flagTimer = 0;
+
+    this.syncProps(p, season, pal, view.detail, motion);
+    this.syncBuildings(p, season, pal, view.detail, motion, tickFlags, dt);
+    this.cityScenes.update(view.game, p, dt, !motion);
+    this.workScenes.update(view.game, p, dt, !motion);
+    this.frontier.update(view.game, p, dt, view.tool.kind === 'hunt');
     this.updateWalkers(view, p, dt, motion);
     this.updateTraffic(view, p, dt, motion);
-    this.cityScenes.update(view.game, p, dt, !motion);
     this.updateMilitia(view, p, dt);
     this.updateBoats(view, p, dt, motion);
     this.updateBirds(p, dt, motion);
     this.updateParticles(dt);
+    this.updateLight(view, clockHour(view.game.tick), dt);
+    this.updateWeather(view, day, season, dt, motion);
     this.drawOverlays(view, p, pal);
-
-    if (motion) {
-      this.waterTimer += dt;
-      if (this.waterTimer > 140) {
-        this.waterTimer = 0;
-        this.drawWater(pal);
-      }
-      for (const prop of this.propViews.values()) {
-        if (prop.sway) prop.sway.skew.x = Math.sin(this.time / 900 + prop.phase) * 0.035;
-      }
-    }
+    this.watchFps(view);
   };
 
-  private syncGround(p: Province, pal: SeasonPalette): void {
+  private drawGround(p: Province, pal: SeasonPalette, detail: ArtDetail): void {
     const g = this.ground;
     g.clear();
     this.waterTiles = [];
     this.roadTiles = [];
     this.pavedRoadTiles = [];
-    // painter's order along diagonals so raised tiles and their cliffs overlap correctly
-    const detail = this.cb.getView()?.detail ?? 2;
-    for (let sum = 0; sum <= p.width + p.height - 2; sum++)
-      for (let x = Math.max(0, sum - p.height + 1); x <= Math.min(p.width - 1, sum); x++) {
-        const y = sum - x;
+
+    const hAt = (x: number, y: number): number => tileAt(p, x, y)?.height ?? 0;
+    const isWater = (x: number, y: number): boolean => {
+      const tr = tileAt(p, x, y)?.terrain;
+      return tr === 'water' || tr === 'lake';
+    };
+
+    // Draw back-to-front so elevated tiles and cliffs occlude lower tiles behind them.
+    for (let y = 0; y < p.height; y++) {
+      for (let x = 0; x < p.width; x++) {
         const t = p.tiles[y * p.width + x]!;
-        const alongY = t.road && t.roadType === 'bridge'
-          ? Number(!!tileAt(p, x, y - 1)?.road) + Number(!!tileAt(p, x, y + 1)?.road) >
-            Number(!!tileAt(p, x - 1, y)?.road) + Number(!!tileAt(p, x + 1, y)?.road)
-          : false;
-        const landRoad = (nx: number, ny: number): boolean => {
-          const n = tileAt(p, nx, ny);
-          return !!n?.road && n.roadType !== 'bridge';
-        };
+        let waterAdj = 0;
+        if (t.terrain === 'water' || t.terrain === 'lake') {
+          this.waterTiles.push([x, y]);
+          if (!isWater(x, y - 1)) waterAdj |= 1;
+          if (!isWater(x + 1, y)) waterAdj |= 2;
+          if (!isWater(x, y + 1)) waterAdj |= 4;
+          if (!isWater(x - 1, y)) waterAdj |= 8;
+        }
         drawGroundTile(
           g,
+          t,
           x,
           y,
-          t.terrain,
-          t.variant,
-          t.road,
+          hAt(x + 1, y),
+          hAt(x, y + 1),
+          hAt(x, y - 1),
+          hAt(x - 1, y),
+          waterAdj,
           pal,
-          {
-            height: t.height,
-            frontLeft: tileAt(p, x, y + 1)?.height ?? -1,
-            frontRight: tileAt(p, x + 1, y)?.height ?? -1,
-          },
-          t.roadType,
           detail,
-          t.paved ?? false,
-          t.paved ? getPavedLinks(p, x, y) : {
-            negX: !!tileAt(p, x - 1, y)?.road,
-            posX: !!tileAt(p, x + 1, y)?.road,
-            negY: !!tileAt(p, x, y - 1)?.road,
-            posY: !!tileAt(p, x, y + 1)?.road,
-          },
-          alongY,
-          t.road && t.roadType === 'bridge'
-            ? { start: landRoad(alongY ? x : x - 1, alongY ? y - 1 : y), end: landRoad(alongY ? x : x + 1, alongY ? y + 1 : y) }
-            : undefined,
         );
-        if ((t.terrain === 'water' || t.terrain === 'lake') && !t.road) this.waterTiles.push([x, y]);
-        if (t.road) this.roadTiles.push([x, y]);
-        if (t.road && t.paved && t.roadType === 'dirt') this.pavedRoadTiles.push([x, y]);
+        if (t.road) {
+          this.roadTiles.push([x, y]);
+          if (t.paved) this.pavedRoadTiles.push([x, y]);
+          const z = t.height * HEIGHT_PX;
+          const [ox, oy] = P(x, y, z);
+          const mask = getPavedLinks(p, x, y);
+          let waterMask = 0;
+          if (isWater(x - 1, y)) waterMask |= 1;
+          if (isWater(x + 1, y)) waterMask |= 2;
+          if (isWater(x, y - 1)) waterMask |= 4;
+          if (isWater(x, y + 1)) waterMask |= 8;
+          drawRoad(
+            g,
+            ox,
+            oy,
+            mask,
+            t.terrain === 'water' || t.terrain === 'lake' || t.roadType === 'bridge',
+            pal,
+            t.roadType,
+            t.paved,
+            waterMask,
+            detail,
+          );
+        } else if (t.terrace) {
+          const z = t.height * HEIGHT_PX;
+          const [ox, oy] = P(x, y, z);
+          g.moveTo(ox - 28, oy + 18)
+            .lineTo(ox, oy + 30)
+            .lineTo(ox + 28, oy + 18)
+            .stroke({ color: 0x7c7466, width: 3 });
+        }
       }
-    this.drawWater(pal);
+    }
+    this.animateWater(p);
   }
 
-  private drawWater(pal: SeasonPalette): void {
+  private animateWater(p: Province): void {
     const g = this.waterFx;
     g.clear();
-    // Three layered travelling ripples + a shoreline foam response. Visual
-    // wave physics only; water tiles remain deterministic for game simulation.
-    const t = this.time / 1300;
-    const p = this.prov;
-    for (const [x, y] of this.waterTiles) {
-      const ox = isoX(x, y);
-      const oy = isoY(x, y);
-      const phase = t + x * 0.42 + y * 0.65;
-      const swell = Math.sin(phase) * 2.5;
-      for (let layer = 0; layer < 3; layer++) {
-        const shift = Math.sin(phase + layer * 1.3) * (2.5 + layer);
-        const yy = oy + 8 + layer * 6 + swell * 0.5;
-        g.moveTo(ox - 14 + shift, yy)
-          .lineTo(ox - 4 + shift, yy + 4.5)
-          .lineTo(ox + 8 + shift, yy - 0.2)
-          .stroke({ color: pal.waterLight, width: layer === 1 ? 1.45 : 0.85,
-            alpha: 0.18 + (Math.sin(phase + layer) + 1) * 0.17 });
-      }
-      if (p) {
-        const coast = (dx: number, dy: number): boolean => {
-          const a = tileAt(p, x + dx, y + dy);
-          return !!a && a.terrain !== 'water' && a.terrain !== 'lake';
-        };
-        const foamAlpha = 0.22 + Math.abs(Math.sin(phase)) * 0.22;
-        if (coast(0, -1)) g.moveTo(ox, oy + 2).lineTo(ox + 19, oy + 12)
-          .stroke({ color: 0xe9f8fb, width: 1.5, alpha: foamAlpha });
-        if (coast(-1, 0)) g.moveTo(ox - 19, oy + 12).lineTo(ox, oy + 2)
-          .stroke({ color: 0xe9f8fb, width: 1.5, alpha: foamAlpha });
-      }
+    const phase = this.time / 480;
+    for (let k = 0; k < this.waterTiles.length; k++) {
+      const [x, y] = this.waterTiles[k]!;
+      const [ox, oy] = P(x, y, this.hz(p, x, y));
+      const s = Math.sin(phase + k * 0.7) * 3;
+      g.moveTo(ox - 10 + s, oy + 14)
+        .lineTo(ox + 2 + s, oy + 14)
+        .stroke({ color: COLORS.waterFoam, width: 1.3, alpha: 0.32 });
+      g.moveTo(ox - 2 - s, oy + 20)
+        .lineTo(ox + 9 - s, oy + 20)
+        .stroke({ color: COLORS.waterFoam, width: 1.2, alpha: 0.24 });
     }
   }
 
-  private syncProps(p: Province, pal: SeasonPalette, season: Season): void {
-    const alive = new Set<number>();
+  /** Syncs trees, stumps, and rock outcrops. Unchanged tiles reuse their Container across ticks. */
+  private syncProps(p: Province, season: Season, pal: SeasonPalette, detail: ArtDetail, motion: boolean): void {
+    const live = new Set<number>();
     for (let i = 0; i < p.tiles.length; i++) {
       const t = p.tiles[i]!;
-      if (t.terrain !== 'forest' && t.terrain !== 'stone') continue;
-      alive.add(i);
+      if (t.buildingId || t.road) continue;
+      const isForest = t.terrain === 'forest';
+      const isStone = t.terrain === 'stone' && t.deposit > 0;
+      if (!isForest && !isStone) continue;
+
+      live.add(i);
       const x = i % p.width;
-      const y = Math.floor(i / p.width);
-      const bucket =
-        t.terrain === 'forest'
-          ? t.deposit >= FOREST_TILE_MAX * 0.6
-            ? 3
-            : t.deposit >= FOREST_TILE_MAX * 0.2
-              ? 2
-              : t.deposit > 0
-                ? 1
-                : 0
-          : t.deposit > 0
-            ? 1
-            : 0;
-      const sig = `${t.terrain}|${bucket}|${season}`;
-      let view = this.propViews.get(i);
-      if (view?.sig === sig) continue;
-      if (view) view.c.destroy({ children: true });
-      const c = new Container();
-      c.position.set(isoX(x + 0.5, y + 0.5), isoY(x + 0.5, y + 0.5) - t.height * HEIGHT_PX);
-      c.zIndex = x + y + 1;
-      let sway: Container | null = null;
-      c.cullable = true;
-      if (t.terrain === 'stone') {
-        c.addChild(this.sprite(`rock|${t.variant}|${bucket > 0}`, (g) => drawRocks(g, t.variant, bucket > 0)));
-      } else {
-        const stumps = new Container();
-        sway = new Container();
-        const spots: [number, number, number][] = [
-          [-9 + t.variant, -3, 1],
-          [9 - t.variant, 4, 0.82],
-        ];
-        spots.forEach(([sx, sy, scale], n) => {
-          const standing = bucket === 3 || (bucket === 2 && n === 0) || (bucket === 1 && n === 1);
-          if (standing) {
-            const kind = (t.variant + n + x) % pal.leaf.length;
-            const s = bucket === 1 ? 0.7 : scale;
-            const holder = new Container();
-            holder.addChild(this.sprite(`tree|${season}|${kind}|${s}`, (g) => drawTree(g, pal, kind, s)));
-            holder.position.set(sx, sy);
-            sway!.addChild(holder);
-          } else {
-            const holder = new Container();
-            holder.addChild(this.sprite('stump', (g) => drawStump(g)));
-            holder.position.set(sx, sy);
-            stumps.addChild(holder);
-          }
-        });
-        c.addChild(stumps, sway);
+      const y = (i - x) / p.width;
+      const band = isForest ? (t.deposit <= 0 ? 0 : t.deposit > 125 ? 3 : t.deposit > 60 ? 2 : 1) : Math.ceil(t.deposit / 70);
+      const sig = `${season}|${t.terrain}|${band}|${t.height}|${detail}`;
+
+      let pv = this.propViews.get(i);
+      if (!pv || pv.sig !== sig) {
+        if (pv) pv.c.destroy({ children: true });
+        const c = new Container();
+        c.cullable = true;
+        let sway: Container | null = null;
+        if (isForest && band === 0) {
+          c.addChild(this.sprite(`stump|${season}`, (g) => drawStump(g)));
+        } else if (isForest) {
+          sway = new Container();
+          sway.pivot.set(0, 18);
+          sway.position.set(0, 18);
+          const v = (x * 7 + y * 13) & 3;
+          const dep = band === 3 ? 180 : band === 2 ? 100 : 40;
+          sway.addChild(this.sprite(`tree|${season}|${band}|${v}`, (g) => drawTree(g, dep, v, pal)));
+          c.addChild(sway);
+        } else {
+          c.addChild(this.sprite(`rock|${season}|${band}`, (g) => drawRocks(g, band * 70, pal.snow)));
+        }
+        const z = t.height * HEIGHT_PX;
+        c.position.set(isoX(x, y), isoY(x, y) - z);
+        c.zIndex = x + y + 0.01;
+        this.objects.addChild(c);
+        pv = { c, sway, sig, phase: (x * 1.3 + y * 0.9) % 6.28 };
+        this.propViews.set(i, pv);
+        this.tintKey = -1;
       }
-      this.objects.addChild(c);
-      view = { c, sway, sig, phase: (x * 7 + y * 13) % 6 };
-      this.propViews.set(i, view);
+      if (pv.sway) {
+        pv.sway.rotation = motion ? Math.sin(this.time / 950 + pv.phase) * 0.025 : 0;
+      }
     }
-    for (const [i, view] of this.propViews) {
-      if (!alive.has(i)) {
-        view.c.destroy({ children: true });
+    for (const [i, pv] of this.propViews) {
+      if (!live.has(i)) {
+        pv.c.destroy({ children: true });
         this.propViews.delete(i);
       }
     }
   }
 
+  /** Syncs building views; body Graphics is only redrawn when level/built/season/detail changes. */
   private syncBuildings(
-    view: RendererView,
     p: Province,
-    pal: SeasonPalette,
     season: Season,
-    dt: number,
+    pal: SeasonPalette,
+    detail: ArtDetail,
     motion: boolean,
+    tickFlags: boolean,
+    dt: number,
   ): void {
     const seen = new Set<string>();
-    this.flagTimer += dt;
-    const flagNow = this.flagTimer > 90;
-    if (flagNow) this.flagTimer = 0;
     for (const b of p.buildings) {
       seen.add(b.id);
       const def = defOf(b);
       const [w, h] = def.footprint;
+      const built = isBuilt(b);
+      const z = this.hz(p, b.x, b.y);
+      const progBand = built ? 10 : Math.floor((b.buildProgress / requiredTicks(b)) * 10);
+      const wearBand = conditionBand(b.condition);
+      const lookKey = b.look ? JSON.stringify(b.look) : '';
+      const sig = `${b.definitionId}|${b.level}|${progBand}|${wearBand}|${b.style}|${lookKey}|${season}|${detail}|${z}`;
+
       let bv = this.buildingViews.get(b.id);
       if (!bv) {
         const c = new Container();
+        c.cullable = true;
         const body = new Container();
-        const g = new Graphics();
         const glow = new Graphics();
-        // The night version is a complete depth-correct building, not an
-        // always-on-top glow pass that leaks through roofs.
+        const g = new Graphics();
         const extra = new Graphics();
         body.addChild(g);
         c.addChild(body, glow, extra);
-        c.cullable = true;
-        const base = Math.min(...footprintTiles(def, b.x, b.y).map(([fx, fy]) => tileAt(p, fx, fy)?.height ?? 0));
-        c.position.set(isoX(b.x, b.y), isoY(b.x, b.y) - base * HEIGHT_PX);
-        c.zIndex = b.x + w + b.y + h - 1;
         this.objects.addChild(c);
         bv = {
           c,
@@ -756,38 +705,63 @@ export class ValleyRenderer {
           extra,
           flags: [],
           mask: null,
-          info: { lights: [], smoke: [], flags: [], height: 30 },
+          info: { lights: [], smoke: [], flags: [], height: 40 },
           sig: '',
-          smokeTimer: Math.random() * 400,
+          smokeTimer: 0,
         };
         this.buildingViews.set(b.id, bv);
       }
-      const staffed = specOf(b).workerSlots === 0 || b.workers > 0;
-      const progress = b.state === 'active' ? 0 : b.progressTicks;
-      const look = b.look ? JSON.stringify(b.look) : '';
-      const sig = `${b.level}|${b.state}|${b.connected}|${b.unpaid}|${staffed}|${progress}|${season}|${b.style}|${look}|${conditionBand(b.condition)}|${view.detail}`;
-      if (sig !== bv.sig) {
-        bv.sig = sig;
-        this.redrawBuilding(bv, b, pal, view.detail);
-      }
-      if (flagNow && motion)
-        bv.flags.forEach((fg, i) => drawFlag(fg, this.time / 160 + b.x + i, bv!.info.flags[i]?.color ?? COLORS.flag));
 
-      // chimney smoke while the building is in use
-      const anchor = isBuilt(b) && b.connected ? (bv.info.smoke[0] ?? null) : null;
-      const inUse = b.definitionId === 'lumber_camp' ? isOperating(b) : true;
-      if (anchor && inUse && motion && view.game.speed > 0 && this.particles.length < 90) {
-        bv.smokeTimer -= dt;
-        if (bv.smokeTimer <= 0) {
-          bv.smokeTimer = 420 + Math.random() * 260;
-          const g = new Graphics().circle(0, 0, 2.6).fill({ color: COLORS.smoke, alpha: 0.8 });
-          g.position.set(bv.c.x + anchor[0], bv.c.y + anchor[1]);
-          g.zIndex = bv.c.zIndex + 0.5;
-          this.objects.addChild(g);
-          this.particles.push({ g, life: 1 });
+      bv.c.position.set(isoX(b.x, b.y), isoY(b.x, b.y) - z);
+      bv.c.zIndex = b.x + b.y + w + h - 1;
+
+      if (bv.sig !== sig) {
+        bv.sig = sig;
+        bv.body.cacheAsTexture(false);
+        bv.g.clear();
+        bv.glow.clear();
+        if (bv.mask) {
+          bv.body.mask = null;
+          bv.mask.destroy();
+          bv.mask = null;
+        }
+        const ratio = b.buildProgress / requiredTicks(b);
+        const seed = buildingArtSeed(b.id);
+        bv.info = built
+          ? drawStyledBuilding(bv.g, b, pal, detail, seed, isOperating(b))
+          : drawStyledConstruction(bv.g, w, h, ratio, b.style, detail, seed);
+        for (const poly of bv.info.lights) {
+          bv.glow.poly(poly.flat()).fill({ color: COLORS.windowGlow, alpha: 0.9 });
+        }
+        if (this.opts.cacheBodies && built) bv.body.cacheAsTexture({ resolution: 2, antialias: true });
+        this.tintKey = -1;
+      }
+
+      this.drawBuildingBadges(bv, b, w, h);
+
+      if (tickFlags && built) {
+        bv.info.flags.forEach((a, idx) => {
+          const fg = bv!.flags[idx];
+          if (fg) drawFlag(fg, this.time / 180 + b.x, a.color ?? CULTURES[b.style].flag);
+        });
+      }
+
+      // Chimney smoke when operating
+      if (motion && built && isOperating(b) && bv.info.smoke.length > 0) {
+        bv.smokeTimer += dt;
+        if (bv.smokeTimer > 520 && this.particles.length < 70) {
+          bv.smokeTimer = 0;
+          const s = bv.info.smoke[Math.floor(Math.random() * bv.info.smoke.length)]!;
+          const pg = new Graphics();
+          pg.circle(0, 0, 3.2).fill({ color: COLORS.smoke, alpha: 0.55 });
+          pg.position.set(bv.c.x + s[0], bv.c.y + s[1]);
+          pg.zIndex = bv.c.zIndex + 0.1;
+          this.objects.addChild(pg);
+          this.particles.push({ g: pg, life: 1 });
         }
       }
     }
+
     for (const [id, bv] of this.buildingViews) {
       if (!seen.has(id)) {
         bv.c.destroy({ children: true });
@@ -796,78 +770,28 @@ export class ValleyRenderer {
     }
   }
 
-  private redrawBuilding(bv: BuildingView, b: BuildingInstance, pal: SeasonPalette, detail: ArtDetail): void {
-    const def = defOf(b);
-    const [w, h] = def.footprint;
-    const { g, extra } = bv;
-    g.clear();
+  private drawBuildingBadges(bv: BuildingView, b: BuildingInstance, w: number, h: number): void {
+    const extra = bv.extra;
     extra.clear();
-    const seed = buildingArtSeed(b.id);
-    const landmarkSite = b.state === 'construction' && !!def.landmark;
-    bv.info =
-      b.state === 'construction' && !landmarkSite
-        ? drawStyledConstruction(g, w, h, b.progressTicks / Math.max(1, requiredTicks(b)), b.style, detail, seed)
-        : drawStyledBuilding(g, b, pal, detail, seed);
-    if (bv.mask) {
-      bv.body.mask = null;
-      bv.mask.destroy();
-      bv.mask = null;
-    }
-    if (landmarkSite) {
-      // the monument rises stage by stage: reveal it from the ground up, scaffolding on top
-      const ratio = Math.min(1, b.progressTicks / Math.max(1, requiredTicks(b)));
-      const bounds = g.getLocalBounds();
-      const shown = 0.12 + 0.88 * ratio;
-      const mask = new Graphics()
-        .rect(bounds.x - 4, bounds.y + bounds.height * (1 - shown) - 2, bounds.width + 8, bounds.height * shown + 8)
-        .fill(0xffffff);
-      bv.c.addChild(mask);
-      bv.body.mask = mask;
-      bv.mask = mask;
-      const topY = bounds.y + bounds.height * (1 - shown);
-      for (let k = 0; k <= 6; k++) {
-        const x = bounds.x + (bounds.width * k) / 6;
-        extra.moveTo(x, bounds.y + bounds.height).lineTo(x, topY).stroke({ color: COLORS.woodDark, width: 1.6, alpha: 0.9 });
-      }
-      for (let y = bounds.y + bounds.height - 10; y > topY; y -= 12)
-        extra.moveTo(bounds.x, y).lineTo(bounds.x + bounds.width, y).stroke({ color: COLORS.woodDark, width: 1.2, alpha: 0.8 });
-      // a crane over the site
-      const cx = bounds.x + bounds.width * 0.75;
-      extra.moveTo(cx, bounds.y + bounds.height).lineTo(cx, topY - 26).lineTo(cx - 34, topY - 22).stroke({ color: 0xb5892f, width: 2 });
-      extra.moveTo(cx - 30, topY - 22).lineTo(cx - 30, topY - 4).stroke({ color: 0x3a2a1c, width: 0.8 });
-    }
-    bv.glow.clear();
-    // The illuminated version paints each window before subsequent roof/occluder
-    // geometry. Alpha blends with the unlit version, preserving all window depth.
-    if (isBuilt(b) && !landmarkSite) drawStyledBuilding(bv.glow, b, pal, detail, seed, true);
-    bv.glow.alpha = Math.min(1, this.night * 1.1);
-    bv.glow.visible = this.night > 0.02 && isBuilt(b) && b.connected;
-    if (this.opts.cacheBodies && landmarkSite && bv.body.isCachedAsTexture) bv.body.cacheAsTexture(false);
-    if (this.opts.cacheBodies && !landmarkSite) {
-      if (bv.body.isCachedAsTexture) bv.body.updateCacheTexture();
-      else bv.body.cacheAsTexture({ resolution: 2, antialias: true });
-    }
-    this.tintKey = -1;
-    const height = bv.info.height;
-    const top: [number, number] = [P(w / 2, h / 2)[0], -height - 6];
-    g.alpha = b.connected ? 1 : 0.7;
+    const top = P(w / 2, h / 2, bv.info.height + 8);
 
-    if (b.state !== 'active') {
-      const ratio = Math.min(1, b.progressTicks / Math.max(1, requiredTicks(b)));
-      if (b.state === 'upgrading') {
-        // scaffolding around the existing building
-        for (const [u, v] of [
-          [0.02, h - 0.02],
-          [w - 0.02, h - 0.02],
-          [w - 0.02, 0.02],
-        ] as const) {
-          const a = P(u, v, 0);
-          const c = P(u, v, height * 0.8);
-          extra.moveTo(a[0], a[1]).lineTo(c[0], c[1]).stroke({ color: COLORS.woodDark, width: 2 });
-        }
-        const l = P(0.02, h - 0.02, height * 0.5);
-        const m = P(w - 0.02, h - 0.02, height * 0.5);
-        const r = P(w - 0.02, 0.02, height * 0.5);
+    if (!isBuilt(b)) {
+      const ratio = Math.min(1, b.buildProgress / requiredTicks(b));
+      // wooden scaffolding poles around footprint
+      const corners: [number, number][] = [
+        [0.08, h - 0.08],
+        [w - 0.08, h - 0.08],
+        [w - 0.08, 0.08],
+      ];
+      for (const [u, v] of corners) {
+        const p0 = P(u, v, 0);
+        const p1 = P(u, v, bv.info.height * 0.75);
+        extra.moveTo(p0[0], p0[1]).lineTo(p1[0], p1[1]).stroke({ color: COLORS.woodDark, width: 2 });
+      }
+      for (let z = 12; z < bv.info.height * 0.7; z += 14) {
+        const l = P(0.08, h - 0.08, z);
+        const m = P(w - 0.08, h - 0.08, z);
+        const r = P(w - 0.08, 0.08, z);
         extra
           .moveTo(l[0], l[1])
           .lineTo(m[0], m[1])
@@ -1173,7 +1097,7 @@ export class ValleyRenderer {
     }
   }
 
-  /** The city's fleet sails the lake and river (visual only, one sprite per vessel up to 9). */
+  /** The city's fleet sails the lake and sea smoothly along forward-preferring sea routes. */
   private updateBoats(view: RendererView, p: Province, dt: number, motion: boolean): void {
     const want: ('fishing' | 'cargo' | 'yacht')[] = [];
     for (const kind of ['fishing', 'cargo', 'yacht'] as const)
@@ -1193,30 +1117,43 @@ export class ValleyRenderer {
         c.addChild(g);
         c.cullable = true;
         this.objects.addChild(c);
-        this.boats.push({ c, kind, x: at[0], y: at[1], tx: at[0], ty: at[1], t: 1 });
+        this.boats.push({ c, kind, px: at[0], py: at[1], x: at[0], y: at[1], tx: at[0], ty: at[1], t: 1 });
       });
     }
-    const step = motion ? (dt / 1000) * 0.35 * (SPEED_FACTOR[view.game.speed] ?? 0) : 0;
+    const baseStep = motion ? (dt / 1000) * 0.38 * (SPEED_FACTOR[view.game.speed] ?? 0) : 0;
     const isWater = (x: number, y: number): boolean => {
       const t = tileAt(p, x, y);
       return !!t && (t.terrain === 'lake' || t.terrain === 'water') && !t.road;
     };
     for (const b of this.boats) {
-      b.t += step;
+      const speedMult = b.kind === 'fishing' ? 1.15 : b.kind === 'yacht' ? 1.0 : 0.82;
+      b.t += baseStep * speedMult;
       if (b.t >= 1) {
+        const prevDx = b.tx - b.x;
+        const prevDy = b.ty - b.y;
+        b.px = b.x;
+        b.py = b.y;
         b.x = b.tx;
         b.y = b.ty;
         const options = NEIGHBORS4.map(([dx, dy]) => [b.x + dx, b.y + dy] as [number, number]).filter(([x, y]) => isWater(x, y));
-        const next = options.length ? options[Math.floor(Math.random() * options.length)]! : [b.x, b.y];
+        // Prefer continuing straight ahead on open water, then gentle turns, avoiding abrupt 180-degree reversals
+        const straight = options.filter(([x, y]) => x - b.x === prevDx && y - b.y === prevDy);
+        const forward = options.filter(([x, y]) => x !== b.px || y !== b.py);
+        const pool = straight.length && Math.random() < 0.72 ? straight : forward.length ? forward : options;
+        const next = pool.length ? pool[Math.floor(Math.random() * pool.length)]! : [b.x, b.y];
         b.tx = next[0];
         b.ty = next[1];
         b.t = 0;
       }
       const fx = b.x + (b.tx - b.x) * b.t + 0.5;
       const fy = b.y + (b.ty - b.y) * b.t + 0.5;
-      b.c.position.set(isoX(fx, fy), isoY(fx, fy) + Math.sin(this.time / 500 + b.x) * 0.8);
+      const waveBob = Math.sin(this.time / 420 + b.x * 0.8 + b.y * 0.5) * 1.05;
+      b.c.position.set(isoX(fx, fy), isoY(fx, fy) + waveBob);
       b.c.zIndex = fx + fy;
-      b.c.scale.x = b.tx - b.x - (b.ty - b.y) < 0 ? -1 : 1;
+      const isoDx = (b.tx - b.x) - (b.ty - b.y);
+      const isoDy = (b.tx - b.x) + (b.ty - b.y);
+      if (isoDx !== 0) b.c.scale.x = isoDx < 0 ? -1 : 1;
+      b.c.rotation = (isoDy * 0.12 * b.c.scale.x) + (motion ? Math.sin(this.time / 520 + b.x) * 0.035 : 0);
     }
   }
 
@@ -1419,7 +1356,7 @@ export class ValleyRenderer {
       const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
       const paint = paints[this.trafficCars.length % paints.length]!;
       const electric = this.trafficCars.length % 3 === 0;
-      const variant = (start[0] * 5 + start[1] * 7 + this.trafficCars.length) % 5;
+      const variant = (start[0] * 5 + start[1] * 7 + this.trafficCars.length) % 6;
       const dx = to[0] - start[0], dy = to[1] - start[1];
       drawCityCar(body, paint, electric, dx, dy, variant);
       holder.addChild(body);
@@ -1548,7 +1485,7 @@ export class ValleyRenderer {
         }
         for (const { x, y } of plan.paveTiles) {
           this.tileFill(g, x, y, 0x58c6ce, 0.48);
-          this.outline(g, x, y, 1, 1, 0x58c6ce, 2, 0.92);
+          this.outline(g, x, y, 1, 1, routeColor(true), 2, 0.92);
         }
         if (plan.blocked) {
           this.tileFill(g, plan.blocked.x, plan.blocked.y, COLORS.bad, 0.6);
@@ -1600,39 +1537,39 @@ export class ValleyRenderer {
         const canPave = !!t?.road && t.roadType === 'dirt' && !t.paved;
         this.tileFill(g, hover.x, hover.y, canPave ? COLORS.ok : COLORS.bad, 0.44);
         this.outline(g, hover.x, hover.y, 1, 1, canPave ? COLORS.ok : COLORS.bad, 2, 0.92);
-      } else if (tool.kind === 'terrace') {
-        const t = tileAt(p, hover.x, hover.y);
-        const ok = !!t && t.terrain === 'hill' && !t.road && !t.buildingId;
-        this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.5);
-        this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2, 0.95);
-      } else if (tool.kind === 'army') {
-        const t = tileAt(p, hover.x, hover.y);
-        const ok = !!t?.road && (view.game.militia ?? 0) > 0;
-        this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.4);
-        this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2.2, 0.9);
-      } else if (tool.kind === 'road') {
-        const ok = checkRoadSite(p, hover.x, hover.y) === null;
-        this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.5);
-        this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2, 0.95);
-      } else {
+      } else if (tool.kind === 'road' || tool.kind === 'terrace') {
+        const ok =
+          tool.kind === 'road'
+            ? checkRoadSite(p, hover.x, hover.y, 'dirt') === null
+            : (() => {
+                const t = tileAt(p, hover.x, hover.y);
+                return !!t && !t.buildingId && !t.road && !t.terrace && t.terrain !== 'water' && t.terrain !== 'lake';
+              })();
+        this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.44);
+        this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2, 0.92);
+      } else if (tool.kind === 'demolish') {
         const t = tileAt(p, hover.x, hover.y);
         const b = t?.buildingId ? buildingById(p, t.buildingId) : undefined;
-        const color = tool.kind === 'demolish' ? COLORS.bad : 0xffffff;
-        if (b) this.outline(g, b.x, b.y, defOf(b).footprint[0], defOf(b).footprint[1], color, 2, 0.85);
-        else
-          this.outline(
-            g,
-            hover.x,
-            hover.y,
-            1,
-            1,
-            color,
-            1.5,
-            tool.kind === 'demolish' && !t?.road ? 0.35 : 0.7,
-          );
+        if (b && b.definitionId !== 'town_center') {
+          const [w, h] = defOf(b).footprint;
+          for (const [x, y] of footprintTiles(defOf(b), b.x, b.y)) {
+            this.tileFill(g, x, y, COLORS.bad, 0.5);
+          }
+          this.outline(g, b.x, b.y, w, h, COLORS.bad, 3, 0.95);
+        } else if (t?.road || t?.terrace || (t && !t.buildingId && (t.terrain === 'forest' || t.terrain === 'stone' || t.terrain === 'mountain'))) {
+          this.tileFill(g, hover.x, hover.y, COLORS.bad, 0.5);
+          this.outline(g, hover.x, hover.y, 1, 1, COLORS.bad, 2, 0.95);
+        }
+      } else {
+        this.outline(g, hover.x, hover.y, 1, 1, 0xffffff, 1.5, 0.45);
       }
     }
-    if (!ghostSig && this.ghostSig) this.ghost.clear();
-    this.ghostSig = ghostSig;
+
+    if (ghostSig !== this.ghostSig) {
+      this.ghostSig = ghostSig;
+      if (!ghostSig) this.ghost.clear();
+    }
   }
 }
+
+const routeColor = (paved: boolean): number => (paved ? 0x58c6ce : COLORS.ok);

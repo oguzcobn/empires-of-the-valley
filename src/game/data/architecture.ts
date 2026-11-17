@@ -433,7 +433,20 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
 export function defaultLook(style: ArchitectureStyle, id: BuildingId, level: number): BuildingLook {
   const table = (DEFAULT_LOOKS[style] ?? DEFAULT_LOOKS[LEGACY_STYLE])!;
   const levels = table[id] ?? table.farm!;
-  return levels[Math.max(0, Math.min(levels.length - 1, level - 1))]!;
+  const base = levels[Math.max(0, Math.min(levels.length - 1, level - 1))]!;
+  if (level <= levels.length) return base;
+  // Levels 4 and 5 scale up floors and add refined architectural features while preserving levels 1..3 verbatim
+  const extra = level - levels.length;
+  const floorLadder: readonly BuildingLook['floors'][] = [1, 2, 3, 4, 6, 8, 10];
+  const baseIdx = Math.max(0, floorLadder.indexOf(base.floors));
+  const maxIdx = id === 'watchtower' || id === 'hut' || id === 'town_center' ? floorLadder.length - 1 : 3;
+  const nextFloors = floorLadder[Math.min(maxIdx, baseIdx + extra)] ?? base.floors;
+  return {
+    ...base,
+    floors: nextFloors,
+    decor: base.decor === 'none' ? (level >= 5 ? 'banners' : 'lanterns') : base.decor,
+    garden: base.garden === 'none' && level >= 4 ? 'flowers' : base.garden,
+  };
 }
 
 /** Building types whose appearance the Architecture Workshop can design. */
