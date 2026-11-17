@@ -128,6 +128,7 @@ interface TrafficCar {
   sprite: Graphics;
   paint: number;
   electric: boolean;
+  variant: number;
   heading: string;
   from: [number, number];
   to: [number, number];
@@ -1418,13 +1419,14 @@ export class ValleyRenderer {
       const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
       const paint = paints[this.trafficCars.length % paints.length]!;
       const electric = this.trafficCars.length % 3 === 0;
+      const variant = (start[0] * 5 + start[1] * 7 + this.trafficCars.length) % 5;
       const dx = to[0] - start[0], dy = to[1] - start[1];
-      drawCityCar(body, paint, electric, dx, dy);
+      drawCityCar(body, paint, electric, dx, dy, variant);
       holder.addChild(body);
       holder.cullable = true;
       this.objects.addChild(holder);
       this.trafficCars.push({
-        c: holder, sprite: body, paint, electric, heading: `${dx},${dy}`,
+        c: holder, sprite: body, paint, electric, variant, heading: `${dx},${dy}`,
         from: [start[0], start[1]], to,
         prev: [start[0], start[1]], t: 0,
         speed: 0.5 + Math.random() * 0.24,
@@ -1459,7 +1461,7 @@ export class ValleyRenderer {
       const heading = `${dx},${dy}`;
       if (car.heading !== heading && (dx !== 0 || dy !== 0)) {
         car.sprite.clear();
-        drawCityCar(car.sprite, car.paint, car.electric, dx, dy);
+        drawCityCar(car.sprite, car.paint, car.electric, dx, dy, car.variant);
         car.heading = heading;
       }
       const x = car.from[0] + dx * car.t + 0.5;

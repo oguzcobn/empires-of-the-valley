@@ -21,6 +21,7 @@ import { Actors3D } from './actors3d';
 import { buildModel, buildSite } from './buildings3d';
 import { Builder, LEVEL_H, mixHex } from './geo';
 import { Terrain3D, standY } from './terrain3d';
+import { WorkerActors3D } from './workers3d';
 import { TiltShift } from './tiltShift';
 
 const FOV = 26;
@@ -104,6 +105,7 @@ export class Valley3D implements ValleyView {
   private terrain = new Terrain3D();
   private actors = new Actors3D();
   private cityActors = new CityActors3D();
+  private workerActors = new WorkerActors3D();
   private post: TiltShift | null = null;
   /** Countryside beyond the playable map, so the valley does not float in the sky. */
   private apron = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshLambertMaterial({ color: 0x6fae4a }));
@@ -186,7 +188,8 @@ export class Valley3D implements ValleyView {
     r.ghost.visible = false;
     r.terrain.setShadows(r.shadows);
     r.actors.setShadows(r.shadows);
-    r.scene.add(r.hemi, r.sun, r.sun.target, r.apron, r.terrain.group, r.buildings, r.actors.group, r.cityActors.group, r.overlay, r.ghost);
+    r.workerActors.setShadows(r.shadows);
+    r.scene.add(r.hemi, r.sun, r.sun.target, r.apron, r.terrain.group, r.buildings, r.actors.group, r.cityActors.group, r.workerActors.group, r.overlay, r.ghost);
 
     r.bindInput(canvas);
     r.resize();
@@ -209,6 +212,7 @@ export class Valley3D implements ValleyView {
     this.terrain.dispose();
     this.actors.dispose();
     this.cityActors.dispose();
+    this.workerActors.dispose();
     this.post?.dispose();
     this.overlay.geometry.dispose();
     this.ghost.geometry.dispose();
@@ -232,7 +236,7 @@ export class Valley3D implements ValleyView {
       textures: this.renderer.info.memory.textures,
       buildings: this.buildingViews.size,
       props: this.terrain.propCount,
-      walkers: this.actors.count,
+      walkers: this.actors.count + this.workerActors.count,
       particles: 0,
     };
   }
@@ -498,6 +502,8 @@ export class Valley3D implements ValleyView {
     this.updateLight(view, pal, cal.day, cal.season, dt);
     this.syncBuildings(p);
     this.cityActors.update(view.game, p, dt, !motion);
+    const workerStep = motion ? (dt / 1000) * Math.min(1.35, SPEED_FACTOR[view.game.speed] ?? 0) : 0;
+    this.workerActors.update(p, cal.season, view.selectedBuildingId, workerStep, !motion);
     this.terrain.update(this.night, dt, motion);
     this.actors.update(
       {

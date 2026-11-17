@@ -14,66 +14,181 @@ export function drawCityCar(
   electric: boolean,
   dx: number,
   dy: number,
+  variant = 0,
 ): void {
   const forwardX = dx - dy >= 0 ? 1 : -1;
   const forwardY = dx + dy >= 0 ? 1 : -1;
-  g.ellipse(0, 1.5, 9.5, 4.4).fill({ color: COLORS.shadow, alpha: 0.24 });
+  const kind = Math.abs(variant) % 5;
+  const roofColor = shade(paint, 1.1);
+  const sideColor = shade(paint, 0.74);
+  const noseColor = shade(paint, 0.88);
+  const glass = 0x9bd3e6;
+  const tyre = 0x1f252c;
+  const rim = 0xa7b3c0;
 
-  // Lower body shell
+  const spec = [
+    { tail: 8.4, nose: 8.8, width: 4.6, roofTail: 3.6, roofNose: 4.7, roofY: -4.4, roofPeak: -7.0, cabinInset: 0.1 },
+    { tail: 7.7, nose: 7.9, width: 4.8, roofTail: 2.7, roofNose: 3.7, roofY: -4.0, roofPeak: -6.5, cabinInset: 0.3 },
+    { tail: 8.9, nose: 8.7, width: 5.1, roofTail: 4.3, roofNose: 4.8, roofY: -4.9, roofPeak: -7.6, cabinInset: 0.1 },
+    { tail: 9.2, nose: 8.5, width: 5.2, roofTail: 5.0, roofNose: 5.1, roofY: -5.2, roofPeak: -7.2, cabinInset: 0.2 },
+    { tail: 8.8, nose: 8.3, width: 4.9, roofTail: 1.9, roofNose: 3.7, roofY: -3.8, roofPeak: -6.5, cabinInset: 0.2 },
+  ][kind]!;
+
+  const tailX = -spec.tail * forwardX;
+  const noseX = spec.nose * forwardX;
+  const shoulderY = 3.4;
+  const sillY = 5.5;
+
+  g.ellipse(0, 1.8, spec.tail + 2.1, spec.width + 0.75).fill({ color: COLORS.shadow, alpha: 0.24 });
+
+  // Main body shell
   g.poly([
-    -8 * forwardX, -1.5,
-    0, -5.5,
-    8.5 * forwardX, -1,
-    0, 3.2,
+    tailX, -1.3,
+    0, -5.9,
+    noseX, -1,
+    0, shoulderY,
   ]).fill(paint);
   g.poly([
-    -8 * forwardX, -1.5,
-    0, 3.2,
-    0, 5.2,
-    -8 * forwardX, 0.7,
-  ]).fill(shade(paint, 0.74));
+    tailX, -1.3,
+    0, shoulderY,
+    0, sillY,
+    tailX, 0.7,
+  ]).fill(sideColor);
   g.poly([
-    0, 3.2,
-    8.5 * forwardX, -1,
-    8.5 * forwardX, 1.1,
-    0, 5.2,
-  ]).fill(shade(paint, 0.86));
+    0, shoulderY,
+    noseX, -1,
+    noseX, 1.25,
+    0, sillY,
+  ]).fill(noseColor);
 
-  // Greenhouse / cabin roof and tinted windows
+  // Bumpers / rocker panels
   g.poly([
-    -4.2 * forwardX, -4.3,
-    0.4 * forwardX, -6.9,
-    4.9 * forwardX, -4.1,
-    0, -1.7,
-  ]).fill(shade(paint, 1.12));
+    tailX * 0.96, 0.5,
+    -1.8 * forwardX, 4.25,
+    -1.5 * forwardX, 4.95,
+    tailX * 0.98, 1.25,
+  ]).fill(0x313841);
   g.poly([
-    -3.7 * forwardX, -3.9,
-    0.3 * forwardX, -6.1,
-    4.1 * forwardX, -3.8,
+    1.5 * forwardX, 4.3,
+    noseX * 0.95, 0.95,
+    noseX * 0.95, 1.55,
+    1.6 * forwardX, 5.0,
+  ]).fill(0x39414a);
+
+  if (kind === 4) {
+    // Pickup bed
+    g.poly([
+      -7.5 * forwardX, -0.5,
+      -2.4 * forwardX, -3.1,
+      -0.7 * forwardX, -0.7,
+      -5.8 * forwardX, 1.8,
+    ]).fill(0x2d3136);
+    g.poly([
+      -7.1 * forwardX, -0.2,
+      -2.5 * forwardX, -2.5,
+      -2.5 * forwardX, -1.9,
+      -6.8 * forwardX, 0.25,
+    ]).fill(shade(paint, 0.92));
+  }
+
+  const roofTail = -spec.roofTail * forwardX;
+  const roofNose = spec.roofNose * forwardX;
+  g.poly([
+    roofTail, spec.roofY,
+    spec.cabinInset * forwardX, spec.roofPeak,
+    roofNose, spec.roofY + (kind === 3 ? -0.2 : 0.25),
+    0, -1.75,
+  ]).fill(roofColor);
+
+  // Windows / greenhouse
+  g.poly([
+    (roofTail + 0.8 * forwardX), spec.roofY + 0.45,
+    0.2 * forwardX, spec.roofPeak + 0.9,
+    (roofNose - 0.8 * forwardX), spec.roofY + 0.55,
     0, -2.0,
-  ]).fill({ color: 0x9bd3e6, alpha: 0.78 });
+  ]).fill({ color: glass, alpha: 0.82 });
+  g.moveTo((-0.1) * forwardX, spec.roofPeak + 0.65).lineTo(0, -2.05).stroke({ color: 0xd7f3fb, alpha: 0.45, width: 0.7 });
+  if (kind !== 3) {
+    g.moveTo((-2.0) * forwardX, -3.65).lineTo((-0.4) * forwardX, -2.35).stroke({ color: shade(glass, 0.8), width: 0.7 });
+    g.moveTo((2.0) * forwardX, -3.5).lineTo((0.4) * forwardX, -2.3).stroke({ color: shade(glass, 0.8), width: 0.7 });
+  }
 
-  // Wheels
-  g.circle(-4.2, 2.2, 1.7).fill(0x1f252c);
-  g.circle(4.2, 0.2, 1.7).fill(0x1f252c);
-
-  // Headlights and taillights oriented with movement
-  const noseX = 6.2 * forwardX;
-  const noseY = forwardY > 0 ? 0.9 : -2.6;
-  g.circle(noseX, noseY, 1.05).fill(0xfff5ba);
-  g.circle(-noseX, -noseY, 0.95).fill(0xe23b3b);
-
-  // Exterior detail: mirrors, door handles, tail reflectors, headlights and grille.
-  // Each remains orientation-aware so vehicles keep their distinct front and rear.
-  g.circle(-4.6 * forwardX, -3.4, 0.65).fill(0x313c48);
-  g.circle(4.8 * forwardX, -3.2, 0.65).fill(0x313c48);
-  g.roundRect(-3.1, -0.3, 2.1, 0.7, 0.3).fill(0xdfe6ea);
-  g.roundRect(2.4, -1.1, 1.9, 0.7, 0.3).fill(0xdfe6ea);
-  g.rect(6.6 * forwardX, -0.2, 1.2, 0.9).fill(0xcbd7df);
-  g.circle(-6.3 * forwardX, 0.2, 0.65).fill(0xc84942);
-  g.circle(5.5 * forwardX, -2.4, 0.55).fill(0xf8ecb3);
+  // Roof details / racks depending on type
+  if (kind === 2 || kind === 3) {
+    g.moveTo(-2.2 * forwardX, spec.roofY - 0.2).lineTo(-0.4 * forwardX, spec.roofPeak + 0.3).stroke({ color: 0xcbd5e1, width: 0.8 });
+    g.moveTo(0.5 * forwardX, spec.roofPeak + 0.2).lineTo(2.2 * forwardX, spec.roofY - 0.15).stroke({ color: 0xcbd5e1, width: 0.8 });
+  }
   if (electric) {
-    g.circle(0, -4.4, 1.1).fill(0x3ad29f);
+    g.roundRect(-1.2, spec.roofPeak - 0.8, 2.4, 1.6, 0.6).fill(0x3ad29f);
+  }
+
+  // Wheel arches and wheels
+  const rearWheel = kind === 3 ? -4.9 : -4.4;
+  const frontWheel = kind === 3 ? 4.8 : 4.3;
+  for (const [wx, wy] of [[rearWheel, 2.35], [frontWheel, 0.25]] as const) {
+    g.circle(wx, wy, kind === 2 || kind === 3 ? 1.85 : 1.7).fill(tyre);
+    g.circle(wx, wy, 0.82).fill(rim);
+  }
+
+  // Mirrors / grille / door lines
+  g.circle(5.3 * forwardX, -0.95, 0.35).fill(0xdfe7ef);
+  g.circle(-5.3 * forwardX, 0.55, 0.35).fill(0x4e5761);
+  g.moveTo(-0.4 * forwardX, -2.1).lineTo(-0.1 * forwardX, 3.9).stroke({ color: shade(paint, 0.6), width: 0.7, alpha: 0.55 });
+  g.moveTo(-6.0 * forwardX, -0.3).lineTo(-0.2 * forwardX, -3.45).stroke({ color: shade(paint, 1.18), width: 0.6, alpha: 0.5 });
+  g.moveTo(0.2 * forwardX, -3.45).lineTo(6.0 * forwardX, -0.3).stroke({ color: shade(paint, 1.18), width: 0.6, alpha: 0.5 });
+
+  // Lights
+  const noseLightY = forwardY > 0 ? 0.95 : -2.6;
+  const tailLightY = -noseLightY + 0.05;
+  g.circle(6.3 * forwardX, noseLightY, 1.05).fill(0xfff5ba);
+  g.circle(5.3 * forwardX, noseLightY - 0.15 * forwardY, 0.45).fill(0xe8dcc1);
+  g.circle(-6.2 * forwardX, tailLightY, 0.95).fill(0xe23b3b);
+  g.circle(-5.4 * forwardX, tailLightY + 0.12 * forwardY, 0.38).fill(0xffb38c);
+
+  // Type accents to make each vehicle silhouette distinct.
+  if (kind === 1) {
+    g.moveTo(1.2 * forwardX, -2.25).lineTo(4.4 * forwardX, -0.95).stroke({ color: 0x1f252c, width: 0.8, alpha: 0.45 });
+  } else if (kind === 2) {
+    g.roundRect(-7.0, -0.15, 2.5, 0.72, 0.25).fill(0x2a2e33);
+    g.roundRect(4.2, -1.65, 2.0, 0.72, 0.25).fill(0x2a2e33);
+  } else if (kind === 3) {
+    g.roundRect(-6.8, -0.1, 12.9, 0.7, 0.25).fill(0x3a4149);
+    g.moveTo(-1.8 * forwardX, -4.2).lineTo(-1.8 * forwardX, 3.6).stroke({ color: 0x7ea3b4, width: 0.7, alpha: 0.5 });
+    g.moveTo(1.8 * forwardX, -4.2).lineTo(1.8 * forwardX, 3.1).stroke({ color: 0x7ea3b4, width: 0.7, alpha: 0.5 });
+  } else if (kind === 4) {
+    g.moveTo(-3.0 * forwardX, -2.9).lineTo(-5.6 * forwardX, -1.6).stroke({ color: 0xd7dde3, width: 0.75 });
+  }
+}
+
+/** Dedicated silhouettes and signage for emergency and service traffic. */
+export function drawServiceVehicle(
+  g: Graphics,
+  service: 'ambulance' | 'patrol' | 'delivery',
+  dx: number,
+  dy: number,
+): void {
+  const forwardX = dx - dy >= 0 ? 1 : -1;
+  if (service === 'ambulance') {
+    drawCityCar(g, 0xf5f7f5, false, dx, dy, 3);
+    g.roundRect(-6.4, -7.0, 12.8, 1.6, 0.4).fill(0xd6303f);
+    g.rect(-1.1, -10.3, 2.2, 5.1).fill(0xd6303f);
+    g.rect(-3.4, -8.7, 6.8, 1.8).fill(0xd6303f);
+    g.roundRect(-3.2, -9.7, 6.4, 1.2, 0.4).fill(0xfafafa);
+    g.circle(-2.2 * forwardX, -9.3, 1.0).fill(0x2083da);
+    g.circle(2.2 * forwardX, -9.3, 1.0).fill(0xe83b42);
+  } else if (service === 'patrol') {
+    drawCityCar(g, 0x285084, false, dx, dy, 2);
+    g.roundRect(-6.1, -1.0, 12.2, 1.35, 0.35).fill(0xf2f5f9);
+    g.roundRect(-4.6, -2.0, 8.7, 1.4, 0.35).fill(0x1b365b);
+    g.roundRect(-3.8, -8.9, 7.6, 1.25, 0.3).fill(0x333f4e);
+    g.rect(-3.4, -8.7, 3.2, 0.95).fill(0x2e7bff);
+    g.rect(0.2, -8.7, 3.2, 0.95).fill(0xf23a42);
+  } else {
+    drawCityCar(g, 0xb98749, false, dx, dy, 3);
+    g.poly([-6.9, -6.7, -2.1, -9.6, 4.1, -6.8, -0.8, -4.1]).fill(0xe5d7bd);
+    g.poly([-6.9, -6.7, -0.8, -4.1, -0.8, 0.8, -6.9, -2.3]).fill(0xc5aa7b);
+    g.moveTo(-6.2, -3.9).lineTo(-1.6, -6.4).stroke({ color: 0x937750, width: 0.8 });
+    g.roundRect(-4.8, -4.2, 2.6, 1.3, 0.35).fill(0xf4ead8);
   }
 }
 

@@ -7,7 +7,7 @@ import { tileAt } from '../systems/grid';
 import { defOf } from '../data/buildings';
 import { HEIGHT_PX } from '../data/balance';
 import { isoX, isoY, P } from './iso';
-import { drawCityCar, drawFireTruck } from './trafficSprites';
+import { drawCityCar, drawFireTruck, drawServiceVehicle } from './trafficSprites';
 import { drawVillager } from './sprites';
 
 const lerp = (a: MapPoint, b: MapPoint, t: number): MapPoint => ({
@@ -139,13 +139,10 @@ export class CityScenes {
         a.car.clear();
         if (j.kind === 'fire') {
           drawFireTruck(a.car, dx || 1, dy);
+        } else if (j.kind === 'ambulance' || j.kind === 'patrol' || j.kind === 'delivery') {
+          drawServiceVehicle(a.car, j.kind, dx || 1, dy);
         } else {
-          drawCityCar(a.car, paint, false, dx || 1, dy);
-          if (j.kind === 'ambulance') {
-            a.car.rect(-1, -7, 2, 6).fill(0xdc3345);
-            a.car.rect(-3, -5, 6, 2).fill(0xdc3345);
-          }
-          if (j.kind === 'delivery') a.car.roundRect(-6, -9, 10, 7, 1).fill(0xc9b994);
+          drawCityCar(a.car, paint, false, dx || 1, dy, j.id % 5);
         }
         a.key = key;
       }
@@ -240,11 +237,7 @@ export class CityScenes {
           if (b.definitionId === 'fire_station') {
             drawFireTruck(a.car, 1, 0);
           } else {
-            drawCityCar(a.car, b.definitionId === 'hospital' ? 0xf5f7f5 : 0x295383, false, 1, 0);
-            if (b.definitionId === 'hospital') {
-              a.car.rect(-1, -7, 2, 6).fill(0xdc3345);
-              a.car.rect(-3, -5, 6, 2).fill(0xdc3345);
-            }
+            drawServiceVehicle(a.car, b.definitionId === 'hospital' ? 'ambulance' : 'patrol', 1, 0);
           }
           a.key = `idle:${b.definitionId}`;
         }
