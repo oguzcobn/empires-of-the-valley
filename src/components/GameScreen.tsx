@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
-import type { ReactElement } from 'react';
+import type { MouseEvent as ReactMouseEvent, ReactElement } from 'react';
 import { useApp } from '../app/store';
 import { calendar, clockHour } from '../game/core/time';
 import { nightFactor } from '../game/rendering/weather';
 import type { GameState } from '../game/core/types';
+import { defOf } from '../game/data/buildings';
+import { homeProvince } from '../game/systems/economy';
 import { BuildCatalog } from './BuildCatalog';
 import { Inspector } from './Inspector';
 import {
@@ -22,6 +24,85 @@ import { CityNews } from './CityNews';
 import { TopHud } from './TopHud';
 import { MobileLandscapePrompt } from './MobileLandscapePrompt';
 import { ValleyCanvas, getRenderer } from './ValleyCanvas';
+
+/** Clickable overview map for quickly moving the camera around the valley. */
+function RadarMinimap({ game }: { game: GameState }): ReactElement {
+  const focusOn = useApp((s) => s.focusOn);
+  const selectedId = useApp((s) => s.selectedBuildingId);
+  const openPanel = useApp((s) => s.openPanel);
+  const province = homeProvince(game);
+  const { width, height } = province;
+
+  const handleMapClick = (e: ReactMouseEvent<SVGSVGElement>): void => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+    const yRatio = Math.max(0, Math.min(1, (e.clientY - rect.top) / Math.max(1, rect.height)));
+    focusOn(Math.min(width - 1, Math.floor(xRatio * width)), Math.min(height - 1, Math.floor(yRatio * height)));
+  };
+
+  const handleMapKeyDown = (e: React.KeyboardEvent<SVGSVGElement>): void => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      focusOn(Math.floor(width / 2), Math.floor(height / 2));
+    }
+  };
+
+  return (
+    <section className="card radar-minimap" aria-label="Vadi radar mini haritası">
+      <div className="radar-head">
+        <span>🧭 <b>Vadi radarı</b> ({width}×{height})</span>
+        <button type="button" className="btn small" onClick={() => openPanel('world')} title="Bölge ve dünya haritası">
+          Harita
+        </button>
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="radar-svg"
+        onClick={handleMapClick}
+        onKeyDown={handleMapKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label="Vadi mini haritası. Tıklayarak kamerayı o noktaya taşı."
+      >
+        <rect x={0} y={0} width={width} height={height} fill="#365c32" />
+        {province.tiles.map((tile, index) => {
+          const x = index % width;
+          const y = Math.floor(index / width);
+          if (tile.road) {
+            return <rect key={index} x={x} y={y} width={1.05} height={1.05} fill={tile.paved ? '#525866' : '#c2a675'} />;
+          }
+          const color = tile.terrain === 'water' || tile.terrain === 'lake' ? '#1f6f9f'
+            : tile.terrain === 'forest' ? '#234721'
+              : tile.terrain === 'stone' || tile.terrain === 'rocky' || tile.terrain === 'mountain' ? '#7c8288'
+                : tile.terrain === 'sand' ? '#d8c38a'
+                  : tile.terrain === 'hill' || tile.terrain === 'terrace' ? '#71864a'
+                    : null;
+          return color ? <rect key={index} x={x} y={y} width={1.05} height={1.05} fill={color} /> : null;
+        })}
+        {province.buildings.map((building) => {
+          const [buildingWidth, buildingHeight] = defOf(building).footprint;
+          const selected = building.id === selectedId;
+          const fill = selected ? '#ffd54f'
+            : building.definitionId === 'town_center' ? '#f59e0b'
+              : building.definitionId === 'shipyard' || building.definitionId === 'airport' ? '#38bdf8'
+                : building.definitionId === 'hotel' ? '#a78bfa' : '#e8dcc4';
+          return (
+            <rect
+              key={building.id}
+              x={building.x}
+              y={building.y}
+              width={Math.max(1.4, buildingWidth)}
+              height={Math.max(1.4, buildingHeight)}
+              fill={fill}
+              stroke={selected ? '#fff' : '#1b1b18'}
+              strokeWidth={selected ? 0.6 : 0.25}
+            />
+          );
+        })}
+      </svg>
+    </section>
+  );
+}
 
 /** Keyboard shortcuts. Ignored while typing in a field; Esc always backs out one level. */
 function useShortcuts(): void {
@@ -105,6 +186,7 @@ export function GameScreen({ game }: { game: GameState }): ReactElement {
       <div className="right-column">
         <Inspector game={game} />
         <AlertsList game={game} />
+        <RadarMinimap game={game} />
       </div>
       <InfoStrip game={game} />
       <Toolbar game={game} />

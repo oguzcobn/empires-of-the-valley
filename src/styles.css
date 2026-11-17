@@ -2325,3 +2325,36 @@ main.game-screen .quest.card .mira {
 main.game-screen .quest.card .mira p,
 main.game-screen .quest.card .mira b { color: #f7f2e7 !important; }
 main.game-screen .quest.card > .reward { color: #e8c77f !important; }
+
+/* Clickable valley overview map. */
+.radar-minimap {
+  padding: .5rem;
+  border-color: #9e7e4b;
+}
+.radar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .4rem;
+  margin-bottom: .35rem;
+  color: #f0d2a3;
+  font-size: .76rem;
+}
+.radar-svg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 11.5rem;
+  border: 1.5px solid #8c704a;
+  border-radius: .5rem;
+  background: #1f3c1d;
+  box-shadow: inset 0 2px 8px rgb(0 0 0 / 55%);
+  cursor: crosshair;
+}
+.radar-svg:focus-visible {
+  outline: 2px solid #f0d2a3;
+  outline-offset: 2px;
+}
+@media (max-width: 780px) {
+  .radar-minimap { display: none; }
+}
