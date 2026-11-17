@@ -79,6 +79,8 @@ export function ValleyCanvas(): ReactElement {
     };
     let disposed = false;
     let renderer: ValleyView | null = null;
+    // Switching view modes should never leave an old renderer error on screen.
+    setError(null);
     const callbacks: RendererHost = {
       getView() {
         const s = useApp.getState();
@@ -188,7 +190,19 @@ export function ValleyCanvas(): ReactElement {
           current = r;
         }
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+      .catch((e: unknown) => {
+        if (disposed) return;
+        const message = e instanceof Error ? e.message : String(e);
+        if (view3d) {
+          // A stale cached HTML/module graph can refer to a hashed 3D chunk
+          // that has been removed by a newer GitHub Pages deployment. The
+          // classic 2D renderer is bundled with the app and remains available.
+          useApp.getState().updateSettings({ view3d: false });
+          useApp.getState().toast('info', '3B harita yüklenemedi. Oyun ve kayıtlarınız korunarak 2B haritaya geçildi.');
+          return;
+        }
+        setError(message);
+      });
     return () => {
       disposed = true;
       renderer?.destroy();

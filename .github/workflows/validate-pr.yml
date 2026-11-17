@@ -19,7 +19,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- e2e/mobile.spec.ts e2e/living-city.spec.ts --workers=1
+      - run: npm run test:e2e -- e2e/mobile.spec.ts e2e/living-city.spec.ts e2e/3d-chunk-fallback.spec.ts --workers=1
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
