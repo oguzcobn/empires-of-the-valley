@@ -92,9 +92,10 @@ export function TopHud({ game }: { game: GameState }): ReactElement {
         >
           {settings.view3d ? '3B Açık' : '3B / 2B'}
         </button>
-        <span className="chip hud-city" title={`Şehir merkezi (${p.width}×${p.height} kare)`}>
+        <button type="button" className="chip hud-city" onClick={() => openPanel('world')}
+          title={`Şehir merkezi (${p.width}×${p.height} kare) · Haritayı ve bölgeleri görmek için tıkla`}>
           {cityOf(game.cityId, game.culture).name} · {p.width}×{p.height}
-        </span>
+        </button>
         <span className="chip" title={DIFFICULTY_RULES[difficultyOf(game.difficulty)].description} data-testid="hud-difficulty">
           {DIFFICULTY_RULES[difficultyOf(game.difficulty)].label}
         </span>

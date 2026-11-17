@@ -444,7 +444,15 @@ function WorldPanel({ game }: { game: GameState }): ReactElement {
           <Row label="Arazi">{t(`biome.${pickedProvince.biome}`)}</Row>
           <Row label="Bağlantılar">{pickedProvince.neighbors.length}</Row>
           <Row label="Kontrol edilen bölge">{owned.length} / {WORLD_PROVINCES.length}</Row>
-          <Row label="Vadi inşa alanı">{homeProvince(game).width} × {homeProvince(game).height} kare</Row>
+          <Row label="Vadi inşa alanı">{homeProvince(game).width} × {homeProvince(game).height} kare (maks. 64×64)</Row>
+          <div className="actions" style={{ marginBottom: 8 }}>
+            <button type="button" className="btn primary"
+              disabled={validateCommand(game, { type: 'expandMap' }) !== null}
+              onClick={() => dispatch({ type: 'expandMap' })}
+              data-testid="expand-map">
+              🗺️ Harita Sınırlarını Genişlet (+8 Kare · 5 Altın)
+            </button>
+          </div>
           {!claimed && (
             <>
               <p className="hint">Genişleme: {cost} altın · en az 20 nüfus · 1. bölüm tamamlanmış olmalı.</p>
