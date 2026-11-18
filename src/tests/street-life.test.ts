@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Graphics } from 'pixi.js';
 import { BICYCLE, BUS, GARBAGE, ICE_CREAM, LORRY, MODEL_COUNT, MOTORBIKE, TAXI, drawAirliner, drawHeadlights, drawTrafficVehicle, modelSpeed, trafficModel } from '../game/rendering/vehicles';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from '../game/rendering/pedestrians';
-import { isOpen, trafficShare, walkerShare } from '../game/rendering/dayRhythm';
+import { isOpen, trafficShare, walkerShare, windowLight } from '../game/rendering/dayRhythm';
 
 const HEADINGS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 
@@ -119,5 +119,17 @@ describe('day rhythm', () => {
     expect(isOpen('club', 23)).toBe(true);
     expect(isOpen('club', 14)).toBe(false);
     expect(isOpen('market', 10)).toBe(true);
+  });
+});
+
+describe('night windows', () => {
+  it('keeps services lit, closes shops at night and staggers homes', () => {
+    expect(windowLight('hospital', 3, 1)).toBe(1);
+    expect(windowLight('market', 2, 1)).toBeLessThan(0.2);
+    expect(windowLight('market', 12, 1)).toBe(1);
+    expect(windowLight('hut', 3, 1)).toBeLessThan(0.4);
+    expect(windowLight('hut', 21, 1)).toBe(1);
+    const at18 = [0, 1, 2].map((seed) => windowLight('apartment', 18, seed));
+    expect(new Set(at18).size).toBeGreaterThan(1);
   });
 });

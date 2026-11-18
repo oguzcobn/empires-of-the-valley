@@ -32,7 +32,7 @@ import type { MatchDay } from '../data/matchDays';
 import { drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
 import { drawHeadlights, drawTrafficVehicle, modelLength, modelSpeed, trafficModel } from './vehicles';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
-import { trafficShare, walkerShare } from './dayRhythm';
+import { trafficShare, walkerShare, windowLight } from './dayRhythm';
 import { TrafficLights } from './trafficLights';
 import { StreetFurniture } from './streetFurniture';
 import type { PedLook } from './pedestrians';
@@ -109,6 +109,9 @@ interface BuildingView {
   info: SpriteInfo;
   sig: string;
   smokeTimer: number;
+  /** Definition id and art seed, used for the hour-by-hour window lights. */
+  kind: string;
+  seed: number;
 }
 interface PropView {
   c: Container;
@@ -780,6 +783,8 @@ export class ValleyRenderer {
           info: { lights: [], smoke: [], flags: [], height: 30 },
           sig: '',
           smokeTimer: Math.random() * 400,
+          kind: b.definitionId,
+          seed: buildingArtSeed(b.id),
         };
         this.buildingViews.set(b.id, bv);
       }
@@ -974,7 +979,7 @@ export class ValleyRenderer {
     const rate = view.reducedMotion ? 1 : Math.min(1, dt / 420);
     this.night += (target - this.night) * rate;
     if (Math.abs(this.night - target) < 0.004) this.night = target;
-    const key = Math.round(this.night * 40) + (this.dropKind === 'overcast' || this.dropKind === 'rain' ? 100 : 0);
+    const key = Math.round(this.night * 40) + (this.dropKind === 'overcast' || this.dropKind === 'rain' ? 100 : 0) + hour * 1000;
     if (key === this.tintKey) return;
     this.tintKey = key;
     let tint = mix(0xffffff, 0x283959, this.night * 0.92);
@@ -993,9 +998,9 @@ export class ValleyRenderer {
     for (const bv of this.buildingViews.values()) {
       bv.body.tint = tint;
       bv.glow.tint = 0xffffff;
-      bv.glow.alpha = Math.min(0.65, this.night * 0.65);
+      bv.glow.alpha = Math.min(0.65, this.night * 0.65) * windowLight(bv.kind, hour, bv.seed);
       // Do not light unbuilt or road-disconnected buildings.
-      bv.glow.visible = this.night > 0.02 && bv.info.lights.length > 0;
+      bv.glow.visible = this.night > 0.02 && bv.info.lights.length > 0 && bv.glow.alpha > 0.01;
     }
   }
 
