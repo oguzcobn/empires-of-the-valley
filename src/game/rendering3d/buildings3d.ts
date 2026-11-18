@@ -395,6 +395,20 @@ const MAKERS: Partial<Record<BuildingId, Maker>> = {
     c.b.box(0.5, 0.03, d - 0.28, 0.3, 0.07, 0.14, 0xf2f2f2);
     c.b.box(0.5, 0.1, d - 0.28, 0.16, 0.05, 0.13, 0x2f4f7f);
   },
+  hospital(c, w, d) {
+    c.b.block(0.08, 0.08, w - 0.08, d - 0.08, 0, 0.02, 0xbdbfc0);
+    const wall = 0xf2f1ec;
+    c.b.block(0.18, 0.15, w - 0.9, d - 0.75, 0.02, 0.02 + 3 * FH, wall);
+    openings({ ...c, trim: 0xc9302c }, 0.18, 0.15, w - 0.9, d - 0.75, 0.02, 3);
+    roofOn(c, 0.18, 0.15, w - 0.9, d - 0.75, 0.02 + 3 * FH, 'flat', 0x8a9094);
+    c.b.block(w - 0.9, 0.3, w - 0.15, d - 0.75, 0.02, 0.02 + FH, wall);
+    roofOn(c, w - 0.9, 0.3, w - 0.15, d - 0.75, 0.02 + FH, 'flat', 0x8a9094);
+    c.b.block(0.17, d - 0.76, w - 0.89, d - 0.74, 0.02 + 3 * FH - 0.06, 0.02 + 3 * FH - 0.02, 0xc9302c);
+    c.lit.box((w - 0.72) / 2, 0.02 + 3 * FH + 0.08, d - 0.75, 0.9, 0.12, 0.02, 0xf7f5ee);
+    // ambulance parked on the forecourt
+    c.b.box(0.62, 0.05, d - 0.38, 0.34, 0.12, 0.16, 0xf4f5f2);
+    c.b.box(0.62, 0.08, d - 0.38, 0.35, 0.02, 0.17, 0xd0342c);
+  },
   shipyard(c, w, d) {
     c.b.block(0.06, 0.06, w - 0.06, d - 0.06, 0, 0.03, 0xa98f63);
     house(c, 0.2, 0.2, 0.95, 0.9, 1, 'gable');

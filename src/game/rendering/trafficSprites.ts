@@ -108,3 +108,112 @@ export function drawSupporterFlare(g: Graphics, tMs: number, phase: number): voi
       .fill({ color: 0xdfd8d6, alpha: Math.max(0.07, .3 - n * .06) });
   }
 }
+
+type VehiclePoint = [number, number];
+
+/** Isometric basis for a vehicle heading along (dx, dy) in tile space. */
+function vehicleBasis(dx: number, dy: number): (length: number, width: number, height?: number) => VehiclePoint {
+  const vx = dx - dy;
+  const vy = (dx + dy) * 0.5;
+  const mag = Math.hypot(vx, vy) || 1;
+  const ux = vx / mag, uy = vy / mag;
+  return (length, width, height = 0) => [ux * length - uy * width, uy * length + ux * width - height];
+}
+
+const tone = (base: number, amount: number): number => {
+  const ch = (shift: number): number => Math.min(255, Math.max(0, Math.round(((base >> shift) & 255) * amount)));
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+};
+
+/** Roof height of each service vehicle, where its light bar sits. */
+export const SERVICE_ROOF: Record<'ambulance' | 'police', number> = { ambulance: 12.6, police: 9.4 };
+
+/**
+ * Ambulance (white box van, red stripe and cross) or police car (white with navy doors).
+ * Same construction as drawCityCar so emergency vehicles sit in traffic at the same scale.
+ */
+export function drawServiceVehicle(g: Graphics, kind: 'ambulance' | 'police', dx = 1, dy = 0): void {
+  if (kind === 'police') {
+    drawCityCar(g, 0xf1f3f5, false, dx, dy);
+    const p = vehicleBasis(dx, dy);
+    const NAVY = 0x1f3f7a;
+    // navy door panels on both flanks and a navy bonnet stripe
+    for (const side of [-4.5, 4.5]) {
+      g.poly([p(-4.6, side, 0.9), p(3.4, side, 0.9), p(3.4, side, 4.2), p(-4.6, side, 4.2)].flat())
+        .fill(side > 0 ? NAVY : tone(NAVY, 0.8));
+    }
+    g.poly([p(6.4, -4.4, 4.35), p(8.2, -4.4, 4.35), p(8.2, 4.4, 4.35), p(6.4, 4.4, 4.35)].flat()).fill(NAVY);
+    return;
+  }
+  const p = vehicleBasis(dx, dy);
+  const poly = (points: VehiclePoint[], color: number): void => { g.poly(points.flat()).fill(color); };
+  const WHITE = 0xf4f5f2;
+  const RED = 0xd0342c;
+  const L = 11.2, W = 4.9, H = 12.4, HOOD = 6.2;
+  g.ellipse(0, 3.3, 12.6, 4.6).fill({ color: 0x0e1b24, alpha: 0.31 });
+  for (const longitudinal of [-7.2, 7.4]) {
+    for (const lateral of [-4.8, 4.8]) {
+      const [x, y] = p(longitudinal, lateral, 0.8);
+      g.ellipse(x, y, 2.3, 2.6).fill(0x171d22);
+      g.ellipse(x, y, 0.9, 1.1).fill(0xadb8be);
+    }
+  }
+  // Painter's order: far flank, far end, near flank, near end, roof.
+  const flank = (side: number, shadeBy: number): void => {
+    poly([p(-L, side), p(L, side), p(L, side, HOOD), p(6.4, side, H), p(-L, side, H)], tone(WHITE, shadeBy));
+    poly([p(-L, side, 4.4), p(L, side, 4.4), p(L, side, 6), p(-L, side, 6)], tone(RED, shadeBy + 0.1));
+    // cab window
+    poly([p(6.6, side, 6.6), p(9.9, side, 6.6), p(7.2, side, 11.2), p(6.6, side, 11.2)], side > 0 ? 0x2a4760 : 0x3d5c73);
+    // cross on the box
+    poly([p(-3.6, side, 7.3), p(-2.2, side, 7.3), p(-2.2, side, 11.3), p(-3.6, side, 11.3)], RED);
+    poly([p(-5, side, 8.6), p(-0.8, side, 8.6), p(-0.8, side, 10), p(-5, side, 10)], RED);
+  };
+  const rear = (): void => {
+    poly([p(-L, -W), p(-L, W), p(-L, W, H), p(-L, -W, H)], tone(WHITE, 0.82));
+    poly([p(-L, -W, 4.4), p(-L, W, 4.4), p(-L, W, 6), p(-L, -W, 6)], tone(RED, 0.9));
+  };
+  const front = (): void => {
+    poly([p(L, -W), p(L, W), p(L, W, HOOD), p(L, -W, HOOD)], tone(WHITE, 0.95));
+    poly([p(L, -W, HOOD), p(L, W, HOOD), p(6.4, W, H), p(6.4, -W, H)], 0x7bb2c9);
+  };
+  // The flank and the end that face the camera are the ones lower on screen.
+  const nearSide = p(0, 1)[1] > 0 ? W : -W;
+  const frontNear = p(1, 0)[1] > 0;
+  flank(-nearSide, 0.72);
+  if (frontNear) rear(); else front();
+  flank(nearSide, 0.9);
+  if (frontNear) front(); else rear();
+  poly([p(-L, -W, H), p(6.4, -W, H), p(6.4, W, H), p(-L, W, H)], tone(WHITE, 1.06));
+  for (const side of [-3.4, 3.4]) {
+    const [hx, hy] = p(L + 0.1, side, 3.2);
+    g.circle(hx, hy, 1.2).fill(0xfff3c0);
+    const [tx, ty] = p(-L - 0.1, side, 3);
+    g.circle(tx, ty, 1.05).fill(0xe84952);
+  }
+}
+
+/**
+ * Roof light bar. `phase` alternates the lit side; `active` adds the wide glow of a running
+ * siren. Ambulances flash blue-blue, police cars red-blue.
+ */
+export function drawBeacon(
+  g: Graphics, kind: 'ambulance' | 'police', dx: number, dy: number, phase: 0 | 1, active: boolean, night = 0,
+): void {
+  g.clear();
+  const p = vehicleBasis(dx, dy);
+  const z = SERVICE_ROOF[kind];
+  const at = kind === 'ambulance' ? 4.2 : -0.4;
+  const colors = kind === 'police' ? [0xff2d2d, 0x2f7bff] : [0x2f7bff, 0x2f7bff];
+  g.poly([p(at - 0.9, -3.4, z), p(at + 0.9, -3.4, z), p(at + 0.9, 3.4, z), p(at - 0.9, 3.4, z)].flat()).fill(0x20262b);
+  [-2, 2].forEach((side, i) => {
+    const lit = !active || phase === i;
+    const [x, y] = p(at, side, z + 1.1);
+    const color = colors[i]!;
+    if (active && lit) {
+      g.circle(x, y, 7.5 + night * 3).fill({ color, alpha: 0.16 + night * 0.12 });
+      g.circle(x, y, 4).fill({ color, alpha: 0.34 });
+    }
+    g.roundRect(x - 1.5, y - 1.2, 3, 2.4, 0.8).fill(lit ? color : tone(color, 0.38));
+    if (active && lit) g.circle(x, y - 0.2, 0.8).fill(0xffffff);
+  });
+}

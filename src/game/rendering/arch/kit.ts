@@ -775,4 +775,57 @@ export function shadowFor(ctx: DrawCtx, u0: number, v0: number, u1: number, v1: 
   }
 }
 
+// ------------------------------------------------------------------ signs
+/** 3x5 pixel capitals for wall signs; rows top to bottom, bit 4 = left column. */
+const GLYPHS: Record<string, readonly number[]> = {
+  A: [2, 5, 7, 5, 5], B: [6, 5, 6, 5, 6], C: [3, 4, 4, 4, 3], D: [6, 5, 5, 5, 6], E: [7, 4, 6, 4, 7],
+  F: [7, 4, 6, 4, 4], G: [3, 4, 5, 5, 3], H: [5, 5, 7, 5, 5], I: [2, 2, 2, 2, 2], K: [5, 5, 6, 5, 5],
+  L: [4, 4, 4, 4, 7], M: [5, 7, 7, 5, 5], N: [6, 5, 5, 5, 5], O: [2, 5, 5, 5, 2], P: [6, 5, 6, 4, 4],
+  R: [6, 5, 6, 5, 5], S: [3, 4, 2, 1, 6], T: [7, 2, 2, 2, 2], U: [5, 5, 5, 5, 7], V: [5, 5, 5, 5, 2],
+  Y: [5, 5, 2, 2, 2], Z: [7, 1, 2, 4, 7],
+};
+
+/** Width of `text` on a wall in tile units (see signText). */
+export const signWidth = (text: string, px = 1.5): number => ([...text].length * 4 - 1) * (px / PX);
+
+/**
+ * Painted lettering on a wall face. `t0` is the left edge of the text as seen on screen and
+ * `zTop` its top edge; letters read left to right on both faces. `İ` gets its dot.
+ */
+export function signText(ctx: DrawCtx, f: Face, t0: number, zTop: number, text: string, color: number, px = 1.5): void {
+  const step = (px / PX) * (f.side === 'L' ? 1 : -1);
+  let column = 0;
+  for (const raw of text) {
+    const dotted = raw === 'İ';
+    const rows = GLYPHS[dotted ? 'I' : raw.toUpperCase()];
+    if (rows) {
+      rows.forEach((bits, row) => {
+        for (let c = 0; c < 3; c++) {
+          if (!(bits & (4 >> c))) continue;
+          const t = t0 + (column + c) * step;
+          quad(ctx, f, t, t + step, zTop - (row + 1) * px, zTop - row * px, color);
+        }
+      });
+      if (dotted) quad(ctx, f, t0 + (column + 1) * step, t0 + (column + 2) * step, zTop + px * 0.5, zTop + px * 1.4, color);
+    }
+    column += 4;
+  }
+}
+
+/** Sign board with lettering centred on it; glows at night. Returns nothing, draws in place. */
+export function signBoard(
+  ctx: DrawCtx, f: Face, tc: number, z: number, text: string,
+  board: number, ink: number, px = 1.5,
+): void {
+  const half = signWidth(text, px) / 2 + (2.5 * px) / PX;
+  const z0 = z - px * 1.6;
+  const z1 = z + px * 7.2;
+  quad(ctx, f, tc - half, tc + half, z0 - 0.8, z1 + 0.8, shade(board, 0.55));
+  quad(ctx, f, tc - half, tc + half, z0, z1, board);
+  ctx.lights.push([fp(f, tc - half, z0), fp(f, tc + half, z0), fp(f, tc + half, z1), fp(f, tc - half, z1)]);
+  const left = f.side === 'L' ? tc - signWidth(text, px) / 2 : tc + signWidth(text, px) / 2;
+  signText(ctx, f, left, z + px * 5.2, text, ink, px);
+  if (fp(f, tc, z1)[1] < ctx.topY) ctx.topY = fp(f, tc, z1)[1];
+}
+
 export { FLOOR_H };

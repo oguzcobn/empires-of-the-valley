@@ -30,11 +30,13 @@ import {
   quad,
   rnd,
   shadowFor,
+  signBoard,
   wallBase,
   windowRows,
 } from './kit';
 import type { DrawCtx, RoofResult } from './kit';
 import { drawLandmark } from './landmarks';
+import { SERVICE_BAYS } from '../serviceBays';
 import { turkishHutRailing } from './turkishHousing';
 import { turkishFacade } from './turkishFacade';
 
@@ -763,6 +765,105 @@ function inn(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, level: 
   ctx.g.rect(sign[0] - 8, sign[1] + 4, 5, 4).fill(0xd9b84a);
 }
 
+const ASPHALT = 0x5b6166;
+
+/** Marked parking bays on an asphalt forecourt (shared positions: see serviceBays.ts). */
+function forecourt(ctx: DrawCtx, id: 'hospital' | 'police_station', w: number, v0: number, v1: number, marking: number): void {
+  poly(ctx, [P(0.08, v0), P(w - 0.08, v0), P(w - 0.08, v1), P(0.08, v1)], ctx.snow ? 0x8f979c : ASPHALT);
+  for (const [u, v] of SERVICE_BAYS[id]!.bays) {
+    const a = 0.33;
+    const b = 0.17;
+    for (const [p0, p1] of [
+      [P(u - a, v - b), P(u + a, v - b)],
+      [P(u - a, v + b), P(u + a, v + b)],
+      [P(u - a, v - b), P(u - a, v + b)],
+    ] as const) line(ctx, p0, p1, marking, 1, 0.9);
+  }
+}
+
+/** White clinic block with a roof sign, emergency wing, helipad and ambulance bays. */
+function hospital(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const RED = 0xc9302c;
+  const scottish = style === 'scottish';
+  // Scottish infirmaries are dressed sandstone; Turkish state hospitals are white render.
+  const clinic: BuildingLook = {
+    ...look, floors: 3, wall: scottish ? 'sandstone' : 'plaster', facade: scottish ? 'cream' : 'white', roof: 'flat', roofMaterial: 'lead',
+    windows: scottish ? 'sash' : 'arched', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
+  };
+  groundPad(ctx, 3, 2, 0xc9c7bf, 0.9);
+  forecourt(ctx, 'hospital', 3, 1.3, 1.95, 0xf4f1e6);
+  shadowFor(ctx, 0.15, 0.12, 2.05, 1.22, 36);
+  const opts = { roof: 'flat' as const, windows: clinic.windows, spacing: scottish ? 0.3 : 0.24, chimneys: false, balcony: false };
+  const { zTop } = mass(ctx, clinic, 0.15, 0.12, 2.05, 1.22, { ...opts, door: 'L', doorT: 1.1 });
+  const L = faceL(0.15, 2.05, 1.22);
+  const R = faceR(0.12, 1.22, 2.05);
+  quad(ctx, L, 0.15, 2.05, zTop - 3.2, zTop - 1.2, RED);
+  quad(ctx, R, 0.12, 1.22, zTop - 3.2, zTop - 1.2, shade(RED, 0.8));
+  // red cross plaque on the shaded gable
+  quad(ctx, R, 0.52, 0.82, 20, 31, 0xf7f5ee);
+  quad(ctx, R, 0.635, 0.705, 21.5, 29.5, RED);
+  quad(ctx, R, 0.56, 0.78, 24.2, 26.8, RED);
+  // entrance canopy
+  for (const u of [0.86, 1.34]) line(ctx, P(u, 1.4, 0), P(u, 1.4, 11.5), 0xd9dde0, 1.2);
+  poly(ctx, [P(0.82, 1.22, 13), P(1.38, 1.22, 13), P(1.38, 1.43, 11.5), P(0.82, 1.43, 11.5)], RED);
+  // helipad
+  const [hx, hy] = P(0.75, 0.67, zTop + 2);
+  ctx.g.ellipse(hx, hy, 13, 6.5).fill(0x6f7a7d).stroke({ color: 0xf4f1e6, width: 1 });
+  ctx.g.moveTo(hx - 3, hy - 2.4).lineTo(hx - 3, hy + 2.4).moveTo(hx + 3, hy - 2.4).lineTo(hx + 3, hy + 2.4)
+    .moveTo(hx - 3, hy).lineTo(hx + 3, hy).stroke({ color: 0xf4f1e6, width: 1.2 });
+  // roof sign on two legs so it reads from the street
+  for (const u of [0.72, 1.48]) line(ctx, fp(L, u, zTop + 1), fp(L, u, zTop + 5), 0x59636a, 1.2);
+  signBoard(ctx, L, 1.1, zTop + 6.6, 'HASTANE', 0xf7f5ee, RED, 1.7);
+  // single-storey emergency wing with its own sign
+  const wing = mass(ctx, { ...clinic, floors: 1 }, 2.05, 0.3, 2.86, 1.22, { ...opts, door: 'L', doorT: 2.45 });
+  const WL = faceL(2.05, 2.86, 1.22);
+  quad(ctx, WL, 2.05, 2.86, wing.zTop - 3, wing.zTop - 1.2, RED);
+  signBoard(ctx, WL, 2.45, wing.zTop + 2.4, 'ACİL', RED, 0xf7f5ee, 1.3);
+  smallTree(ctx, 2.62, 1.66, 0.9, pal, false);
+}
+
+/** Navy-and-white station with a roof sign, blue lamp, radio mast and patrol car bays. */
+function policeStation(ctx: DrawCtx, look: BuildingLook, style: ArchitectureStyle): void {
+  const NAVY = 0x1f3f7a;
+  const scottish = style === 'scottish';
+  // A granite burgh station under a slate hip roof, or a white Turkish karakol with a flat roof.
+  const station: BuildingLook = {
+    ...look, floors: 2, wall: scottish ? 'granite' : 'plaster', facade: scottish ? 'grey' : 'white', roof: scottish ? 'hip' : 'flat', roofMaterial: 'slate',
+    windows: 'sash', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
+  };
+  groundPad(ctx, 2, 2, 0xb9b8b0, 0.9);
+  forecourt(ctx, 'police_station', 2, 1.3, 1.95, 0xf2d24a);
+  shadowFor(ctx, 0.15, 0.15, 1.85, 1.22, 26);
+  const { zTop } = mass(ctx, station, 0.15, 0.15, 1.85, 1.22, {
+    roof: station.roof, door: 'L', doorT: 1.0, windows: 'sash', spacing: 0.27, chimneys: false, balcony: false,
+  });
+  const L = faceL(0.15, 1.85, 1.22);
+  const R = faceR(0.15, 1.22, 1.85);
+  for (const [z0, z1] of [[0, 3], [zTop - 3.2, zTop - 1.2]] as const) {
+    quad(ctx, L, 0.15, 0.88, z0, z1, NAVY);
+    quad(ctx, L, 1.12, 1.85, z0, z1, NAVY);
+    quad(ctx, R, 0.15, 1.22, z0, z1, shade(NAVY, 0.8));
+  }
+  quad(ctx, L, 0.88, 1.12, zTop - 3.2, zTop - 1.2, NAVY);
+  // blue lamp over the door
+  const lamp = fp(L, 1.0, 12.2);
+  ctx.g.rect(lamp[0] - 1.4, lamp[1] - 1.2, 2.8, 3).fill(0x2f6fe0);
+  ctx.lights.push([[lamp[0] - 1.4, lamp[1] - 1.2], [lamp[0] + 1.4, lamp[1] - 1.2], [lamp[0] + 1.4, lamp[1] + 1.8], [lamp[0] - 1.4, lamp[1] + 1.8]]);
+  ctx.g.rect(lamp[0] - 1.4, lamp[1] - 1.2, 2.8, 3).fill({ color: 0x2f6fe0, alpha: 0.75 });
+  // radio mast
+  const mast = P(0.45, 0.45, zTop + 2);
+  line(ctx, mast, [mast[0], mast[1] - 17], 0x59636a, 1.1);
+  for (const dy of [-8, -13]) line(ctx, [mast[0] - 3, mast[1] + dy], [mast[0] + 3, mast[1] + dy], 0x59636a, 0.9);
+  if (mast[1] - 17 < ctx.topY) ctx.topY = mast[1] - 17;
+  if (scottish) {
+    signBoard(ctx, L, 1.0, zTop - 11.5, 'POLİS', NAVY, 0xf7f5ee, 1.4);
+  } else {
+    for (const u of [0.66, 1.34]) line(ctx, fp(L, u, zTop + 1), fp(L, u, zTop + 5), 0x59636a, 1.2);
+    signBoard(ctx, L, 1.0, zTop + 6.6, 'POLİS', NAVY, 0xf7f5ee, 1.7);
+  }
+  drawFlagPole(ctx, P(1.7, 0.3, zTop + 2), NAVY, 12);
+}
+
 /** Compact two-wing guard barracks with a central training yard and banner. */
 function barracks(ctx: DrawCtx, look: BuildingLook, level: number): void {
   groundPad(ctx, 2, 2, 0x9b9c8c, 0.75);
@@ -772,7 +873,7 @@ function barracks(ctx: DrawCtx, look: BuildingLook, level: number): void {
   drawFlagPole(ctx, P(0.4, 1.45, 1), 0x972e29, 15);
 }
 
-function civicBuilding(ctx: DrawCtx, id: 'mosque' | 'church' | 'theatre' | 'cinema' | 'police_station', look: BuildingLook, style: ArchitectureStyle): void {
+function civicBuilding(ctx: DrawCtx, id: 'mosque' | 'church' | 'theatre' | 'cinema', look: BuildingLook, style: ArchitectureStyle): void {
   const scottish = style === 'scottish';
   groundPad(ctx, 2, 2, 0xb7aa91, 0.85);
   const stone = { ...look, floors: 1 as const, wall: scottish ? 'granite' as const : 'sandstone' as const, chimney: 'none' as const, decor: 'none' as const };
@@ -789,7 +890,7 @@ function civicBuilding(ctx: DrawCtx, id: 'mosque' | 'church' | 'theatre' | 'cine
   } else {
     const cinema = id === 'cinema';
     const theatre = id === 'theatre';
-    const color = cinema ? 0xb75f3c : theatre ? 0x8f3f3d : 0x2d5272;
+    const color = cinema ? 0xb75f3c : 0x8f3f3d;
     mass(ctx, { ...stone, wall: cinema ? 'brick' : 'sandstone', door: 'double' },
       0.18, 0.19, 1.79, 1.54, { roof: cinema ? (scottish ? 'gable' : 'flat') : (scottish ? 'crow_step' : 'hip'), windows: cinema ? 'sash' : 'arched' });
     const f = faceL(0.18, 1.79, 1.54);
@@ -798,13 +899,11 @@ function civicBuilding(ctx: DrawCtx, id: 'mosque' | 'church' | 'theatre' | 'cine
       for (const u of [0.35, 0.71, 1.24, 1.65]) {
         box(ctx, u - 0.03, 1.69, u + 0.03, 1.77, 0, 18, 0xe1c9a3);
       }
-    } else if (cinema) {
+    } else {
       for (const u of [0.51, 0.69, 0.87, 1.05, 1.23, 1.41]) {
         const [x, y] = fp(f, u, 14.5);
         ctx.g.circle(x, y, 1.2).fill(0xffdb7b);
       }
-    } else {
-      drawFlagPole(ctx, P(1.64, 1.42, 18), color);
     }
   }
 }
@@ -944,8 +1043,13 @@ export function drawStyledBuilding(
     case 'church':
     case 'cinema':
     case 'theatre':
-    case 'police_station':
       civicBuilding(ctx, b.definitionId, look, b.style);
+      break;
+    case 'police_station':
+      policeStation(ctx, look, b.style);
+      break;
+    case 'hospital':
+      hospital(ctx, look, b.style, pal);
       break;
     case 'shipyard':
       shipyard(ctx, look, b.level);

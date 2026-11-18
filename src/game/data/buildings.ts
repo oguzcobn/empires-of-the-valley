@@ -350,6 +350,12 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
     services: { patrolRadius: 5 },
     levels: [level({ cost: { wood: u(30), stone: u(26), gold: u(8) }, buildTicks: 3 * DAY, workerSlots: 2, upkeepGold: u(0.22) })],
   },
+  hospital: {
+    id: 'hospital', category: 'civic', era: 1, footprint: [3, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { healthRadius: 8 },
+    levels: [level({ cost: { wood: u(45), stone: u(60), gold: u(30), tools: u(8) }, buildTicks: 5 * DAY, workerSlots: 4, upkeepGold: u(0.4), requires: { population: 20 } })],
+  },
   shipyard: {
     id: 'shipyard',
     category: 'production',

@@ -33,6 +33,7 @@ export type BuildingId =
   | 'cinema'
   | 'theatre'
   | 'police_station'
+  | 'hospital'
   | 'shipyard'
   | LandmarkId;
 
@@ -220,6 +221,8 @@ export interface BuildingDefinition {
     safetyRadius?: number;
     community?: number;
     patrolRadius?: number;
+    /** Homes within this many tiles are served by the hospital's ambulances. */
+    healthRadius?: number;
   };
   landmark?: LandmarkSpec;
 }

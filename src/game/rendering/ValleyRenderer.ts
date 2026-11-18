@@ -34,6 +34,7 @@ import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath
 import type { GridPoint } from './armyPath';
 import { WorkerScenes } from './workerScenes';
 import { FrontierScenes } from './frontierScenes';
+import { ServiceFleet } from './serviceFleet';
 
 export type Tool =
   | { kind: 'select' }
@@ -89,6 +90,9 @@ export interface RendererStats {
   props: number;
   walkers: number;
   particles: number;
+  /** Ambulances and patrol cars on the map, and how many are out with lights on (2D only). */
+  serviceVehicles?: number;
+  serviceActive?: number;
 }
 
 interface BuildingView {
@@ -158,6 +162,7 @@ export class ValleyRenderer {
   private objects = new Container();
   private workScenes = new WorkerScenes(this.objects);
   private frontier = new FrontierScenes(this.transportGround, this.objects);
+  private fleet = new ServiceFleet(this.objects);
   private ghost = new Graphics();
   private fx = new Container();
   private drops: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
@@ -241,6 +246,7 @@ export class ValleyRenderer {
     if (this.ready) {
       this.app.ticker.remove(this.frame);
       this.workScenes.destroy();
+      this.fleet.destroy();
       for (const a of this.atlas.values()) a.tex.destroy(true);
       this.atlas.clear();
       // Never pass `true` as the first argument: it releases Pixi's global resources and breaks the
@@ -259,6 +265,8 @@ export class ValleyRenderer {
       props: this.propViews.size,
       walkers: this.walkers.length + this.workScenes.count,
       particles: this.particles.length,
+      serviceVehicles: this.fleet.count,
+      serviceActive: this.fleet.active,
     };
   }
 
@@ -524,6 +532,7 @@ export class ValleyRenderer {
     this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt');
     this.updateWalkers(view, p, dt, motion);
     this.updateTraffic(view, p, dt, motion);
+    this.fleet.update(view.game, p, dt, motion, SPEED_FACTOR[view.game.speed] ?? 0, this.night, this.leftSideDriving(view));
     this.updateMilitia(view, p, dt);
     this.updateBoats(view, p, dt, motion);
     this.updateParticles(dt);
@@ -948,6 +957,7 @@ export class ValleyRenderer {
     for (const w of this.walkers) w.c.tint = tint;
     for (const w of this.matchFans) w.c.tint = tint;
     for (const car of this.trafficCars) car.c.tint = tint;
+    this.fleet.setTint(tint);
     for (const guard of this.militiaSprites) guard.tint = tint;
     for (const b of this.boats) b.c.tint = tint;
     for (const bv of this.buildingViews.values()) {
@@ -1258,6 +1268,11 @@ export class ValleyRenderer {
    * stay on their legal road tiles and use opposite lanes for UK vs Türkiye.
    * It deliberately does not drive on stairs, bridges or mountain trails.
    */
+  /** Edinburgh (and Scottish free play) drives on the left. */
+  private leftSideDriving(view: RendererView): boolean {
+    return view.game.cityId === 'edinburgh' || (!view.game.cityId && view.game.culture === 'scottish');
+  }
+
   private updateTraffic(view: RendererView, p: Province, dt: number, motion: boolean): void {
     const isPaved = (x: number, y: number): boolean => {
       const t = tileAt(p, x, y);
@@ -1304,8 +1319,7 @@ export class ValleyRenderer {
         speed: 0.5 + Math.random() * 0.24,
       });
     }
-    const uk = view.game.cityId === 'edinburgh' ||
-      (!view.game.cityId && view.game.culture === 'scottish');
+    const uk = this.leftSideDriving(view);
     for (const car of this.trafficCars) {
       if (!isPaved(car.from[0], car.from[1]) || !isPaved(car.to[0], car.to[1])) {
         car.c.visible = false;
