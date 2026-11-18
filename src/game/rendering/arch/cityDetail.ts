@@ -33,6 +33,7 @@ export interface CityKit {
 export const DETAILED_CITY: ReadonlySet<BuildingId> = new Set<BuildingId>([
   'hospital', 'police_station', 'fire_station', 'market', 'restaurant', 'club', 'hotel', 'factory', 'airport',
   'apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall',
+  'villa', 'tea_garden', 'post_office', 'gym', 'kindergarten',
 ]);
 
 const ASPHALT = 0x555c62;
@@ -883,6 +884,177 @@ function mall(ctx: DrawCtx, kit: CityKit, style: ArchitectureStyle, pal: SeasonP
   ctx.glowColor = undefined;
 }
 
+function villa(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette, seed: number): void {
+  const scottish = style === 'scottish';
+  const house: BuildingLook = {
+    ...look, floors: 2, wall: scottish ? 'granite' : 'plaster', facade: scottish ? 'grey' : (['white', 'cream', 'rose'] as const)[seed % 3]!,
+    roof: scottish ? 'gable' : 'hip', roofMaterial: scottish ? 'slate' : 'clay', windows: scottish ? 'bay' : 'arched',
+    door: scottish ? 'fanlight' : 'double', tower: 'none', balcony: 'none', chimney: scottish ? 'gable' : 'none', decor: 'flowerboxes',
+  };
+  pad(ctx, 0.03, 0.03, 0.97, 0.97, pal.snow ? 0xe9eef2 : 0x6f9a4f);
+  // garden wall, gate path and lawn
+  for (const [a, b] of [[P(0.04, 0.96), P(0.42, 0.96)], [P(0.58, 0.96), P(0.96, 0.96)], [P(0.96, 0.04), P(0.96, 0.96)]] as const)
+    line(ctx, [a[0], a[1] - 2], [b[0], b[1] - 2], scottish ? 0x8d8371 : 0xe8e0cc, 3);
+  pad(ctx, 0.44, 0.62, 0.56, 0.97, 0xcfc8b8);
+  kit.mass(ctx, house, 0.12, 0.1, 0.82, 0.6, { roof: house.roof, door: 'L', doorT: 0.5, spacing: 0.3, balcony: false, axis: 'u' });
+  if (!scottish) {
+    // little pool and a parasol in the side garden
+    pad(ctx, 0.66, 0.66, 0.92, 0.9, 0x4fc3e6);
+    line(ctx, P(0.79, 0.7, 0), P(0.79, 0.7, 9), 0x6b5a48, 0.7);
+    const [x, y] = P(0.79, 0.7, 9);
+    ctx.g.poly([x - 5, y + 1.5, x, y - 2, x + 5, y + 1.5]).fill(0xf39c12);
+  } else {
+    kit.smallTree(ctx, 0.82, 0.78, 0.8, pal, true);
+  }
+  kit.smallTree(ctx, 0.16, 0.8, 0.7, pal, false);
+  lamp(ctx, P(0.42, 0.92, 6), 0xffe08a, 0.9);
+}
+
+function teaGarden(ctx: DrawCtx, kit: CityKit, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  pad(ctx, 0.03, 0.03, 0.97, 0.97, scottish ? 0xb7ab92 : 0xd9c9a3);
+  // kiosk with the samovar
+  box(ctx, 0.08, 0.08, 0.42, 0.34, 0, 10, scottish ? 0x2f4f3f : 0x8a5a36);
+  box(ctx, 0.05, 0.05, 0.45, 0.37, 10, 11.5, scottish ? 0x1e3a2e : 0x6b4228);
+  signBoard(ctx, faceL(0.08, 0.42, 0.34), 0.25, 6.4, 'ÇAY', 0xf6e7b0, 0xb71c1c, 0.8);
+  const [sx, sy] = P(0.3, 0.38, 1);
+  ctx.g.roundRect(sx - 2, sy - 7, 4, 6, 1).fill(0xc9a24a);
+  ctx.g.circle(sx, sy - 7.5, 1.2).fill(0xe0b85a);
+  // big plane tree shading the tables
+  kit.smallTree(ctx, 0.72, 0.28, 1.6, pal, false);
+  for (const [u, v, i] of [[0.3, 0.62, 0], [0.62, 0.66, 2], [0.5, 0.86, 4]] as const) {
+    box(ctx, u - 0.06, v - 0.06, u + 0.06, v + 0.06, 0, 3.6, 0xf2efe6);
+    // tea glasses or a backgammon board
+    if (i === 2) quad(ctx, faceL(u - 0.05, u + 0.05, v + 0.06), u - 0.04, u + 0.04, 3.6, 3.8, 0x6b4228);
+    for (const du of [-0.025, 0.025]) {
+      const [x, y] = P(u + du, v, 4.4);
+      ctx.g.rect(x - 0.5, y - 1.2, 1, 1.6).fill(0xb33a1a);
+    }
+    person(ctx, u - 0.1, v + 0.02, i, true);
+    person(ctx, u + 0.1, v - 0.02, i + 1, true);
+  }
+  for (const [u, v] of [[0.08, 0.95], [0.95, 0.08]] as const) {
+    line(ctx, P(u, v, 0), P(u, v, 12), 0x5b4632, 0.9);
+    lamp(ctx, P(u, v, 12.4), 0xffd36b, 1);
+  }
+  // festoon of bulbs between the two posts
+  for (let k = 1; k < 7; k++) {
+    const t = k / 7;
+    lamp(ctx, P(0.08 + 0.87 * t, 0.95 - 0.87 * t, 12 - Math.sin(t * Math.PI) * 2.5), k % 2 ? 0xffd36b : 0xff8a65, 0.7);
+  }
+  if (scottish) {
+    // red telephone box at the corner of the garden
+    box(ctx, 0.82, 0.84, 0.94, 0.96, 0, 13, 0xc8102e);
+    box(ctx, 0.81, 0.83, 0.95, 0.97, 13, 14.5, 0xa00d24);
+    glowPane(ctx, [P(0.84, 0.96, 4), P(0.92, 0.96, 4), P(0.92, 0.96, 10), P(0.84, 0.96, 10)], 0xfff2c0, 0.8);
+  } else {
+    // hanging copper lanterns on the kiosk
+    for (const u of [0.14, 0.36]) lamp(ctx, P(u, 0.36, 8.5), 0xffb74d, 0.9);
+  }
+}
+
+function postOffice(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle): void {
+  const scottish = style === 'scottish';
+  const YELLOW = 0xffcc00;
+  const shop: BuildingLook = {
+    ...look, floors: 2, wall: scottish ? 'sandstone' : 'plaster', facade: scottish ? 'honey' : 'white', roof: scottish ? 'gable' : 'flat',
+    roofMaterial: scottish ? 'slate' : 'lead', windows: 'sash', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
+  };
+  pad(ctx, 0.04, 0.04, 0.96, 0.96, 0xc8c3b6, 0.9);
+  const { zTop } = kit.mass(ctx, shop, 0.1, 0.1, 0.9, 0.74, { roof: shop.roof, door: 'L', doorT: 0.5, windows: 'sash', spacing: 0.3, chimneys: false, balcony: false });
+  const L = faceL(0.1, 0.9, 0.74);
+  quad(ctx, L, 0.1, 0.9, 10.5, 13, YELLOW);
+  signBoard(ctx, L, 0.5, 9.8, 'PTT', YELLOW, 0x1a1a1a, 1.2);
+  // post box and courier scooter
+  box(ctx, 0.78, 0.8, 0.88, 0.88, 0, 6.5, YELLOW);
+  box(ctx, 0.78, 0.8, 0.88, 0.88, 6.5, 7.5, 0x1a1a1a);
+  const [mx, my] = P(0.25, 0.88, 0);
+  ctx.g.circle(mx - 3, my - 1.5, 1.6).fill(0x222222);
+  ctx.g.circle(mx + 3, my - 1.5, 1.6).fill(0x222222);
+  ctx.g.roundRect(mx - 3.5, my - 5, 7, 3, 1).fill(0xd32f2f);
+  ctx.g.rect(mx - 4.5, my - 8.5, 3.5, 3.5).fill(YELLOW);
+  void zTop;
+}
+
+function gym(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  const accent = scottish ? 0x00a3e0 : 0xff6f00;
+  const hall: BuildingLook = { ...look, floors: 2, wall: 'plaster', facade: scottish ? 'grey' : 'white', roof: 'flat', roofMaterial: 'lead', windows: 'small', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none' };
+  pad(ctx, 0.04, 0.04, 1.96, 1.96, 0xc6c2b6, 0.9);
+  carPark(ctx, 2, 2, 1.36, 3, WHITE);
+  const { zTop } = kit.mass(ctx, hall, 0.12, 0.12, 1.88, 1.2, { roof: 'flat', door: null, windows: 'small', spacing: 0.4, chimneys: false, balcony: false });
+  const L = faceL(0.12, 1.88, 1.2);
+  glazing(ctx, L, 0.18, 1.82, 1, 20, 6, 2, 0xbfe6f2, 0x3d4448);
+  // treadmills and runners behind the upper glass, weights below
+  for (let k = 0; k < 5; k++) {
+    const t = 0.3 + k * 0.3;
+    quad(ctx, L, t - 0.08, t + 0.08, 11.5, 12.5, 0x222222);
+    const [x, y] = fp(L, t, 12.5);
+    ctx.g.roundRect(x - 1.3, y - 5.5, 2.6, 4, 1).fill(PEOPLE[k % PEOPLE.length]!);
+    ctx.g.circle(x, y - 6.6, 1.2).fill(SKIN[k % SKIN.length]!);
+  }
+  for (let k = 0; k < 4; k++) {
+    const [x, y] = fp(L, 0.4 + k * 0.38, 4);
+    ctx.g.moveTo(x - 3, y).lineTo(x + 3, y).stroke({ color: 0x333333, width: 0.8 });
+    ctx.g.circle(x - 3, y, 1.4).fill(0x111111);
+    ctx.g.circle(x + 3, y, 1.4).fill(0x111111);
+  }
+  quad(ctx, L, 0.12, 1.88, zTop - 4, zTop - 1, accent);
+  ctx.glowColor = accent;
+  signBoard(ctx, faceL(0.12, 1.88, 1.2), 1.0, zTop + 1.5, 'SPOR SALONU', 0x1a1a1a, accent, 1);
+  ctx.glowColor = undefined;
+  if (scottish) {
+    // climbing wall on the side
+    const R = faceR(0.12, 1.2, 1.88);
+    quad(ctx, R, 0.3, 0.9, 1, zTop - 5, 0x5d6b73);
+    for (let k = 0; k < 14; k++) {
+      const [x, y] = fp(R, 0.35 + (k % 5) * 0.12, 3 + Math.floor(k / 5) * 5.5 + (k % 2) * 1.5);
+      ctx.g.circle(x, y, 0.9).fill([0xe53935, 0xfdd835, 0x43a047][k % 3]!);
+    }
+  } else {
+    // outdoor basketball hoop
+    line(ctx, P(1.85, 0.3, 0), P(1.85, 0.3, 16), 0x37474f, 1);
+    box(ctx, 1.86, 0.2, 1.88, 0.4, 13, 17, WHITE);
+    const [x, y] = P(1.92, 0.3, 13.5);
+    ctx.g.ellipse(x, y, 2, 0.8).stroke({ color: 0xff6f00, width: 0.8 });
+  }
+  // jogger on the forecourt
+  person(ctx, 1.75, 1.3, 1);
+  kit.smallTree(ctx, 0.15, 1.3, 0.6, pal, false);
+}
+
+function kindergarten(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  const school: BuildingLook = {
+    ...look, floors: 1, wall: 'plaster', facade: scottish ? 'sky' : 'ochre', roof: scottish ? 'gable' : 'hip',
+    roofMaterial: scottish ? 'slate' : 'clay', windows: 'small', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'flowerboxes',
+  };
+  pad(ctx, 0.03, 0.03, 0.97, 0.97, pal.snow ? 0xe9eef2 : 0x7fae55);
+  // soft play surface and a picket fence
+  pad(ctx, 0.08, 0.55, 0.92, 0.94, 0xe57373);
+  for (let k = 0; k <= 8; k++) {
+    const u = 0.06 + k * 0.11;
+    line(ctx, P(u, 0.96, 0), P(u, 0.96, 4), [0xe53935, 0xfdd835, 0x43a047, 0x1e88e5][k % 4]!, 1.2);
+  }
+  kit.mass(ctx, school, 0.1, 0.08, 0.9, 0.5, { roof: school.roof, door: 'L', doorT: 0.5, windows: 'small', spacing: 0.24, chimneys: false, balcony: false, axis: 'u' });
+  signBoard(ctx, faceL(0.1, 0.9, 0.5), 0.5, 8.6, 'KREŞ', 0x1e88e5, 0xfff176, 0.9);
+  // sandpit, see-saw, kids and a teacher
+  pad(ctx, 0.62, 0.62, 0.86, 0.82, 0xf1d79a);
+  box(ctx, 0.2, 0.74, 0.5, 0.78, 2.5, 3.2, 0x8e24aa);
+  box(ctx, 0.33, 0.72, 0.37, 0.8, 0, 2.5, 0x5d4037);
+  for (const [u, v, i] of [[0.22, 0.76, 1], [0.48, 0.76, 4], [0.7, 0.72, 6], [0.8, 0.78, 2]] as const) {
+    const [x, y] = P(u, v);
+    const body = PEOPLE[i % PEOPLE.length]!;
+    ctx.g.roundRect(x - 1.4, y - 6, 2.8, 4, 1).fill(body);
+    ctx.g.rect(x - 1, y - 2, 0.8, 2).fill(0x2c3e50);
+    ctx.g.rect(x + 0.2, y - 2, 0.8, 2).fill(0x2c3e50);
+    ctx.g.circle(x, y - 7.2, 1.4).fill(SKIN[(i * 3) % SKIN.length]!);
+  }
+  person(ctx, 0.6, 0.9, 7);
+  // star-shaped night lights along the eaves
+  for (const u of [0.2, 0.4, 0.6, 0.8]) lamp(ctx, P(u, 0.5, 10.5), [0xfff176, 0x81d4fa, 0xf48fb1, 0xa5d6a7][Math.round(u * 5) % 4]!, 0.8);
+}
+
 /** Draws a detailed city building; returns false for ids handled elsewhere. */
 export function drawDetailedCity(
   ctx: DrawCtx, kit: CityKit, id: BuildingId, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette, level = 1,
@@ -895,6 +1067,11 @@ export function drawDetailedCity(
     case 'bakery': bakery(ctx, kit, look, style, level); return true;
     case 'bank': bank(ctx, kit, look, style, pal); return true;
     case 'mall': mall(ctx, kit, style, pal); return true;
+    case 'villa': villa(ctx, kit, look, style, pal, ctx.seed); return true;
+    case 'tea_garden': teaGarden(ctx, kit, style, pal); return true;
+    case 'post_office': postOffice(ctx, kit, look, style); return true;
+    case 'gym': gym(ctx, kit, look, style, pal); return true;
+    case 'kindergarten': kindergarten(ctx, kit, look, style, pal); return true;
     case 'hospital': hospital(ctx, kit, look, style, pal); return true;
     case 'police_station': policeStation(ctx, kit, look, style); return true;
     case 'fire_station': fireStation(ctx, kit, look, style); return true;
