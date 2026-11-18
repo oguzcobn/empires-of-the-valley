@@ -590,11 +590,22 @@ function modern(c: Ctx, id: BuildingId, w: number, d: number, style: Architectur
   tree(c, 1.15, 3.3, 1.05);
   tree(c, 7.6, 3.45, 0.95);
  }else{
-  const h=id==='hotel'?1.9:id==='factory'?1:id==='fire_station'?.82:.7;
-  const wallCol=id==='fire_station'?(scottish?0xd6cfc2:0xf1ebe1):id==='club'?0x323047:id==='hospital'?0xe8eff2:scottish?0xc4b59b:0xe5d3bc;
-  c.b.block(.12,.12,w-.12,1.12,.015,h,wallCol);
+  const h=id==='hotel'?1.9:id==='apartment'?1.45+level*.3:id==='factory'||id==='mall'?1:id==='fire_station'||id==='bank'?.82:id==='park'?.02:.7;
+  const wallCol=id==='fire_station'?(scottish?0xd6cfc2:0xf1ebe1):id==='club'?0x323047:id==='hospital'||id==='pharmacy'?0xe8eff2:id==='gas_station'?0xf2f2f2:scottish?0xc4b59b:0xe5d3bc;
+  // single-tile shops keep their walls inside the tile
+  const front=Math.min(1.12,d-.2);
+  if(id==='park'){
+   c.b.block(.06,.06,w-.06,d-.06,.015,.03,0x6f9a4f);
+   c.b.block(.9,.06,1.1,d-.06,.03,.035,0xe3d3ae);c.b.block(.06,.9,w-.06,1.1,.03,.035,0xe3d3ae);
+   c.lit.block(.88,.88,1.12,1.12,.035,.07,0x7fd3ea);
+   for(const [x,y] of [[.35,.35],[1.6,.35],[.35,1.6],[1.6,1.6]] as const)tree(c,x,y,.9);
+   return;
+  }
+  c.b.block(.12,.12,w-.12,front,.015,h,wallCol);
   const roofCol=id==='fire_station'?0xb91c1c:scottish?0x3b4452:0xa8422b;
-  c.b.block(.08,.08,w-.08,1.16,h,h+.08,roofCol);
+  c.b.block(.08,.08,w-.08,front+.04,h,h+.08,roofCol);
+  if(id==='gas_station'){for(const [x,y] of [[.2,1.3],[1.8,1.3],[.2,1.9],[1.8,1.9]] as const)c.b.block(x-.03,y-.03,x+.03,y+.03,.015,.5,0xdfe3e6);c.b.block(.08,1.2,1.92,1.98,.5,.58,0xe30613);c.lit.block(.3,1.25,1.7,1.9,.49,.5,0xffffff);}
+  if(id==='pharmacy'){c.lit.block(.9,.45,.92,.55,.5,.7,0x00a651);c.lit.block(.9,.4,.92,.6,.56,.64,0x00a651);}
   if(scottish){
    c.b.block(.22,.18,.36,.32,h+.08,h+.26,0x78716c);
    c.b.block(w-.36,.18,w-.22,.32,h+.08,h+.26,0x78716c);
@@ -603,8 +614,8 @@ function modern(c: Ctx, id: BuildingId, w: number, d: number, style: Architectur
   }
   for(let y=.2;y<h-.1;y+=.4)for(let x=.22;x<w-.25;x+=.36){
    if(id==='fire_station'&&y<.45)continue;
-   c.b.block(x,1.12,x+.22,1.13,y,y+.23,0x44768c);
-   c.lit.block(x,1.13,x+.22,1.135,y,y+.23,0xffe08a);
+   c.b.block(x,front,x+.22,front+.01,y,y+.23,0x44768c);
+   c.lit.block(x,front+.01,x+.22,front+.015,y,y+.23,0xffe08a);
    if(id==='hotel')c.b.block(x-.03,1.13,x+.26,1.3,y-.03,y+.01,0xe5ded1);
   }
   if(id==='fire_station'){
@@ -615,7 +626,7 @@ function modern(c: Ctx, id: BuildingId, w: number, d: number, style: Architectur
    c.b.block(1.46,.16,1.84,.54,h,h+.52,scottish?0x64748b:0xd62828);
    c.lit.block(1.6,.3,1.7,.4,h+.52,h+.58,0xff2e4c);
   }else{
-   c.b.block(w/2-.14,1.13,w/2+.14,1.14,0,.32,0x23434f);
+   c.b.block(w/2-.14,front+.01,w/2+.14,front+.02,0,.32,0x23434f);
   }
   if(id==='market'||id==='hospital'||id==='police_station'||id==='fire_station'){c.b.block(.12,1.5,1.88,1.95,.015,.025,0x545e68);for(let x=.14;x<1.9;x+=.55)c.b.block(x,1.5,x+.015,1.94,.025,.03,id==='fire_station'?0xfacc15:0xffffff);}
   if(id==='hospital'){c.b.block(w-.38,.45,w-.2,.53,h+.08,h+.14,0xdc3345);c.b.block(w-.33,.4,w-.25,.58,h+.08,h+.14,0xdc3345);}
@@ -624,7 +635,7 @@ function modern(c: Ctx, id: BuildingId, w: number, d: number, style: Architectur
   if(id==='restaurant'){c.b.block(.15,1.12,1.85,1.48,.4,.46,scottish?0x1e3a8a:0x7b1e3a);for(const x of [.45,1.35]){c.b.block(x-.16,1.55,x+.16,1.82,.15,.2,0xa97947);for(const z of [1.47,1.87])c.b.block(x-.1,z,x+.1,z+.1,.02,.12,0x4f6459);}}
   if(id==='club')for(const x of [.17,1.8]){c.b.block(x,1.16,x+.04,1.17,.02,.72,0xe85aff);c.lit.block(x,1.17,x+.04,1.18,.02,.72,0xe85aff);}
  }
- const width=id==='airport'?3.9:w-.36, start=id==='airport'?2.15:.18, z=id==='airport'?3.63:1.15;
+ const width=id==='airport'?3.9:w-.36, start=id==='airport'?2.15:.18, z=id==='airport'?3.63:Math.min(1.15,d-.17);
  const y=id==='airport'?.74:id==='hotel'?1.61:id==='factory'?.72:id==='fire_station'?.54:.42;
  const glyphs=[...title].map(ch=>LETTERS[ch]??LETTERS.I!),cols=glyphs.reduce((n,g)=>n+g[0]!.length+1,0),step=width/cols;
  c.b.block(start-.04,z-.01,start+width+.04,z,y-.03,y+.23,id==='fire_station'?0xd62828:id==='hospital'?0xc43c4b:0x244a72);

@@ -32,6 +32,7 @@ export interface CityKit {
 
 export const DETAILED_CITY: ReadonlySet<BuildingId> = new Set<BuildingId>([
   'hospital', 'police_station', 'fire_station', 'market', 'restaurant', 'club', 'hotel', 'factory', 'airport',
+  'apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall',
 ]);
 
 const ASPHALT = 0x555c62;
@@ -546,11 +547,352 @@ function airport(ctx: DrawCtx, kit: CityKit, style: ArchitectureStyle, pal: Seas
   drawFlagPole(ctx, P(2.05, 3.42, 1), scottish ? 0x1d4ed8 : 0xc8102e, 16);
 }
 
+function apartment(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle, level: number, pal: SeasonPalette, seed: number): void {
+  const scottish = style === 'scottish';
+  const floors = scottish ? 3 + level : 4 + level * 1;
+  const facades = ['cream', 'rose', 'sky', 'sage', 'ochre', 'white'] as const;
+  const block: BuildingLook = {
+    ...look, floors: 4, wall: scottish ? 'sandstone' : 'plaster', facade: scottish ? 'honey' : facades[seed % facades.length]!,
+    roof: scottish ? 'gable' : 'flat', roofMaterial: scottish ? 'slate' : 'lead', windows: 'sash', door: 'double',
+    tower: 'none', balcony: 'none', chimney: scottish ? 'twin' : 'none', decor: 'none',
+  };
+  pad(ctx, 0.04, 0.04, 1.96, 1.96, 0xbdb8aa, 0.85);
+  // front garden with a hedge and a bench
+  pad(ctx, 0.1, 1.3, 1.9, 1.92, pal.snow ? 0xe9eef2 : 0x6f9a4f);
+  line(ctx, P(0.1, 1.9), P(1.9, 1.9), 0x3e6b34, 2.4);
+  pad(ctx, 0.9, 1.22, 1.1, 1.92, 0xcfc8b8);
+  const { zTop } = kit.mass(ctx, block, 0.14, 0.14, 1.86, 1.2, {
+    floors, roof: block.roof, door: 'L', doorT: 1.0, windows: 'sash', spacing: 0.26, chimneys: scottish, balcony: false, axis: 'u',
+  });
+  const L = faceL(0.14, 1.86, 1.2);
+  const R = faceR(0.14, 1.2, 1.86);
+  if (scottish) {
+    // tenement: bay-window columns and a stair-tower door
+    for (const t of [0.45, 1.55]) {
+      for (let f = 1; f < floors; f++) box(ctx, t - 0.16, 1.2, t + 0.16, 1.3, f * 11 + 1, f * 11 + 10, shade(0xd8c39a, 1.02));
+    }
+  } else {
+    // Turkish apartman: corner shop, balconies with laundry, dishes, solar water heaters
+    quad(ctx, L, 0.16, 0.8, 0.4, 8.5, 0x5d666c);
+    quad(ctx, L, 0.2, 0.76, 0.8, 8, 0x9fd3e6);
+    ctx.lights.push([fp(L, 0.2, 0.8), fp(L, 0.76, 0.8), fp(L, 0.76, 8), fp(L, 0.2, 8)]);
+    signBoard(ctx, L, 0.48, 9.6, 'BAKKAL', 0x2e7d32, WHITE, 0.95);
+    for (let f = 1; f < floors; f++) {
+      const z = f * 11;
+      for (const t of [0.3, 1.25]) {
+        box(ctx, t, 1.2, t + 0.42, 1.36, z, z + 1, 0xd9d4c8);
+        line(ctx, P(t, 1.36, z + 4.5), P(t + 0.42, 1.36, z + 4.5), 0x5b6066, 0.9);
+        for (let k = 0; k <= 4; k++) line(ctx, P(t + k * 0.105, 1.36, z + 1), P(t + k * 0.105, 1.36, z + 4.5), 0x5b6066, 0.5);
+        if ((f + seed) % 3 === 0) {
+          line(ctx, P(t + 0.02, 1.34, z + 8), P(t + 0.4, 1.34, z + 8), 0xdddddd, 0.5);
+          PEOPLE.slice(0, 3).forEach((c, k) => quad(ctx, faceL(t, t + 0.42, 1.34), t + 0.06 + k * 0.12, t + 0.12 + k * 0.12, z + 4.8, z + 7.8, c));
+        }
+      }
+      if ((f + seed) % 2 === 0) {
+        const [dx, dy] = fp(R, 0.4, z + 7);
+        ctx.g.ellipse(dx + 2, dy, 2.2, 2.6).fill(0xe8e8e8).stroke({ color: 0x9a9a9a, width: 0.5 });
+      }
+      box(ctx, 1.86, 0.75, 1.94, 0.88, z + 2, z + 5, 0xe6e6e0); // AC unit
+    }
+    for (const u of [0.35, 0.95]) {
+      poly(ctx, [P(u, 0.3, zTop), P(u + 0.4, 0.3, zTop), P(u + 0.4, 0.55, zTop + 6), P(u, 0.55, zTop + 6)], 0x26354a);
+      box(ctx, u + 0.05, 0.62, u + 0.35, 0.74, zTop, zTop + 5, 0xf0f0f0);
+    }
+  }
+  person(ctx, 1.2, 1.5, seed);
+  kit.smallTree(ctx, 0.3, 1.6, 0.8, pal, false);
+  kit.smallTree(ctx, 1.7, 1.6, 0.75, pal, false);
+}
+
+function park(ctx: DrawCtx, kit: CityKit, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  const lawn = pal.snow ? 0xe9eef2 : scottish ? 0x6c9a52 : 0x7fae55;
+  pad(ctx, 0.04, 0.04, 1.96, 1.96, lawn);
+  const path = scottish ? 0xc9bfa6 : 0xe3d3ae;
+  pad(ctx, 0.9, 0.04, 1.1, 1.96, path);
+  pad(ctx, 0.04, 0.9, 1.96, 1.1, path);
+  // flower beds in the four lawns
+  for (const [u, v] of [[0.3, 0.3], [1.35, 0.3], [0.3, 1.35], [1.35, 1.35]] as const) {
+    pad(ctx, u, v, u + 0.35, v + 0.12, 0x8a5a36);
+    for (let k = 0; k < 4; k++) {
+      const [x, y] = P(u + 0.05 + k * 0.08, v + 0.06, 1);
+      ctx.g.circle(x, y, 1.3).fill([0xe74c3c, 0xf1c40f, 0x9b59b6, 0xff7fbf][k]!);
+    }
+  }
+  // fountain
+  const [fx, fy] = P(1, 1, 0);
+  ctx.g.ellipse(fx, fy, 14, 7).fill(0xbdb6a6);
+  ctx.g.ellipse(fx, fy - 1.5, 11.5, 5.6).fill(0x4fb8dc);
+  glowPane(ctx, [[fx - 2, fy - 3], [fx + 2, fy - 3], [fx + 2, fy - 1], [fx - 2, fy - 1]], 0x9ee6ff, 0.6);
+  box(ctx, 0.95, 0.95, 1.05, 1.05, 0, 7, 0xd8d0bf);
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2;
+    line(ctx, [fx, fy - 9], [fx + Math.cos(a) * 6, fy - 4 + Math.sin(a) * 2.5], 0xdff4fb, 1, 0.8);
+  }
+  if (scottish) {
+    // Victorian bandstand: octagonal deck, cast-iron columns, ogee roof
+    const [bx, by] = P(1.55, 0.5, 0);
+    ctx.g.ellipse(bx, by, 11, 5.5).fill(0xb7ab92);
+    ctx.g.ellipse(bx, by - 2, 10, 5).fill(0xd8cdb4);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      const x = bx + Math.cos(a) * 8.5, y = by - 2 + Math.sin(a) * 4.2;
+      ctx.g.moveTo(x, y).lineTo(x, y - 12).stroke({ color: 0x2f4f3f, width: 1 });
+    }
+    ctx.g.ellipse(bx, by - 14, 11, 5).fill(0x2f4f3f);
+    ctx.g.poly([bx - 11, by - 14, bx, by - 24, bx + 11, by - 14]).fill(0x3d6b52);
+    lamp(ctx, [bx, by - 9], 0xfff2c0, 1.2);
+    person(ctx, 1.55, 0.5, 6, false, 2);
+  } else {
+  // playground: slide, swings
+  box(ctx, 1.4, 0.2, 1.5, 0.3, 0, 10, 0xe67e22);
+  poly(ctx, [P(1.5, 0.22, 10), P(1.82, 0.22, 2), P(1.82, 0.3, 2), P(1.5, 0.3, 10)], 0xf1c40f);
+  for (const v of [0.5, 0.72]) line(ctx, P(1.4, v, 0), P(1.4, v, 11), 0x2c3e50, 1);
+  line(ctx, P(1.4, 0.5, 11), P(1.4, 0.72, 11), 0x2c3e50, 1);
+  for (const v of [0.56, 0.66]) {
+    line(ctx, P(1.4, v, 11), P(1.4, v, 4), 0x7f8c8d, 0.5);
+    box(ctx, 1.37, v - 0.02, 1.43, v + 0.02, 3.5, 4.3, 0xc0392b);
+  }
+  person(ctx, 1.62, 0.6, 3);
+  person(ctx, 1.3, 0.6, 6);
+  }
+  // benches with people, lamps and trees
+  for (const [u, v, i] of [[0.75, 0.5, 1], [0.6, 1.5, 4], [1.5, 1.25, 7]] as const) {
+    box(ctx, u - 0.12, v, u + 0.12, v + 0.06, 2.2, 2.8, 0x8a5a36);
+    box(ctx, u - 0.12, v, u + 0.12, v + 0.015, 2.8, 5, 0x8a5a36);
+    person(ctx, u, v + 0.04, i, true);
+  }
+  for (const [u, v] of [[0.86, 0.86], [1.14, 1.14], [0.86, 1.14], [1.14, 0.86]] as const) {
+    line(ctx, P(u, v, 0), P(u, v, 12), 0x2f3a40, 0.9);
+    lamp(ctx, P(u, v, 12.5), 0xfff2c0, 1.1);
+  }
+  for (const [u, v, sz] of [[0.25, 0.65, 1.1], [0.55, 0.22, 0.9], [0.25, 1.75, 1], [1.75, 1.75, 1.15], [1.75, 0.85, 0.9]] as const)
+    kit.smallTree(ctx, u, v, sz, pal, false);
+  person(ctx, 1.0, 1.55, 2);
+  person(ctx, 0.4, 1.0, 5);
+}
+
+function gasStation(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle): void {
+  const scottish = style === 'scottish';
+  const brand = scottish ? 0x00843d : 0xe30613;
+  const second = scottish ? 0xf6c800 : 0xffffff;
+  pad(ctx, 0.04, 0.04, 1.96, 1.96, 0x7d8388, 1);
+  pad(ctx, 0.06, 1.2, 1.94, 1.96, ASPHALT);
+  // shop at the back
+  const shop: BuildingLook = { ...look, floors: 1, wall: 'plaster', facade: 'white', roof: 'flat', roofMaterial: 'lead', windows: 'small', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none' };
+  const { zTop } = kit.mass(ctx, shop, 0.14, 0.14, 1.86, 0.85, { roof: 'flat', door: null, windows: 'small', chimneys: false, balcony: false });
+  const SL = faceL(0.14, 1.86, 0.85);
+  glazing(ctx, SL, 0.3, 1.7, 0.5, 9, 5, 1, 0x9fd3e6, 0x5d666c);
+  quad(ctx, SL, 0.14, 1.86, zTop - 3, zTop, brand);
+  // pump islands between the bays
+  for (const u of [0.7, 1.25]) {
+    box(ctx, u - 0.06, 1.42, u + 0.06, 1.95, 0, 1.2, 0xcfd3d6);
+    for (const v of [1.55, 1.8]) {
+      box(ctx, u - 0.04, v - 0.04, u + 0.04, v + 0.04, 1.2, 9, 0xeeeeee);
+      box(ctx, u - 0.042, v - 0.042, u + 0.042, v + 0.042, 7, 9, brand);
+      glowPane(ctx, [P(u - 0.04, v + 0.04, 4), P(u + 0.04, v + 0.04, 4), P(u + 0.04, v + 0.04, 6), P(u - 0.04, v + 0.04, 6)], 0x9be3ff);
+    }
+  }
+  // canopy on four posts, lit from below
+  const CZ = 17;
+  for (const [u, v] of [[0.2, 1.3], [1.8, 1.3], [0.2, 1.92], [1.8, 1.92]] as const) box(ctx, u - 0.03, v - 0.03, u + 0.03, v + 0.03, 0, CZ, 0xdfe3e6);
+  box(ctx, 0.08, 1.2, 1.92, 1.98, CZ, CZ + 3.5, second);
+  const C = faceL(0.08, 1.92, 1.98);
+  quad(ctx, C, 0.08, 1.92, CZ, CZ + 3.5, brand);
+  signBoard(ctx, C, 1.0, CZ + 0.8, 'AKARYAKIT', brand, second, 0.75);
+  for (const u of [0.5, 1.0, 1.5]) lamp(ctx, P(u, 1.6, CZ - 0.5), 0xffffff, 1.4);
+  // price pylon at the corner
+  box(ctx, 0.06, 0.95, 0.2, 1.1, 0, 30, brand);
+  const pylon = faceL(0.06, 0.2, 1.1);
+  for (const [z, txt] of [[24, '45'], [18, '42']] as const) {
+    quad(ctx, pylon, 0.07, 0.19, z - 1, z + 4.5, 0x111111);
+    ctx.glowColor = 0xffb300;
+    signBoard(ctx, pylon, 0.13, z, txt, 0x111111, 0xffb300, 0.6);
+    ctx.glowColor = undefined;
+  }
+  // air and water stand
+  box(ctx, 1.84, 0.95, 1.94, 1.1, 0, 6, 0x2c7be5);
+  if (scottish) {
+    // jet-wash bay on the side of the shop
+    box(ctx, 1.5, 0.88, 1.8, 1.16, 0, 1, 0x6b737a);
+    for (const u of [1.52, 1.78]) box(ctx, u - 0.02, 0.9, u + 0.02, 1.14, 1, 11, 0x9aa3aa);
+    box(ctx, 1.5, 0.88, 1.8, 1.16, 11, 12.5, brand);
+  } else {
+    // tea stand with stools for the attendants
+    box(ctx, 1.5, 0.9, 1.7, 1.02, 0, 5, 0x8a5a36);
+    const [x, y] = P(1.6, 0.96, 5.5);
+    ctx.g.circle(x, y, 1).fill(0xc0392b);
+    for (const u of [1.55, 1.68]) box(ctx, u, 1.06, u + 0.05, 1.11, 0, 2.2, 0x5b4632);
+    person(ctx, 1.74, 1.1, 3, true);
+  }
+}
+
+function pharmacy(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle): void {
+  const scottish = style === 'scottish';
+  const GREEN = 0x00a651;
+  const shop: BuildingLook = {
+    ...look, floors: 2, wall: scottish ? 'sandstone' : 'plaster', facade: scottish ? 'cream' : 'white',
+    roof: scottish ? 'gable' : 'flat', roofMaterial: scottish ? 'slate' : 'lead', windows: 'sash', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
+  };
+  pad(ctx, 0.04, 0.04, 0.96, 0.96, 0xc8c3b6, 0.9);
+  kit.mass(ctx, shop, 0.1, 0.1, 0.9, 0.78, { roof: shop.roof, door: null, windows: 'sash', spacing: 0.3, chimneys: false, balcony: false });
+  const L = faceL(0.1, 0.9, 0.78);
+  glazing(ctx, L, 0.16, 0.84, 0.5, 8.5, 3, 1, 0xd8f3e4, 0x2f6f4f);
+  quad(ctx, L, 0.43, 0.57, 0.4, 8.2, 0x2f6f4f);
+  signBoard(ctx, L, 0.5, 10.2, 'ECZANE', WHITE, GREEN, 0.95);
+  // green neon cross on a bracket
+  const [x, y] = fp(faceR(0.1, 0.78, 0.9), 0.55, 17);
+  line(ctx, [x - 1, y + 3], [x + 4, y + 3], 0x59636a, 1);
+  const cx = x + 5, cy = y;
+  for (const [w, h] of [[2.2, 7], [7, 2.2]] as const) glowPane(ctx, [[cx - w / 2, cy - h / 2], [cx + w / 2, cy - h / 2], [cx + w / 2, cy + h / 2], [cx - w / 2, cy + h / 2]], GREEN);
+  person(ctx, 0.3, 0.88, 2);
+}
+
+function bakery(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle, level: number): void {
+  const scottish = style === 'scottish';
+  const shop: BuildingLook = {
+    ...look, floors: level >= 2 ? 2 : 1, wall: scottish ? 'granite' : 'stone_timber', facade: scottish ? 'grey' : 'honey',
+    roof: scottish ? 'gable' : 'hip', roofMaterial: scottish ? 'slate' : 'clay', windows: 'small', door: 'plank', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
+  };
+  pad(ctx, 0.04, 0.04, 0.96, 0.96, 0xc9bfa9, 0.9);
+  const { zTop } = kit.mass(ctx, shop, 0.1, 0.1, 0.9, 0.74, { roof: shop.roof, door: null, windows: 'small', spacing: 0.3, chimneys: false, balcony: false, axis: 'u' });
+  const L = faceL(0.1, 0.9, 0.74);
+  quad(ctx, L, 0.16, 0.84, 0.5, 7.5, 0x6b4a2b);
+  quad(ctx, L, 0.2, 0.8, 1, 7, 0xffd9a0);
+  ctx.lights.push([fp(L, 0.2, 1), fp(L, 0.8, 1), fp(L, 0.8, 7), fp(L, 0.2, 7)]);
+  // loaves and simit on the display shelf
+  for (let k = 0; k < 5; k++) {
+    const [x, y] = fp(L, 0.26 + k * 0.12, 3);
+    if (k % 2) ctx.g.circle(x, y, 1.6).stroke({ color: 0xb5651d, width: 1.1 });
+    else ctx.g.ellipse(x, y, 2.2, 1.2).fill(0xc68642);
+  }
+  kit.awning(ctx, 0.12, 0.88, 0.74, 9.5, scottish ? 0x1e3a8a : 0xb71c1c, WHITE);
+  signBoard(ctx, L, 0.5, (level >= 2 ? 14 : 10.5) + 1, 'FIRIN', 0x6b3e1f, 0xffe2a8, 0.95);
+  // oven chimney with smoke
+  box(ctx, 0.66, 0.2, 0.8, 0.34, zTop - 4, zTop + 10, scottish ? 0x6f675a : 0xa65b45);
+  ctx.smoke.push(P(0.73, 0.27, zTop + 11));
+  // bread cart / simit seller outside
+  box(ctx, 0.12, 0.8, 0.34, 0.92, 2, 5, 0xc0392b);
+  for (const u of [0.15, 0.31]) {
+    const [x, y] = P(u, 0.92, 1.5);
+    ctx.g.circle(x, y, 1.4).fill(0x333333);
+  }
+  person(ctx, 0.42, 0.86, 4);
+}
+
+function bank(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  const stone = scottish ? 0xcbb894 : 0xe7e1d3;
+  const hall: BuildingLook = {
+    ...look, floors: 3, wall: scottish ? 'sandstone' : 'plaster', facade: scottish ? 'honey' : 'white', roof: scottish ? 'hip' : 'flat',
+    roofMaterial: scottish ? 'slate' : 'lead', windows: 'arched', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
+  };
+  pad(ctx, 0.04, 0.04, 1.96, 1.96, 0xc8c3b6, 0.9);
+  pad(ctx, 0.1, 1.3, 1.9, 1.92, 0xd8d2c4);
+  const { zTop } = kit.mass(ctx, hall, 0.16, 0.14, 1.84, 1.05, { roof: hall.roof, door: 'L', doorT: 1.0, windows: 'arched', spacing: 0.3, chimneys: false, balcony: false });
+  // classical portico: steps, six columns, entablature with the name, pediment
+  for (let k = 0; k < 3; k++) box(ctx, 0.36 - k * 0.04, 1.05, 1.64 + k * 0.04, 1.34 + k * 0.05, k * 1.2, (k + 1) * 1.2, shade(stone, 1 - k * 0.04));
+  const top = 24;
+  for (let k = 0; k < 6; k++) {
+    const u = 0.44 + k * 0.224;
+    box(ctx, u - 0.035, 1.2, u + 0.035, 1.27, 3.6, top, shade(stone, 1.04));
+    line(ctx, P(u, 1.27, 3.6), P(u, 1.27, top), shade(stone, 0.85), 0.5);
+  }
+  box(ctx, 0.36, 1.05, 1.64, 1.3, top, top + 5, stone);
+  const F = faceL(0.36, 1.64, 1.3);
+  signBoard(ctx, F, 1.0, top + 1, 'BANKA', stone, scottish ? 0x1e3a8a : 0x7b1e3a, 1.1);
+  poly(ctx, [P(0.36, 1.3, top + 5), P(1.64, 1.3, top + 5), P(1.0, 1.3, top + 11)], shade(stone, 1.06));
+  poly(ctx, [P(0.36, 1.05, top + 5), P(0.36, 1.3, top + 5), P(1.0, 1.3, top + 11), P(1.0, 1.05, top + 11)], shade(stone, 0.9));
+  // ATM on the side wall, gold lamps, flag
+  const R = faceR(0.14, 1.05, 1.84);
+  quad(ctx, R, 0.6, 0.8, 3, 9, 0x2b3a4a);
+  glowPane(ctx, [fp(R, 0.63, 6), fp(R, 0.77, 6), fp(R, 0.77, 8.3), fp(R, 0.63, 8.3)], 0x6fd3ff);
+  for (const u of [0.3, 1.7]) {
+    line(ctx, P(u, 1.6, 0), P(u, 1.6, 12), 0x3b3b3b, 1);
+    lamp(ctx, P(u, 1.6, 12.6), 0xffe08a, 1.2);
+  }
+  drawFlagPole(ctx, P(1.0, 0.5, zTop + (scottish ? 8 : 1)), scottish ? 0x1d4ed8 : 0xc8102e, 10);
+  kit.smallTree(ctx, 0.2, 1.75, 0.7, pal, false);
+  kit.smallTree(ctx, 1.8, 1.75, 0.7, pal, false);
+  person(ctx, 1.25, 1.55, 6);
+}
+
+function mall(ctx: DrawCtx, kit: CityKit, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  const brand = scottish ? 0x6d28d9 : 0xe4572e;
+  pad(ctx, 0.04, 0.04, 2.96, 2.96, 0xbdbab0, 0.95);
+  carPark(ctx, 3, 3, 2.2, 5, WHITE);
+  // main box
+  const H = 30;
+  const wall = scottish ? 0xb9a98a : 0xe8e2d6;
+  box(ctx, 0.15, 0.15, 2.85, 1.95, 0, H, wall);
+  box(ctx, 0.12, 0.12, 2.88, 1.98, H, H + 2, shade(wall, 0.75));
+  const L = faceL(0.15, 2.85, 1.95);
+  const R = faceR(0.15, 1.95, 2.85);
+  // shop fronts on both faces and a two-storey glass atrium in the middle
+  glazing(ctx, L, 0.25, 1.1, 1, 11, 3, 1, 0xa6d8ea, 0x4c565c);
+  glazing(ctx, L, 1.9, 2.75, 1, 11, 3, 1, 0xa6d8ea, 0x4c565c);
+  glazing(ctx, R, 0.3, 1.85, 1, 11, 4, 1, 0xa6d8ea, 0x4c565c);
+  box(ctx, 1.15, 1.95, 1.85, 2.12, 0, H + 6, 0x8cc7de);
+  const A = faceL(1.15, 1.85, 2.12);
+  glazing(ctx, A, 1.15, 1.85, 0.5, H + 5.5, 4, 4, 0xbfe6f2, 0x5d6b73);
+  glazing(ctx, faceR(1.95, 2.12, 1.85), 1.95, 2.12, 0.5, H + 5.5, 1, 4, 0xbfe6f2, 0x5d6b73);
+  // brand fascia, big sign and store logos
+  quad(ctx, L, 0.15, 1.15, H - 9, H - 1, brand);
+  quad(ctx, L, 1.85, 2.85, H - 9, H - 1, brand);
+  quad(ctx, R, 0.15, 1.95, H - 9, H - 1, shade(brand, 0.8));
+  ctx.glowColor = 0xffffff;
+  signBoard(ctx, faceL(0.15, 1.15, 1.95), 0.65, H - 7.2, 'AVM', brand, WHITE, 1.6);
+  ctx.glowColor = undefined;
+  for (const [t, c] of [[2.1, 0xffcc00], [2.45, 0x00a3e0]] as const) {
+    const [x, y] = fp(L, t, H - 5);
+    ctx.g.circle(x, y, 3).fill(c);
+  }
+  // cinema poster wall on the side
+  for (const [t, c] of [[0.45, 0x1b1b3a], [0.95, 0x7a1f1f], [1.45, 0x1f4d3a]] as const) {
+    quad(ctx, R, t, t + 0.3, 13, 24, c);
+    glowPane(ctx, [fp(R, t + 0.03, 13.5), fp(R, t + 0.27, 13.5), fp(R, t + 0.27, 14.5), fp(R, t + 0.03, 14.5)], 0xffd36b);
+  }
+  // rooftop: plant, skylight; Scottish centres keep a glazed Victorian arcade roof
+  rooftopUnits(ctx, 0.4, 0.4, H + 2, 4);
+  if (scottish) {
+    for (let k = 0; k < 4; k++) {
+      const u = 0.3 + k * 0.22;
+      poly(ctx, [P(u, 1.5, H + 2), P(u + 0.11, 1.5, H + 8), P(u + 0.11, 1.85, H + 8), P(u, 1.85, H + 2)], 0xa6d8ea);
+      poly(ctx, [P(u + 0.11, 1.5, H + 8), P(u + 0.22, 1.5, H + 2), P(u + 0.22, 1.85, H + 2), P(u + 0.11, 1.85, H + 8)], 0x7fb3c7);
+    }
+  } else {
+    // rooftop food-court terrace with parasols
+    for (const u of [0.5, 0.85]) {
+      line(ctx, P(u, 1.65, H + 2), P(u, 1.65, H + 10), 0x6b5a48, 0.8);
+      const [px, py] = P(u, 1.65, H + 10);
+      ctx.g.poly([px - 6, py + 2, px, py - 2, px + 6, py + 2]).fill(u < 0.7 ? brand : WHITE);
+    }
+  }
+  poly(ctx, [P(1.3, 0.6, H + 2.2), P(2.4, 0.6, H + 2.2), P(2.4, 1.4, H + 2.2), P(1.3, 1.4, H + 2.2)], 0x8cc7de, 0.85);
+  // entrance plaza: trees, shoppers with bags
+  pad(ctx, 1.1, 2.12, 1.9, 2.2, 0xd8d2c4);
+  for (const u of [0.3, 2.7]) kit.smallTree(ctx, u, 2.08, 0.85, pal, false);
+  for (let i = 0; i < 4; i++) person(ctx, 1.2 + i * 0.17, 2.16 + (i % 2) * 0.02, i + 2);
+  line(ctx, P(0.12, 2.15, 0), P(0.12, 2.15, 34), 0x59636a, 1.4);
+  box(ctx, 0.05, 2.05, 0.19, 2.25, 34, 44, brand);
+  ctx.glowColor = 0xffffff;
+  signBoard(ctx, faceL(0.05, 0.19, 2.25), 0.12, 37, 'AVM', brand, WHITE, 0.6);
+  ctx.glowColor = undefined;
+}
+
 /** Draws a detailed city building; returns false for ids handled elsewhere. */
 export function drawDetailedCity(
-  ctx: DrawCtx, kit: CityKit, id: BuildingId, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette,
+  ctx: DrawCtx, kit: CityKit, id: BuildingId, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette, level = 1,
 ): boolean {
   switch (id) {
+    case 'apartment': apartment(ctx, kit, look, style, level, pal, ctx.seed); return true;
+    case 'park': park(ctx, kit, style, pal); return true;
+    case 'gas_station': gasStation(ctx, kit, look, style); return true;
+    case 'pharmacy': pharmacy(ctx, kit, look, style); return true;
+    case 'bakery': bakery(ctx, kit, look, style, level); return true;
+    case 'bank': bank(ctx, kit, look, style, pal); return true;
+    case 'mall': mall(ctx, kit, style, pal); return true;
     case 'hospital': hospital(ctx, kit, look, style, pal); return true;
     case 'police_station': policeStation(ctx, kit, look, style); return true;
     case 'fire_station': fireStation(ctx, kit, look, style); return true;

@@ -44,6 +44,13 @@ export type BuildingId =
   | 'airport'
   | 'corporate_plaza'
   | 'aquapark'
+  | 'apartment'
+  | 'park'
+  | 'gas_station'
+  | 'pharmacy'
+  | 'bakery'
+  | 'bank'
+  | 'mall'
   | LandmarkId;
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';
@@ -254,6 +261,8 @@ export interface BuildingDefinition {
     patrolRadius?: number;
     /** Homes within this many tiles are served by the hospital's ambulances. */
     healthRadius?: number;
+    /** Pharmacies: homes within this many tiles get a small health bonus. */
+    pharmacyRadius?: number;
   };
   landmark?: LandmarkSpec;
 }
