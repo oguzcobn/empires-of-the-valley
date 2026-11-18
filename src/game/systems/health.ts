@@ -1,7 +1,7 @@
 import { makeRng } from '../core/rng';
 import type { BuildingInstance, GameState, Province } from '../core/types';
 import { defOf } from '../data/buildings';
-import { isBuilt, isOperating, totalPopulation } from './economy';
+import { isBuilt, isHome, isOperating, totalPopulation } from './economy';
 import { logEvent } from './events';
 import { dispatchService } from './cityLife';
 
@@ -11,6 +11,8 @@ export const HEALTH_MIN_POPULATION = 30;
 export const HEALTH_MAX_HAPPINESS = 6;
 /** Happiness lost at once when nobody answers an emergency call. */
 export const UNTREATED_HAPPINESS_LOSS = 1;
+/** Extra happiness when every home has a staffed pharmacy nearby. */
+export const PHARMACY_MAX_HAPPINESS = 2;
 
 function distanceTo(home: BuildingInstance, site: BuildingInstance): number {
   const [w, h] = defOf(site).footprint;
@@ -45,17 +47,24 @@ export function emergencyChance(p: Province): number {
 
 /** Shared by the simulation, the happiness model and the population panel. */
 export function healthServices(p: Province) {
+  const pharmacies = p.buildings.filter((b) => isOperating(b) && !!defOf(b).services?.pharmacyRadius);
   const homes = p.buildings
-    .filter((b) => b.definitionId === 'hut' && isBuilt(b))
-    .map((home) => ({ home, hospital: hospitalFor(p, home) }));
+    .filter((b) => isHome(b) && isBuilt(b))
+    .map((home) => ({
+      home,
+      hospital: hospitalFor(p, home),
+      pharmacy: pharmacies.some((ph) => distanceTo(home, ph) <= defOf(ph).services!.pharmacyRadius!),
+    }));
   const covered = homes.filter((entry) => entry.hospital).length;
   const coverage = homes.length ? Math.round((covered * 100) / homes.length) : 0;
+  const pharmacyCoverage = homes.length ? Math.round((homes.filter((e) => e.pharmacy).length * 100) / homes.length) : 0;
   return {
     homes,
     covered,
     coverage,
+    pharmacyCoverage,
     chance: emergencyChance(p),
-    happiness: Math.round((coverage * HEALTH_MAX_HAPPINESS) / 100),
+    happiness: Math.round((coverage * HEALTH_MAX_HAPPINESS) / 100) + Math.round((pharmacyCoverage * PHARMACY_MAX_HAPPINESS) / 100),
   };
 }
 

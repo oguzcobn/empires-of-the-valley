@@ -793,8 +793,14 @@ const GLYPHS: Record<string, readonly number[]> = {
   F: [7, 4, 6, 4, 4], G: [3, 4, 5, 5, 3], H: [5, 5, 7, 5, 5], I: [2, 2, 2, 2, 2], K: [5, 5, 6, 5, 5],
   L: [4, 4, 4, 4, 7], M: [5, 7, 7, 5, 5], N: [6, 5, 5, 5, 5], O: [2, 5, 5, 5, 2], P: [6, 5, 6, 4, 4],
   R: [6, 5, 6, 5, 5], S: [3, 4, 2, 1, 6], T: [7, 2, 2, 2, 2], U: [5, 5, 5, 5, 7], V: [5, 5, 5, 5, 2],
-  Y: [5, 5, 2, 2, 2], Z: [7, 1, 2, 4, 7],
+  Y: [5, 5, 2, 2, 2], Z: [7, 1, 2, 4, 7], W: [5, 5, 7, 7, 5], J: [1, 1, 1, 5, 2],
+  '0': [7, 5, 5, 5, 7], '1': [2, 6, 2, 2, 7], '2': [6, 1, 2, 4, 7], '3': [6, 1, 2, 1, 6], '4': [5, 5, 7, 1, 1],
+  '5': [7, 4, 6, 1, 6], '6': [3, 4, 7, 5, 7], '7': [7, 1, 2, 2, 2], '8': [7, 5, 7, 5, 7], '9': [7, 5, 7, 1, 6],
+  ',': [0, 0, 0, 2, 4], '.': [0, 0, 0, 0, 2], '-': [0, 0, 7, 0, 0],
 };
+
+/** Turkish capitals drawn as their Latin base letter plus a mark (see signText). */
+const TURKISH_BASE: Record<string, string> = { İ: 'I', Ü: 'U', Ö: 'O', Ç: 'C', Ş: 'S', Ğ: 'G' };
 
 /** Width of `text` on a wall in tile units (see signText). */
 export const signWidth = (text: string, px = 1.5): number => ([...text].length * 4 - 1) * (px / PX);
@@ -806,18 +812,24 @@ export const signWidth = (text: string, px = 1.5): number => ([...text].length *
 export function signText(ctx: DrawCtx, f: Face, t0: number, zTop: number, text: string, color: number, px = 1.5): void {
   const step = (px / PX) * (f.side === 'L' ? 1 : -1);
   let column = 0;
+  const cell = (c: number, z0: number, z1: number): void => {
+    const t = t0 + (column + c) * step;
+    quad(ctx, f, t, t + step, z0, z1, color);
+  };
   for (const raw of text) {
-    const dotted = raw === 'İ';
-    const rows = GLYPHS[dotted ? 'I' : raw.toUpperCase()];
+    const upper = raw === 'i' ? 'İ' : raw.toLocaleUpperCase('tr-TR');
+    const base = TURKISH_BASE[upper] ?? upper;
+    const rows = GLYPHS[base];
     if (rows) {
       rows.forEach((bits, row) => {
-        for (let c = 0; c < 3; c++) {
-          if (!(bits & (4 >> c))) continue;
-          const t = t0 + (column + c) * step;
-          quad(ctx, f, t, t + step, zTop - (row + 1) * px, zTop - row * px, color);
-        }
+        for (let c = 0; c < 3; c++) if (bits & (4 >> c)) cell(c, zTop - (row + 1) * px, zTop - row * px);
       });
-      if (dotted) quad(ctx, f, t0 + (column + 1) * step, t0 + (column + 2) * step, zTop + px * 0.5, zTop + px * 1.4, color);
+      const above = [zTop + px * 0.5, zTop + px * 1.4] as const;
+      const below = [zTop - px * 6.2, zTop - px * 5.3] as const;
+      if (upper === 'İ') cell(1, ...above);
+      if (upper === 'Ü' || upper === 'Ö') { cell(0, ...above); cell(2, ...above); }
+      if (upper === 'Ğ') for (const c of [0, 1, 2]) cell(c, ...above);
+      if (upper === 'Ç' || upper === 'Ş') cell(1, ...below);
     }
     column += 4;
   }

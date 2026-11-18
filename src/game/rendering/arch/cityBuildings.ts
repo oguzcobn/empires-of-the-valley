@@ -24,6 +24,9 @@ export const LETTERS: Record<string, string[]> = {
   U: ['101', '101', '101', '101', '111'],
   V: ['101', '101', '101', '101', '010'],
   Y: ['101', '101', '010', '010', '010'],
+  Z: ['111', '001', '010', '100', '111'],
+  D: ['110', '101', '101', '101', '110'],
+  G: ['011', '100', '101', '101', '011'],
 };
 function sign(
   ctx: DrawCtx,
@@ -62,6 +65,13 @@ export const CITY_BUILDINGS: Partial<Record<BuildingId, string>> = {
   airport: 'HAVALIMANI',
   corporate_plaza: 'PLAZA',
   aquapark: 'AQUAPARK',
+  apartment: 'APARTMAN',
+  park: 'PARK',
+  gas_station: 'AKARYAKIT',
+  pharmacy: 'ECZANE',
+  bakery: 'FIRIN',
+  bank: 'BANKA',
+  mall: 'AVM',
 };
 export function drawCityBuilding(
   ctx: DrawCtx,

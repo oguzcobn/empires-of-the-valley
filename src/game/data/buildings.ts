@@ -68,6 +68,55 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
 
       requires: { population: 30 } })],
   },
+  apartment: {
+    id: 'apartment', category: 'housing', era: 2, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    levels: [
+      level({ cost: { wood: u(40), stone: u(55), gold: u(20) }, buildTicks: 4 * DAY, housing: 14, taxIncome: u(1.4), upkeepGold: u(0.2), requires: { population: 20 } }),
+      level({ cost: { wood: u(50), stone: u(70), gold: u(30), tools: u(6) }, buildTicks: 4 * DAY, housing: 24, taxIncome: u(2.4), upkeepGold: u(0.3), requires: { townCenterLevel: 2 } }),
+    ],
+  },
+  park: {
+    id: 'park', category: 'civic', era: 1, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 5, attraction: 3 },
+    levels: [level({ cost: { wood: u(20), stone: u(15), gold: u(8) }, buildTicks: 2 * DAY, workerSlots: 1, upkeepGold: u(0.1) })],
+  },
+  gas_station: {
+    id: 'gas_station', category: 'production', era: 3, footprint: [2, 2], validTerrains: LAND,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { marketGold: u(1) },
+    levels: [level({ cost: { wood: u(25), stone: u(40), gold: u(30), tools: u(8) }, buildTicks: 3 * DAY, workerSlots: 2,
+      produces: { resourceId: 'gold', perDay: u(2.5) }, upkeepGold: u(0.25), requires: { population: 24 } })],
+  },
+  pharmacy: {
+    id: 'pharmacy', category: 'civic', era: 2, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { pharmacyRadius: 4, community: 1 },
+    levels: [level({ cost: { wood: u(12), stone: u(18), gold: u(12) }, buildTicks: 2 * DAY, workerSlots: 1, upkeepGold: u(0.12), requires: { population: 16 } })],
+  },
+  bakery: {
+    id: 'bakery', category: 'production', era: 1, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    levels: [
+      level({ cost: { wood: u(18), stone: u(14), gold: u(6) }, buildTicks: 2 * DAY, workerSlots: 2, produces: { resourceId: 'food', perDay: u(4) }, upkeepGold: u(0.1), requires: { population: 10 } }),
+      level({ cost: { wood: u(22), stone: u(20), gold: u(12) }, buildTicks: 2 * DAY, workerSlots: 3, produces: { resourceId: 'food', perDay: u(7) }, upkeepGold: u(0.15), requires: { townCenterLevel: 2 } }),
+    ],
+  },
+  bank: {
+    id: 'bank', category: 'governance', era: 2, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { safety: 2, safetyRadius: 3 },
+    levels: [level({ cost: { wood: u(25), stone: u(65), gold: u(40) }, buildTicks: 4 * DAY, workerSlots: 3,
+      produces: { resourceId: 'gold', perDay: u(3.5) }, storage: { gold: u(150) }, upkeepGold: u(0.3), requires: { population: 22 } })],
+  },
+  mall: {
+    id: 'mall', category: 'civic', era: 4, footprint: [3, 3], validTerrains: LAND,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 6, attraction: 12, marketGold: u(4) },
+    levels: [level({ cost: { wood: u(60), stone: u(110), gold: u(80), tools: u(20) }, buildTicks: 6 * DAY, workerSlots: 6,
+      produces: { resourceId: 'gold', perDay: u(5) }, upkeepGold: u(0.8), requires: { population: 36 } })],
+  },
   aquapark: {
     id: 'aquapark', category: 'civic', era: 4, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
     seasonal: false, usesTools: false, buildable: true, demolishable: true,

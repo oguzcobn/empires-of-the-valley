@@ -1,7 +1,7 @@
 import { makeRng } from '../core/rng';
 import type { BuildingInstance, GameState, Province } from '../core/types';
 import { defOf, specOf } from '../data/buildings';
-import { idleWorkers, isBuilt, isOperating, totalPopulation } from './economy';
+import { idleWorkers, isBuilt, isHome, isOperating, totalPopulation } from './economy';
 import { logEvent } from './events';
 
 function distanceTo(home: BuildingInstance, site: BuildingInstance): number {
@@ -20,7 +20,7 @@ export function neighborhoodServices(p: Province) {
     (idleWorkers(p) > p.population.adults / 2 ? 7 : 0) +
     (p.taxRate === 'high' ? 7 : 0),
   );
-  const homes = p.buildings.filter((b) => b.definitionId === 'hut' && isBuilt(b)).map((home) => {
+  const homes = p.buildings.filter((b) => isHome(b) && isBuilt(b)).map((home) => {
     const venuesByType = new Map<string, number>();
     for (const venue of venues) {
       if (distanceTo(home, venue) > 5) continue;

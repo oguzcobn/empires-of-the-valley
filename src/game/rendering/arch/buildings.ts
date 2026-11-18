@@ -907,7 +907,7 @@ export function drawStyledBuilding(
   const ctx = newCtx(g, detail, seed, pal.snow, wear, illuminated);
   const look = renderLook(b);
   if (DETAILED_CITY.has(b.definitionId)) {
-    drawDetailedCity(ctx, CITY_KIT, b.definitionId, look, b.style, pal);
+    drawDetailedCity(ctx, CITY_KIT, b.definitionId, look, b.style, pal, b.level);
     return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
   }
   if (drawCityBuilding(ctx, b.definitionId, b.style, b.level)) return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
@@ -965,6 +965,7 @@ export function drawStyledBuilding(
       shipyard(ctx, look, b.level);
       break;
     case 'hospital': case 'fire_station': case 'factory': case 'hotel': case 'club': case 'restaurant': case 'airport': break;
+    case 'apartment': case 'park': case 'gas_station': case 'pharmacy': case 'bakery': case 'bank': case 'mall': break;
     default:
       drawLandmark(ctx, b.definitionId, pal);
   }

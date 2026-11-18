@@ -3,7 +3,7 @@ import { clockHour } from '../core/time';
 import { defOf } from '../data/buildings';
 import { canLink, perimeterTiles, tileAt } from './grid';
 import { beds } from './tourism';
-import { isOperating, isBuilt, storageCaps } from './economy';
+import { isHome, isOperating, isBuilt, storageCaps } from './economy';
 import { logEvent } from './events';
 
 export type CityJobKind = 'shopping' | 'ambulance' | 'patrol' | 'fire' | 'delivery' | 'dining' | 'nightlife' | 'hotel';
@@ -149,7 +149,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
   const venues = p.buildings.filter(
     (b) =>
       isOperating(b) &&
-      ['hospital', 'police_station', 'fire_station', 'factory', 'market', 'restaurant', 'club', 'hotel', 'airport'].includes(
+      ['hospital', 'police_station', 'fire_station', 'factory', 'market', 'restaurant', 'club', 'hotel', 'airport', 'gas_station', 'mall'].includes(
         b.definitionId,
       ),
   );
@@ -261,10 +261,10 @@ export function cityLifeTick(s: GameState, p: Province): void {
         isBuilt(other) &&
         other.connected &&
         (b.definitionId === 'factory'
-          ? ['market', 'warehouse'].includes(other.definitionId)
+          ? ['market', 'warehouse', 'mall'].includes(other.definitionId)
           : b.definitionId === 'fire_station'
             ? other.definitionId !== 'town_center'
-            : other.definitionId === 'hut'),
+            : isHome(other)),
     );
     if (!candidates.length) continue;
     const other = candidates[(Math.floor(s.tick / 4) + b.x) % candidates.length]!;
@@ -305,6 +305,8 @@ export function cityLifeTick(s: GameState, p: Province): void {
     const sourceAccess = service ? access(source, route[0]!, 0).reverse() : [];
     const destinationAccess = [
       'market',
+      'gas_station',
+      'mall',
       'restaurant',
       'club',
       'hotel',
