@@ -77,6 +77,10 @@ export const CITY_BUILDINGS: Partial<Record<BuildingId, string>> = {
   post_office: 'PTT',
   gym: 'SPOR',
   kindergarten: 'KRES',
+  university: 'UNIVERSITE',
+  museum: 'MUZE',
+  bazaar: 'PAZAR',
+  hamam: 'HAMAM',
 };
 export function drawCityBuilding(
   ctx: DrawCtx,

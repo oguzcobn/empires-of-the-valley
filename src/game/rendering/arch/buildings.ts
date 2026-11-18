@@ -967,6 +967,7 @@ export function drawStyledBuilding(
     case 'hospital': case 'fire_station': case 'factory': case 'hotel': case 'club': case 'restaurant': case 'airport': break;
     case 'apartment': case 'park': case 'gas_station': case 'pharmacy': case 'bakery': case 'bank': case 'mall': break;
     case 'villa': case 'tea_garden': case 'post_office': case 'gym': case 'kindergarten': break;
+    case 'university': case 'museum': case 'bazaar': case 'hamam': break;
     default:
       drawLandmark(ctx, b.definitionId, pal);
   }

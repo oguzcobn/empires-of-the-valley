@@ -7,7 +7,7 @@ import { neighborhoodServices } from '../game/systems/crime';
 import { t } from '../i18n';
 import { home, newCampaign, tweak } from './helpers';
 
-const NEW: BuildingId[] = ['apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall', 'villa', 'tea_garden', 'post_office', 'gym', 'kindergarten'];
+const NEW: BuildingId[] = ['apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall', 'villa', 'tea_garden', 'post_office', 'gym', 'kindergarten', 'university', 'museum', 'bazaar', 'hamam'];
 
 const withBuilding = (id: BuildingId, workers: number, dx = 1) => tweak(newCampaign(), (draft) => {
   const p = home(draft);
@@ -58,7 +58,7 @@ describe('new city buildings', () => {
   });
 
   it('bakeries bake food, banks and gas stations earn gold', () => {
-    for (const [id, resource] of [['bakery', 'food'], ['bank', 'gold'], ['gas_station', 'gold'], ['mall', 'gold']] as const) {
+    for (const [id, resource] of [['bakery', 'food'], ['bank', 'gold'], ['gas_station', 'gold'], ['mall', 'gold'], ['university', 'research'], ['museum', 'research'], ['bazaar', 'food'], ['hamam', 'gold']] as const) {
       const s = withBuilding(id, BUILDINGS[id].levels[0]!.workerSlots);
       const b = home(s).buildings.find((x) => x.definitionId === id)!;
       expect(BUILDINGS[id].levels[0]!.produces?.resourceId).toBe(resource);

@@ -56,6 +56,10 @@ export type BuildingId =
   | 'post_office'
   | 'gym'
   | 'kindergarten'
+  | 'university'
+  | 'museum'
+  | 'bazaar'
+  | 'hamam'
   | LandmarkId;
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';
