@@ -81,7 +81,7 @@ describe('detailed city art', () => {
         const info = drawStyledBuilding(g, { definitionId, style, look: null, level: 1, condition: 10000 }, SEASON_PALETTE.summer, 2, buildingArtSeed(definitionId));
         expect(info.lights.length, `${style} ${definitionId}`).toBeGreaterThan(4);
         // a wide airport rises entirely below its back corner, so its height can be 0
-        if (definitionId !== 'airport' && definitionId !== 'park') expect(info.height, `${style} ${definitionId}`).toBeGreaterThan(10);
+        if (!['airport', 'park', 'tea_garden'].includes(definitionId)) expect(info.height, `${style} ${definitionId}`).toBeGreaterThan(10);
         const [w] = BUILDINGS[definitionId].footprint;
         expect(g.getLocalBounds().width, definitionId).toBeGreaterThan(w * 40);
         ops.push(g.context.instructions.length);

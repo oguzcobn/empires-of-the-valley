@@ -75,7 +75,8 @@ export function storageCaps(
 }
 
 /** Dwellings whose residents use neighbourhood services (huts and apartment blocks). */
-export const isHome = (b: BuildingInstance): boolean => b.definitionId === 'hut' || b.definitionId === 'apartment';
+export const isHome = (b: BuildingInstance): boolean =>
+  b.definitionId === 'hut' || b.definitionId === 'apartment' || b.definitionId === 'villa';
 
 /** A building does work only when built, road-connected, paid for and staffed. */
 export const isOperating = (b: BuildingInstance): boolean =>

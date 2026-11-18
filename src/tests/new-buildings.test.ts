@@ -7,7 +7,7 @@ import { neighborhoodServices } from '../game/systems/crime';
 import { t } from '../i18n';
 import { home, newCampaign, tweak } from './helpers';
 
-const NEW: BuildingId[] = ['apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall'];
+const NEW: BuildingId[] = ['apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall', 'villa', 'tea_garden', 'post_office', 'gym', 'kindergarten'];
 
 const withBuilding = (id: BuildingId, workers: number, dx = 1) => tweak(newCampaign(), (draft) => {
   const p = home(draft);
@@ -33,6 +33,16 @@ describe('new city buildings', () => {
     expect(housingCapacity(p)).toBeGreaterThanOrEqual(BUILDINGS.apartment.levels[0]!.housing);
     expect(neighborhoodServices(p).homes.some((h) => h.home.id === flat.id)).toBe(true);
     expect(healthServices(p).homes.some((h) => h.home.id === flat.id)).toBe(true);
+  });
+
+  it('villas are homes and social venues lift community happiness while staffed', () => {
+    const p = home(withBuilding('villa', 0));
+    expect(isHome(p.buildings.find((b) => b.definitionId === 'villa')!)).toBe(true);
+    for (const id of ['tea_garden', 'gym', 'kindergarten', 'post_office'] as const) {
+      const slots = BUILDINGS[id].levels[0]!.workerSlots;
+      expect(neighborhoodServices(home(withBuilding(id, slots))).community, id)
+        .toBeGreaterThan(neighborhoodServices(home(withBuilding(id, 0))).community);
+    }
   });
 
   it('pharmacies add health happiness only while staffed', () => {

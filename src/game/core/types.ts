@@ -51,6 +51,11 @@ export type BuildingId =
   | 'bakery'
   | 'bank'
   | 'mall'
+  | 'villa'
+  | 'tea_garden'
+  | 'post_office'
+  | 'gym'
+  | 'kindergarten'
   | LandmarkId;
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';

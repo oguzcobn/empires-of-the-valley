@@ -117,6 +117,37 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
     levels: [level({ cost: { wood: u(60), stone: u(110), gold: u(80), tools: u(20) }, buildTicks: 6 * DAY, workerSlots: 6,
       produces: { resourceId: 'gold', perDay: u(5) }, upkeepGold: u(0.8), requires: { population: 36 } })],
   },
+  villa: {
+    id: 'villa', category: 'housing', era: 2, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    levels: [level({ cost: { wood: u(25), stone: u(30), gold: u(25) }, buildTicks: 3 * DAY, housing: 5, taxIncome: u(1.3), upkeepGold: u(0.12), requires: { population: 18 } })],
+  },
+  tea_garden: {
+    id: 'tea_garden', category: 'civic', era: 1, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 3, attraction: 2 },
+    levels: [level({ cost: { wood: u(15), stone: u(6), gold: u(5) }, buildTicks: 2 * DAY, workerSlots: 1, upkeepGold: u(0.06) })],
+  },
+  post_office: {
+    id: 'post_office', category: 'governance', era: 2, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 2 },
+    levels: [level({ cost: { wood: u(14), stone: u(20), gold: u(12) }, buildTicks: 2 * DAY, workerSlots: 2,
+      produces: { resourceId: 'gold', perDay: u(1.5) }, upkeepGold: u(0.1), requires: { population: 16 } })],
+  },
+  gym: {
+    id: 'gym', category: 'civic', era: 3, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 5, attraction: 2 },
+    levels: [level({ cost: { wood: u(30), stone: u(45), gold: u(25), tools: u(6) }, buildTicks: 3 * DAY, workerSlots: 2,
+      produces: { resourceId: 'gold', perDay: u(1.2) }, upkeepGold: u(0.2), requires: { population: 24 } })],
+  },
+  kindergarten: {
+    id: 'kindergarten', category: 'education', era: 2, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 3 },
+    levels: [level({ cost: { wood: u(18), stone: u(18), gold: u(10) }, buildTicks: 2 * DAY, workerSlots: 2, upkeepGold: u(0.12), requires: { population: 18 } })],
+  },
   aquapark: {
     id: 'aquapark', category: 'civic', era: 4, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
     seasonal: false, usesTools: false, buildable: true, demolishable: true,
