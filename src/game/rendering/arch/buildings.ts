@@ -1,4 +1,6 @@
 import { drawCityBuilding } from './cityBuildings';
+import { DETAILED_CITY, drawDetailedCity } from './cityDetail';
+import type { CityKit } from './cityDetail';
 import type { Graphics } from 'pixi.js';
 import type { ArchitectureStyle, BuildingId, BuildingLook, RoofType, WindowType } from '../../core/types';
 import { CULTURES } from '../../data/architecture';
@@ -61,7 +63,7 @@ export interface SpriteInfo {
   height: number;
 }
 
-interface MassOpts {
+export interface MassOpts {
   floors?: number;
   z0?: number;
   axis?: 'u' | 'v';
@@ -866,6 +868,9 @@ function shipyard(ctx: DrawCtx, look: BuildingLook, level: number): void {
 
 export const FOOTPRINT_PX_TOP = 0;
 
+/** Building helpers lent to the detailed city art (see cityDetail.ts). */
+const CITY_KIT: CityKit = { mass, smallTree, awning };
+
 export function buildingArtSeed(id: string): number {
   let value = 2166136261;
   for (let i = 0; i < id.length; i++) value = Math.imul(value ^ id.charCodeAt(i), 16777619);
@@ -901,6 +906,10 @@ export function drawStyledBuilding(
   const wear = b.condition >= 5000 ? 0 : b.condition >= 2500 ? 1 : 2;
   const ctx = newCtx(g, detail, seed, pal.snow, wear, illuminated);
   const look = renderLook(b);
+  if (DETAILED_CITY.has(b.definitionId)) {
+    drawDetailedCity(ctx, CITY_KIT, b.definitionId, look, b.style, pal);
+    return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
+  }
   if (drawCityBuilding(ctx, b.definitionId, b.style, b.level)) return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
   switch (b.definitionId) {
     case 'hut':

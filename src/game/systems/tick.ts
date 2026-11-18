@@ -1,6 +1,7 @@
 import { cityLifeTick } from './cityLife';
 import { produce } from 'immer';
 import { crimeDayEnd } from './crime';
+import { healthDayEnd } from './health';
 import { securityDayEnd } from './security';
 import { resolveHunt, transitDayEnd } from './frontier';
 import { mulPermille, portion } from '../core/fixed';
@@ -215,6 +216,7 @@ function dayEnd(s: GameState, p: Province): void {
   transitDayEnd(s, p);
   securityDayEnd(s, p);
   crimeDayEnd(s, p, cal.day);
+  healthDayEnd(s, p, cal.day);
 
   // buildings weather: stone lasts, timber and thatch need care (see data/architecture.ts)
   for (const b of p.buildings) {

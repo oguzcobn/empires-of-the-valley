@@ -17,7 +17,7 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
   hospital: {
     id: 'hospital', category: 'civic', era: 1,
     footprint: [2, 2], validTerrains: LAND, seasonal: false, usesTools: false,
-    buildable: true, demolishable: true, services: { community: 4, safety: 4, safetyRadius: 5 },
+    buildable: true, demolishable: true, services: { community: 4, safety: 4, safetyRadius: 5, healthRadius: 8 },
     levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
       buildTicks: 4 * DAY, workerSlots: 4, upkeepGold: u(0.5),
 
