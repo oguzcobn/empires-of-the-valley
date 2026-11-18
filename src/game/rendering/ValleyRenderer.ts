@@ -33,6 +33,8 @@ import { drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
 import { BUS, LORRY, drawHeadlights, drawTrafficVehicle, trafficModel } from './vehicles';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
 import { trafficShare, walkerShare } from './dayRhythm';
+import { TrafficLights } from './trafficLights';
+import { StreetFurniture } from './streetFurniture';
 import type { PedLook } from './pedestrians';
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
@@ -182,6 +184,8 @@ export class ValleyRenderer {
   private cityScenes = new CityScenes(this.objects);
   private workScenes = new WorkerScenes(this.objects);
   private frontier = new FrontierScenes(this.transportGround, this.objects);
+  private signals = new TrafficLights(this.objects);
+  private furniture = new StreetFurniture(this.objects);
   private ghost = new Graphics();
   private fx = new Container();
   private drops: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
@@ -267,6 +271,8 @@ export class ValleyRenderer {
       this.app.ticker.remove(this.frame);
       this.cityScenes.destroy();
       this.workScenes.destroy();
+      this.signals.destroy();
+      this.furniture.destroy();
       for (const a of this.atlas.values()) a.tex.destroy(true);
       this.atlas.clear();
       // Never pass `true` as the first argument: it releases Pixi's global resources and breaks the
@@ -533,7 +539,11 @@ export class ValleyRenderer {
           return tile !== old && (tile.terrain !== old.terrain || tile.variant !== old.variant ||
             tile.height !== old.height || tile.road !== old.road || tile.roadType !== old.roadType || tile.paved !== old.paved);
         });
-      if (groundChanged) this.syncGround(p, pal);
+      if (groundChanged) {
+        this.syncGround(p, pal);
+        this.signals.sync(p);
+      }
+      this.furniture.sync(p, cal.season, view.game.culture);
       this.syncProps(p, pal, cal.season);
       if (seasonChanged) this.pruneAtlas(cal.season);
       this.lastTiles = p.tiles;
@@ -549,6 +559,7 @@ export class ValleyRenderer {
     this.workScenes.update(p, cal.season, view.selectedBuildingId, workerStep, !motion);
     this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt');
     this.updateWalkers(view, p, dt, motion);
+    this.signals.update(this.time, this.night);
     this.updateTraffic(view, p, dt, motion);
     this.cityScenes.update(view.game, p, dt, !motion);
     this.updateMilitia(view, p, dt);
@@ -1470,8 +1481,14 @@ export class ValleyRenderer {
         other.from[1] === car.from[1] && other.to[0] === car.to[0] &&
         other.to[1] === car.to[1] && other.t > car.t &&
         other.t - car.t < (other.variant === BUS || other.variant === LORRY || car.variant === BUS ? 0.62 : 0.36));
-      if (!carAhead && motion && view.game.speed !== 0)
-        car.t += Math.min(0.12, dt / 1000) * car.speed;
+      if (!carAhead && motion && view.game.speed !== 0) {
+        // wait at the stop line (just before the junction tile) while its light is red
+        const next = car.t + Math.min(0.12, dt / 1000) * car.speed;
+        const stop = car.variant === BUS || car.variant === LORRY ? 0.18 : 0.3;
+        const red = car.t <= stop + 1e-3 && next > stop &&
+          !this.signals.mayEnter(p, car.to[0], car.to[1], car.to[0] - car.from[0], car.to[1] - car.from[1], this.time);
+        car.t = red ? Math.max(car.t, stop) : next;
+      }
       if (car.t >= 1) {
         car.prev = car.from;
         car.from = car.to;
