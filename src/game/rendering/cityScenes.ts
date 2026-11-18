@@ -8,7 +8,9 @@ import { defOf } from '../data/buildings';
 import { HEIGHT_PX } from '../data/balance';
 import { isoX, isoY, P } from './iso';
 import { drawCityCar, drawFireTruck, drawServiceVehicle } from './trafficSprites';
-import { drawVillager } from './sprites';
+import { drawLorry } from './vehicles';
+import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
+import type { PedLook } from './pedestrians';
 
 const lerp = (a: MapPoint, b: MapPoint, t: number): MapPoint => ({
   x: a.x + (b.x - a.x) * t,
@@ -50,6 +52,18 @@ interface Actor {
   blue: Graphics;
   fx: Graphics;
   key: string;
+  look: PedLook;
+  shown: string;
+}
+
+/** Stable random numbers per actor id, so a shopper keeps their clothes. */
+function seeded(id: string): () => number {
+  let h = 2166136261;
+  for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) + 0x6d2b79f5;
+    return ((h ^ (h >>> 13)) >>> 0) / 0x100000000;
+  };
 }
 export class CityScenes {
   private actors = new Map<string, Actor>();
@@ -69,10 +83,11 @@ export class CityScenes {
     root.addChild(car, person, red, blue, fx);
     root.cullable = true;
     this.parent.addChild(root);
-    drawVillager(person, 0xdfa454, 0);
+    const look = randomPedLook(seeded(id));
+    drawPedestrian(person, look, 0);
     red.circle(-1, -11, 2.2).fill(0xff334e);
     blue.circle(2.5, -11, 2.2).fill(0x367eff);
-    a = { root, car, person, red, blue, fx, key: '' };
+    a = { root, car, person, red, blue, fx, key: '', look, shown: '' };
     this.actors.set(id, a);
     return a;
   }
@@ -139,7 +154,9 @@ export class CityScenes {
         a.car.clear();
         if (j.kind === 'fire') {
           drawFireTruck(a.car, dx || 1, dy);
-        } else if (j.kind === 'ambulance' || j.kind === 'patrol' || j.kind === 'delivery') {
+        } else if (j.kind === 'delivery') {
+          drawLorry(a.car, dx || 1, dy, [0xb98749, 0x2e7d32, 0xc62828][j.id % 3]!, 0x37474f);
+        } else if (j.kind === 'ambulance' || j.kind === 'patrol') {
           drawServiceVehicle(a.car, j.kind, dx || 1, dy);
         } else {
           drawCityCar(a.car, paint, false, dx || 1, dy, j.id % 5);
@@ -159,6 +176,17 @@ export class CityScenes {
               ? { x: target.x + 0.45, y: target.y + 1.85 }
               : lerp(park, entry, this.fraction);
         if (reduced) personAt = park;
+        const walking = j.stage !== 'inside' && !reduced && s.speed > 0;
+        const to = j.stage === 'walkOut' ? park : entry;
+        const from = j.stage === 'walkOut' ? entry : park;
+        const hx = walking ? Math.sign(Math.round((to.x - from.x) * 4)) : 0;
+        const hy = walking && !hx ? Math.sign(Math.round((to.y - from.y) * 4)) : 0;
+        const frame = walking ? Math.floor(this.time / 110) % WALK_FRAMES : 0;
+        const shown = `${frame}|${hx},${hy}`;
+        if (shown !== a.shown) {
+          a.shown = shown;
+          drawPedestrian(a.person, a.look, frame, hx, hy);
+        }
         a.person.position.set(
           isoX(personAt.x - at.x, personAt.y - at.y),
           isoY(personAt.x - at.x, personAt.y - at.y),

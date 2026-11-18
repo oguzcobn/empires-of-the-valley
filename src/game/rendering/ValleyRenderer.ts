@@ -18,7 +18,7 @@ import { NEIGHBORS4, buildingById, footprintTiles, tileAt, tilesInRange } from '
 import { checkRoadSite } from '../systems/placement';
 import { requiredTicks } from '../systems/tick';
 import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
-import { COLORS, SEASON_PALETTE, VILLAGER_COLORS } from './palette';
+import { COLORS, SEASON_PALETTE } from './palette';
 import type { SeasonPalette } from './palette';
 import { drawBird, drawBoat, drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
 import { buildingArtSeed, drawStyledBuilding, drawStyledConstruction } from './arch/buildings';
@@ -29,7 +29,11 @@ import { findRoadPath } from './armyPath';
 import { getPavedLinks } from './roadGeometry';
 import { matchDayFor } from '../data/matchDays';
 import type { MatchDay } from '../data/matchDays';
-import { drawCityCar, drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
+import { drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
+import { BUS, LORRY, drawTrafficVehicle, trafficModel } from './vehicles';
+import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
+import { trafficShare, walkerShare } from './dayRhythm';
+import type { PedLook } from './pedestrians';
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
 import { CityScenes } from './cityScenes';
@@ -112,6 +116,10 @@ interface PropView {
 }
 interface Walker {
   c: Container;
+  /** Animated townsperson (absent for carts and supporters). */
+  body?: Graphics;
+  look?: PedLook;
+  shown?: string;
   from: [number, number];
   to: [number, number];
   prev: [number, number];
@@ -1082,11 +1090,12 @@ export class ValleyRenderer {
     const g = new Graphics();
     if (fanMatch) drawFootballSupporter(g, fanMatch, index);
     else if (cart) drawCart(g, [0xb98a5a, 0xe2bb45, 0x9aa0a6][Math.floor(Math.random() * 3)]!);
-    else drawVillager(g, VILLAGER_COLORS[Math.floor(Math.random() * VILLAGER_COLORS.length)]!, Math.floor(Math.random() * 8));
+    const look = !fanMatch && !cart ? randomPedLook(Math.random, this.dropKind === 'rain') : undefined;
+    if (look) drawPedestrian(g, look, 0);
     c.addChild(g);
     const flare = fanMatch ? new Graphics() : undefined;
     if (flare) c.addChild(flare);
-    c.scale.set(cart ? 0.82 : fanMatch ? 0.84 : 0.66);
+    c.scale.set(cart ? 0.82 : fanMatch ? 0.84 : 0.72);
     c.cullable = true;
     this.objects.addChild(c);
     this.tintKey = -1;
@@ -1102,6 +1111,7 @@ export class ValleyRenderer {
       cart,
       fan: !!fanMatch,
       flare,
+      ...(look ? { body: g, look } : {}),
     };
   }
 
@@ -1222,7 +1232,7 @@ export class ValleyRenderer {
 
   /** Visual-only villagers and carts wandering the road network. The economy never reads them. */
   private updateWalkers(view: RendererView, p: Province, dt: number, motion: boolean): void {
-    const wantVillagers = Math.min(10, Math.max(0, Math.floor(totalPopulation(p) / 2) - this.workScenes.count));
+    const wantVillagers = Math.round(Math.min(18, Math.max(0, Math.floor(totalPopulation(p) / 2) - this.workScenes.count)) * walkerShare(clockHour(view.game.tick)));
     const wantCarts = Math.min(3, p.buildings.filter((b) => specOf(b).produces && isOperating(b)).length);
     const count = (cart: boolean): number => this.walkers.filter((w) => w.cart === cart).length;
     for (const cart of [false, true]) {
@@ -1306,6 +1316,15 @@ export class ValleyRenderer {
       );
       w.c.zIndex = fx + fy + 0.015;
       if (w.cart) w.c.scale.x = dx - dy < 0 ? -1 : 1;
+      if (w.body && w.look) {
+        // stride frame follows real walking speed; standing figures hold frame 0
+        const frame = step > 0 ? Math.floor(this.time / (95 / Math.max(0.5, w.speed)) + w.phase * 3) % WALK_FRAMES : 0;
+        const key = `${frame}|${dx},${dy}`;
+        if (key !== w.shown) {
+          w.shown = key;
+          drawPedestrian(w.body, w.look, frame, dx, dy);
+        }
+      }
     }
 
     // Update the 10-supporter match-day cortege marching together as a single convoy
@@ -1396,7 +1415,8 @@ export class ValleyRenderer {
           isPaved(nx, ny) &&
           tileAt(p, nx, ny)?.height === tileAt(p, x, y)?.height);
     const linked = this.roadTiles.filter(([x, y]) => neighbors(x, y).length > 0);
-    const desired = Math.min(8, Math.floor(linked.length / 4));
+    // rush hours fill the streets, nights empty them (see dayRhythm.ts)
+    const desired = Math.round(Math.min(14, Math.floor(linked.length / 3)) * trafficShare(clockHour(view.game.tick)));
     // Deleted or demolished paved roads must immediately release their cars.
     for (let i = this.trafficCars.length - 1; i >= 0; i--) {
       const car = this.trafficCars[i]!;
@@ -1419,9 +1439,9 @@ export class ValleyRenderer {
       const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
       const paint = paints[this.trafficCars.length % paints.length]!;
       const electric = this.trafficCars.length % 3 === 0;
-      const variant = (start[0] * 5 + start[1] * 7 + this.trafficCars.length) % 6;
+      const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length);
       const dx = to[0] - start[0], dy = to[1] - start[1];
-      drawCityCar(body, paint, electric, dx, dy, variant);
+      drawTrafficVehicle(body, variant, paint, electric, dx, dy, view.game.culture);
       holder.addChild(body);
       holder.cullable = true;
       this.objects.addChild(holder);
@@ -1429,7 +1449,7 @@ export class ValleyRenderer {
         c: holder, sprite: body, paint, electric, variant, heading: `${dx},${dy}`,
         from: [start[0], start[1]], to,
         prev: [start[0], start[1]], t: 0,
-        speed: 0.5 + Math.random() * 0.24,
+        speed: (variant === BUS || variant === LORRY ? 0.34 : 0.5) + Math.random() * 0.22,
       });
     }
     const uk = view.game.cityId === 'edinburgh' ||
@@ -1444,7 +1464,8 @@ export class ValleyRenderer {
       const carAhead = this.trafficCars.some((other) =>
         other !== car && other.from[0] === car.from[0] &&
         other.from[1] === car.from[1] && other.to[0] === car.to[0] &&
-        other.to[1] === car.to[1] && other.t > car.t && other.t - car.t < 0.36);
+        other.to[1] === car.to[1] && other.t > car.t &&
+        other.t - car.t < (other.variant === BUS || other.variant === LORRY || car.variant === BUS ? 0.62 : 0.36));
       if (!carAhead && motion && view.game.speed !== 0)
         car.t += Math.min(0.12, dt / 1000) * car.speed;
       if (car.t >= 1) {
@@ -1461,7 +1482,7 @@ export class ValleyRenderer {
       const heading = `${dx},${dy}`;
       if (car.heading !== heading && (dx !== 0 || dy !== 0)) {
         car.sprite.clear();
-        drawCityCar(car.sprite, car.paint, car.electric, dx, dy, car.variant);
+        drawTrafficVehicle(car.sprite, car.variant, car.paint, car.electric, dx, dy, view.game.culture);
         car.heading = heading;
       }
       const x = car.from[0] + dx * car.t + 0.5;
