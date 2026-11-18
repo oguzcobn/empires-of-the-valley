@@ -49,11 +49,13 @@ const pad = (ctx: DrawCtx, u0: number, v0: number, u1: number, v1: number, color
 function carPark(ctx: DrawCtx, w: number, h: number, v0: number, slots: number, marking: number): void {
   pad(ctx, 0.06, v0, w - 0.06, h - 0.04, ctx.snow ? 0x8f979c : ASPHALT);
   line(ctx, P(0.06, v0), P(w - 0.06, v0), 0xb9b6ab, 1.4);
+  // bays are as wide as the 0.55 spacing and run to the kerb: cars park nose-in across them
   for (let k = 0; k < slots; k++) {
     const u = 0.42 + 0.55 * k;
     const v = h - 0.25;
-    for (const du of [-0.26, 0.26]) line(ctx, P(u + du, v - 0.2), P(u + du, v + 0.18), marking, 1, 0.9);
-    line(ctx, P(u - 0.26, v - 0.2), P(u + 0.26, v - 0.2), marking, 1, 0.9);
+    const top = Math.max(v0 + 0.04, v - 0.42);
+    for (const du of [-0.27, 0.27]) line(ctx, P(u + du, top), P(u + du, h - 0.06), marking, 1, 0.9);
+    line(ctx, P(u - 0.27, top), P(u + 0.27, top), marking, 1, 0.9);
   }
 }
 

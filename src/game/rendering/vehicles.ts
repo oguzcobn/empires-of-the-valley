@@ -166,3 +166,68 @@ export function trafficModel(n: number, seed: number, roads: number): number {
   if (n % 5 === 2) return TAXI;
   return Math.abs(seed + n) % 6;
 }
+
+/**
+ * Narrow-body airliner in the vehicle frame: fuselage with a window line, swept wings with
+ * engines, tailplane and fin in the airline livery. About 1.7 tiles long. `lit` adds
+ * navigation and landing lights.
+ */
+export function drawAirliner(g: Graphics, dx: number, dy: number, livery: number, lit = false): void {
+  const f = frame(g, dx, dy);
+  const R = 0.075; // fuselage half width
+  const Z = 6; // belly height on the gear
+  const white = 0xf4f6f7;
+  // far wing and tailplane first, then the fuselage, then the near ones
+  const wing = (side: number): void => {
+    f.face([[0.18, side * R, Z + 3], [-0.12, side * R, Z + 3], [-0.36, side * 0.82, Z + 5], [-0.22, side * 0.82, Z + 5]], shade(0xd5dadd, side === f.near ? 1 : 0.82));
+    const ex = 0.02, ev = side * 0.32;
+    f.face([[ex + 0.12, ev - 0.035, Z + 1.2], [ex - 0.1, ev - 0.035, Z + 1.2], [ex - 0.1, ev + 0.035, Z + 1.2], [ex + 0.12, ev + 0.035, Z + 1.2]], 0x9aa3aa);
+    f.face([[ex + 0.12, ev + f.near * 0.035, Z + 1.2], [ex - 0.1, ev + f.near * 0.035, Z + 1.2], [ex - 0.1, ev + f.near * 0.035, Z + 3.4], [ex + 0.12, ev + f.near * 0.035, Z + 3.4]], 0xb8c0c6);
+    f.circle(ex + 0.12, ev, Z + 2.3, 1.3, 0x3a4248);
+    f.face([[-0.6, side * R, Z + 6], [-0.72, side * R, Z + 6], [-0.8, side * 0.3, Z + 7], [-0.72, side * 0.3, Z + 7]], shade(0xd5dadd, 0.9));
+    if (lit) f.circle(-0.3, side * 0.82, Z + 5, 1.1, side > 0 ? 0x33ff66 : 0xff3344);
+  };
+  wing(-f.near);
+  // fuselage: belly, far flank, near flank, crown; nose and tail cones
+  const N = 0.85, T = -0.82;
+  f.face([[T, -R, Z + 1], [N - 0.1, -R, Z], [N - 0.1, R, Z], [T, R, Z + 1]], 0xb9c0c5);
+  for (const side of [-f.near, f.near]) {
+    const near = side === f.near;
+    f.face([[T + 0.04, side * R, Z + 2], [N - 0.1, side * R, Z], [N - 0.1, side * R, Z + 7], [T, side * R, Z + 9]], shade(white, near ? 0.96 : 0.78));
+    f.face([[T + 0.04, side * R, Z + 2], [N - 0.1, side * R, Z], [N - 0.1, side * R, Z + 1.6], [T + 0.04, side * R, Z + 3.2]], shade(livery, near ? 0.9 : 0.7));
+    if (near) {
+      for (let u = -0.6; u < 0.62; u += 0.075) f.circle(u, side * R * 1.02, Z + 4.6 + (0.62 - u) * -0.4, 0.55, lit ? 0xffe8a0 : 0x2b3a46);
+      f.face([[0.5, side * R * 1.01, Z + 1], [0.56, side * R * 1.01, Z + 1], [0.56, side * R * 1.01, Z + 5], [0.5, side * R * 1.01, Z + 5]], shade(white, 0.85));
+    }
+  }
+  f.face([[T, -R, Z + 9], [N - 0.1, -R, Z + 7], [N - 0.1, R, Z + 7], [T, R, Z + 9]], shade(white, 1.08));
+  const nose: V3 = [N + 0.06, 0, Z + 3];
+  f.face([[N - 0.1, -R, Z], [N - 0.1, -R, Z + 7], nose], shade(white, 0.85));
+  f.face([[N - 0.1, R, Z], [N - 0.1, R, Z + 7], nose], shade(white, 0.92));
+  f.face([[N - 0.1, -R, Z + 7], [N - 0.1, R, Z + 7], nose], shade(white, 1.05));
+  f.face([[N - 0.04, f.near * R * 0.8, Z + 5.2], [N - 0.1, f.near * R * 0.9, Z + 6.6], [N - 0.1, -f.near * R * 0.2, Z + 6.6]], 0x22313c);
+  // fin in livery with a white logo disc
+  f.face([[T + 0.18, 0, Z + 9], [T + 0.02, 0, Z + 9], [T - 0.06, 0, Z + 21], [T + 0.04, 0, Z + 21]], livery);
+  f.circle(T + 0.06, 0, Z + 14, 1.5, white);
+  wing(f.near);
+  // landing gear
+  for (const [u, v] of [[0.62, 0], [-0.08, -R * 0.8], [-0.08, R * 0.8]] as const) f.line([u, v, 0], [u, v, Z], 0x3b3b3b, 0.9);
+  if (lit) {
+    f.circle(T - 0.02, 0, Z + 21.5, 1, 0xffffff);
+    f.circle(0, 0, Z - 0.5, 1, 0xff3344);
+  }
+}
+
+/** Two soft headlight cones on the road ahead of a vehicle whose nose is `front` tiles out. */
+export function drawHeadlights(g: Graphics, dx: number, dy: number, front = 0.4): void {
+  g.clear();
+  const ux = dx || (dy ? 0 : 1);
+  const uy = dy;
+  const at = (u: number, v: number): Pt => P(u * ux - v * uy, u * uy + v * ux, 0.5);
+  for (const v of [-0.08, 0.08]) {
+    const cone = [at(front, v - 0.02), at(front + 0.75, v - 0.2), at(front + 0.82, v), at(front + 0.75, v + 0.2), at(front, v + 0.02)];
+    g.poly(cone.flat()).fill({ color: 0xfff2b0, alpha: 0.18 });
+    const core = [at(front, v - 0.01), at(front + 0.4, v - 0.08), at(front + 0.45, v), at(front + 0.4, v + 0.08), at(front, v + 0.01)];
+    g.poly(core.flat()).fill({ color: 0xfff7d0, alpha: 0.22 });
+  }
+}
