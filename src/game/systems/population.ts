@@ -13,11 +13,12 @@ import {
 } from '../data/balance';
 import { assignedWorkers, housingCapacity, idleWorkers, isOperating, totalPopulation } from './economy';
 import { neighborhoodServices } from './crime';
+import { healthServices } from './health';
 import { logEvent } from './events';
 import { heritageHappiness } from './tourism';
 
 export interface HappinessFactor {
-  id: 'base' | 'food' | 'housing' | 'employment' | 'education' | 'tax' | 'tools' | 'maintenance' | 'heritage' | 'community' | 'crime';
+  id: 'base' | 'food' | 'housing' | 'employment' | 'education' | 'tax' | 'tools' | 'maintenance' | 'heritage' | 'community' | 'crime' | 'health';
   value: number;
 }
 
@@ -51,6 +52,7 @@ export function happinessFactors(p: Province): HappinessFactor[] {
     { id: 'heritage', value: heritageHappiness(p) },
     { id: 'community', value: services.community },
     { id: 'crime', value: -Math.round(services.risk / 6) },
+    { id: 'health', value: healthServices(p).happiness },
   ];
 }
 

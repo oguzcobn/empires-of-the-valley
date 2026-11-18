@@ -17,6 +17,7 @@ import type { WorldProvince } from '../game/data/worldMap';
 import { CITY_AGES, CITY_CONTRACTS, CITY_DILEMMAS, CITY_EDICTS, PACT_PRICES, validateCommand } from '../game/systems/commands';
 import { TRANSIT_COST, transitUnlocked } from '../game/systems/frontier';
 import { neighborhoodServices } from '../game/systems/crime';
+import { healthServices } from '../game/systems/health';
 import { forecastBattle } from '../game/systems/combat';
 import {
   UNCAPPED,
@@ -234,6 +235,24 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
           return incidents.length ? <ul>{incidents.map((event) => (
             <li key={event.id}>{calendar(event.tick).day}. gün · {t(event.key, event.params)}</li>
           ))}</ul> : <p className="hint">Kayıtlı olay yok.</p>;
+        })()}
+      </section>
+      <section>
+        <h4>Sağlık Hizmeti</h4>
+        {(() => {
+          const health = healthServices(p);
+          const calls = game.eventLog.filter((event) => event.key.startsWith('event.emergency')).slice(-5).reverse();
+          return (
+            <>
+              <Row label="Ambulans kapsamındaki evler">{health.covered} / {health.homes.length}</Row>
+              <Row label="Günlük acil çağrı ihtimali">%{health.chance}</Row>
+              <p className="hint">Acil çağrılar 30 nüfustan itibaren başlar. Görevli sağlıkçısı olan hastane 8 karelik alana ambulans gönderir; asfalt yol varsa ambulans gerçekten yola çıkar. Menzilde hastane yoksa yardım gecikir ve mutluluk düşer.</p>
+              <h4>Son Acil Çağrılar</h4>
+              {calls.length ? <ul>{calls.map((event) => (
+                <li key={event.id}>{calendar(event.tick).day}. gün · {t(event.key, event.params)}</li>
+              ))}</ul> : <p className="hint">Kayıtlı çağrı yok.</p>}
+            </>
+          );
         })()}
       </section>
       <section className="citizen-roster">

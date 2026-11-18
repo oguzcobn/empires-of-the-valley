@@ -17,6 +17,7 @@ createRoot(document.getElementById('root')!).render(<App />);
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
   (window as unknown as Record<string, unknown>).__EOV__ = {
     store: useApp,
+    defs: BUILDINGS,
     advance(ticks: number): void {
       const game = useApp.getState().game;
       if (game) useApp.setState({ game: applyTicks(game, ticks) });

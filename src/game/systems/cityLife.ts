@@ -329,3 +329,31 @@ export function cityLifeTick(s: GameState, p: Province): void {
     });
   }
 }
+/**
+ * Sends one service vehicle from `source` to `target` now (used by emergencies). Returns false
+ * when the city is at its journey limit, the vehicle is already out or no asphalt route exists.
+ */
+export function dispatchService(
+  s: GameState,
+  p: Province,
+  source: BuildingInstance,
+  target: BuildingInstance,
+  kind: 'ambulance' | 'patrol' | 'fire',
+): boolean {
+  const life = (s.cityLife ??= emptyCityLife());
+  if (life.jobs.length >= 24 || life.jobs.some((j) => j.source === source.id && j.kind === kind)) return false;
+  const route = cityRoute(p, source, target);
+  if (!route) return false;
+  life.jobs.push({
+    id: life.nextId++,
+    kind,
+    source: source.id,
+    target: target.id,
+    slot: 0,
+    path: [...access(source, route[0]!, 0).reverse(), ...route],
+    index: 0,
+    stage: 'outbound',
+    age: 0,
+  });
+  return true;
+}
