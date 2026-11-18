@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Graphics } from 'pixi.js';
-import { BUS, LORRY, MODEL_COUNT, TAXI, drawAirliner, drawHeadlights, drawTrafficVehicle, trafficModel } from '../game/rendering/vehicles';
+import { BICYCLE, BUS, GARBAGE, ICE_CREAM, LORRY, MODEL_COUNT, MOTORBIKE, TAXI, drawAirliner, drawHeadlights, drawTrafficVehicle, modelSpeed, trafficModel } from '../game/rendering/vehicles';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from '../game/rendering/pedestrians';
 import { isOpen, trafficShare, walkerShare } from '../game/rendering/dayRhythm';
 
@@ -18,7 +18,7 @@ describe('street vehicles', () => {
         const g = new Graphics();
         drawTrafficVehicle(g, model, 0x345a89, false, dx, dy, 'turkish');
         const b = g.getLocalBounds();
-        expect(Number.isFinite(b.width) && b.width > 15, `${model} ${dx},${dy}`).toBe(true);
+        expect(Number.isFinite(b.width) && b.width > (model === BICYCLE || model === MOTORBIKE ? 8 : 15), `${model} ${dx},${dy}`).toBe(true);
         g.destroy();
       }
   });
@@ -59,10 +59,22 @@ describe('street vehicles', () => {
     expect(g.getLocalBounds().x).toBeLessThan(0);
   });
 
+  it('sends the refuse round in the morning and the ice-cream van on summer afternoons', () => {
+    const morning = Array.from({ length: 12 }, (_, n) => trafficModel(n, 1, 30, 7, 'summer'));
+    expect(morning).toContain(GARBAGE);
+    expect(morning).not.toContain(ICE_CREAM);
+    const afternoon = Array.from({ length: 12 }, (_, n) => trafficModel(n, 1, 30, 15, 'summer'));
+    expect(afternoon).toContain(ICE_CREAM);
+    expect(Array.from({ length: 12 }, (_, n) => trafficModel(n, 1, 30, 15, 'winter'))).not.toContain(ICE_CREAM);
+    expect(afternoon).toContain(MOTORBIKE);
+    expect(modelSpeed(BICYCLE)).toBeLessThan(modelSpeed(0));
+    expect(modelSpeed(MOTORBIKE)).toBeGreaterThan(modelSpeed(0));
+  });
+
   it('mixes taxis, buses and lorries into ordinary traffic', () => {
     const models = Array.from({ length: 40 }, (_, n) => trafficModel(n, 3, 30));
     for (const m of [TAXI, BUS, LORRY]) expect(models).toContain(m);
-    expect(models.filter((m) => m < 6).length).toBeGreaterThan(models.length / 2);
+    expect(models.filter((m) => m < 6).length).toBeGreaterThan(models.length * 0.4);
     expect(Array.from({ length: 40 }, (_, n) => trafficModel(n, 3, 6))).not.toContain(BUS);
   });
 });

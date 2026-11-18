@@ -30,7 +30,7 @@ import { getPavedLinks } from './roadGeometry';
 import { matchDayFor } from '../data/matchDays';
 import type { MatchDay } from '../data/matchDays';
 import { drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
-import { BUS, LORRY, drawHeadlights, drawTrafficVehicle, trafficModel } from './vehicles';
+import { drawHeadlights, drawTrafficVehicle, modelLength, modelSpeed, trafficModel } from './vehicles';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
 import { trafficShare, walkerShare } from './dayRhythm';
 import { TrafficLights } from './trafficLights';
@@ -1452,11 +1452,12 @@ export class ValleyRenderer {
       const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
       const paint = paints[this.trafficCars.length % paints.length]!;
       const electric = this.trafficCars.length % 3 === 0;
-      const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length);
+      const cal = calendar(view.game.tick);
+      const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length, clockHour(view.game.tick), cal.season);
       const dx = to[0] - start[0], dy = to[1] - start[1];
       drawTrafficVehicle(body, variant, paint, electric, dx, dy, view.game.culture);
       const beam = new Graphics();
-      drawHeadlights(beam, dx, dy, variant === BUS || variant === LORRY ? 0.62 : 0.4);
+      drawHeadlights(beam, dx, dy, modelLength(variant) === 2 ? 0.62 : modelLength(variant) === 0 ? 0.25 : 0.4);
       holder.addChild(beam, body);
       holder.cullable = true;
       this.objects.addChild(holder);
@@ -1464,7 +1465,7 @@ export class ValleyRenderer {
         c: holder, sprite: body, beam, paint, electric, variant, heading: `${dx},${dy}`,
         from: [start[0], start[1]], to,
         prev: [start[0], start[1]], t: 0,
-        speed: (variant === BUS || variant === LORRY ? 0.34 : 0.5) + Math.random() * 0.22,
+        speed: (0.5 + Math.random() * 0.22) * modelSpeed(variant),
       });
     }
     const uk = view.game.cityId === 'edinburgh' ||
@@ -1480,11 +1481,11 @@ export class ValleyRenderer {
         other !== car && other.from[0] === car.from[0] &&
         other.from[1] === car.from[1] && other.to[0] === car.to[0] &&
         other.to[1] === car.to[1] && other.t > car.t &&
-        other.t - car.t < (other.variant === BUS || other.variant === LORRY || car.variant === BUS ? 0.62 : 0.36));
+        other.t - car.t < (modelLength(other.variant) === 2 || modelLength(car.variant) === 2 ? 0.62 : 0.36));
       if (!carAhead && motion && view.game.speed !== 0) {
         // wait at the stop line (just before the junction tile) while its light is red
         const next = car.t + Math.min(0.12, dt / 1000) * car.speed;
-        const stop = car.variant === BUS || car.variant === LORRY ? 0.18 : 0.3;
+        const stop = modelLength(car.variant) === 2 ? 0.18 : 0.3;
         const red = car.t <= stop + 1e-3 && next > stop &&
           !this.signals.mayEnter(p, car.to[0], car.to[1], car.to[0] - car.from[0], car.to[1] - car.from[1], this.time);
         car.t = red ? Math.max(car.t, stop) : next;
@@ -1504,7 +1505,7 @@ export class ValleyRenderer {
       if (car.heading !== heading && (dx !== 0 || dy !== 0)) {
         car.sprite.clear();
         drawTrafficVehicle(car.sprite, car.variant, car.paint, car.electric, dx, dy, view.game.culture);
-        drawHeadlights(car.beam, dx, dy, car.variant === BUS || car.variant === LORRY ? 0.62 : 0.4);
+        drawHeadlights(car.beam, dx, dy, modelLength(car.variant) === 2 ? 0.62 : modelLength(car.variant) === 0 ? 0.25 : 0.4);
         car.heading = heading;
       }
       car.beam.visible = this.night > 0.3;
