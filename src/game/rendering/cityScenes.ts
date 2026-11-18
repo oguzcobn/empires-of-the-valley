@@ -69,6 +69,56 @@ function seeded(id: string): () => number {
     return ((h ^ (h >>> 13)) >>> 0) / 0x100000000;
   };
 }
+/** Gap kept between journey vehicles that share a lane (tiles). */
+const QUEUE_GAP = 0.5;
+
+/**
+ * Where each moving journey vehicle is drawn. Journeys advance one path node per tick, so
+ * several can share a road tile; cars in the same lane and heading queue up behind the leader
+ * instead of being drawn through each other. Visual only: saved journeys are untouched.
+ */
+export function queuePositions(s: GameState, p: Province, fraction: number): Map<number, MapPoint> {
+  const side = s.culture === 'scottish' ? -1 : 1;
+  const cars: { id: number; at: MapPoint; hx: number; hy: number; back: MapPoint }[] = [];
+  for (const j of s.cityLife?.jobs ?? []) {
+    if (j.stage !== 'outbound' && j.stage !== 'return') continue;
+    const start = j.path[j.index];
+    const end = j.path[Math.min(j.index + 1, j.path.length - 1)];
+    if (!start || !end) continue;
+    const onRoad = !!tileAt(p, Math.floor(start.x), Math.floor(start.y))?.road && !!tileAt(p, Math.floor(end.x), Math.floor(end.y))?.road;
+    if (!onRoad) continue;
+    const dx = end.x - start.x, dy = end.y - start.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) continue;
+    const t = Math.min(1, fraction);
+    const at = { x: start.x + dx * t - (dy / len) * 0.13 * side, y: start.y + dy * t + (dx / len) * 0.13 * side };
+    cars.push({ id: j.id, at, hx: dx / len, hy: dy / len, back: { x: start.x - (dy / len) * 0.13 * side, y: start.y + (dx / len) * 0.13 * side } });
+  }
+  // leaders first: furthest along their heading
+  cars.sort((a, b) => (b.at.x * b.hx + b.at.y * b.hy) - (a.at.x * a.hx + a.at.y * a.hy));
+  const out = new Map<number, MapPoint>();
+  const placed: typeof cars = [];
+  for (const car of cars) {
+    let at = car.at;
+    for (const lead of placed) {
+      if (lead.hx * car.hx + lead.hy * car.hy < 0.9) continue;
+      const ox = lead.at.x - at.x, oy = lead.at.y - at.y;
+      const along = ox * car.hx + oy * car.hy;
+      const across = Math.abs(ox * -car.hy + oy * car.hx);
+      if (across > 0.2 || along < -0.05 || along >= QUEUE_GAP) continue;
+      // fall back to the gap behind the leader, but never behind the start of this segment
+      const want = { x: lead.at.x - car.hx * QUEUE_GAP, y: lead.at.y - car.hy * QUEUE_GAP };
+      const maxBack = (at.x - car.back.x) * car.hx + (at.y - car.back.y) * car.hy + 0.45;
+      const shift = Math.min(maxBack, (at.x - want.x) * car.hx + (at.y - want.y) * car.hy);
+      at = { x: at.x - car.hx * shift, y: at.y - car.hy * shift };
+    }
+    const done = { ...car, at };
+    placed.push(done);
+    if (at !== car.at) out.set(car.id, at);
+  }
+  return out;
+}
+
 export class CityScenes {
   private actors = new Map<string, Actor>();
   private tick = -1;
@@ -115,6 +165,7 @@ export class CityScenes {
       a.root.position.set(isoX(at.x, at.y), isoY(at.x, at.y) - h - alt);
       a.root.zIndex = at.x + at.y + 0.08 + (alt > 0 ? 100 : 0);
     };
+    const queued = queuePositions(s, p, this.fraction);
     for (const j of s.cityLife?.jobs ?? []) {
       if (!validCityJob(p, j)) continue;
       const target = p.buildings.find((b) => b.id === j.target)!;
@@ -137,6 +188,7 @@ export class CityScenes {
           side = s.culture === 'scottish' ? -1 : 1;
         at = { x: at.x - (dy / len) * 0.13 * side, y: at.y + (dx / len) * 0.13 * side };
       }
+      at = queued.get(j.id) ?? at;
       place(a, at);
       const own = p.buildings.find((b) => b.id === tileAt(p, Math.floor(at.x), Math.floor(at.y))?.buildingId);
       if (own && at.y >= own.y + 1.12) {
