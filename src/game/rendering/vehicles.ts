@@ -16,7 +16,11 @@ type V3 = [number, number, number];
 export const TAXI = 6;
 export const BUS = 7;
 export const LORRY = 8;
-export const MODEL_COUNT = 9;
+export const MOTORBIKE = 9;
+export const BICYCLE = 10;
+export const GARBAGE = 11;
+export const ICE_CREAM = 12;
+export const MODEL_COUNT = 13;
 
 interface Frame {
   point(u: number, v: number, z?: number): Pt;
@@ -149,23 +153,111 @@ export function drawTaxi(g: Graphics, dx: number, dy: number): void {
   }
 }
 
-/** Paints one ambient-traffic model: 0-5 car bodies, then taxi, bus and lorry. */
+/** Rider sitting upright over (u, 0): legs, torso, arms to the bars, helmet or hair. */
+function rider(f: Frame, g: Graphics, u: number, seat: number, shirt: number, helmet: number | null): void {
+  const [hx, hy] = f.point(u, 0, seat);
+  g.moveTo(hx, hy).lineTo(...f.point(u + 0.06, f.near * 0.03, 2.5)).stroke({ color: 0x2c3e50, width: 1.6, cap: 'round' });
+  g.roundRect(hx - 1.8, hy - 6.5, 3.6, 6.5, 1.2).fill(shirt);
+  const [bx, by] = f.point(u + 0.14, 0, seat + 4.2);
+  g.moveTo(hx, hy - 4.5).lineTo(bx, by).stroke({ color: shirt, width: 1.3, cap: 'round' });
+  g.circle(hx, hy - 8.6, 2.1).fill(0xe0ac69);
+  if (helmet !== null) g.ellipse(hx, hy - 9.4, 2.5, 1.9).fill(helmet);
+  else g.ellipse(hx, hy - 9.8, 2.1, 1.1).fill(0x3b2a1e);
+}
+
+/** Scooter-style motorbike with a helmeted rider. */
+export function drawMotorbike(g: Graphics, dx: number, dy: number, paint: number): void {
+  const f = frame(g, dx, dy);
+  g.ellipse(0, 1.6, 9, 3).fill({ color: COLORS.shadow, alpha: 0.28 });
+  for (const u of [-0.2, 0.2]) {
+    f.circle(u, 0, 2.2, 2.2, 0x19212b);
+    f.circle(u, 0, 2.2, 1, 0xb8c2c9);
+  }
+  f.face([[-0.24, -0.04, 3], [0.16, -0.04, 3], [0.16, 0.04, 3], [-0.24, 0.04, 3]], 0x2f3a40);
+  f.face([[-0.24, f.near * 0.05, 3], [0.02, f.near * 0.05, 3], [0.02, f.near * 0.05, 7], [-0.24, f.near * 0.05, 6]], paint);
+  f.face([[0.14, f.near * 0.04, 3], [0.2, f.near * 0.04, 3], [0.16, f.near * 0.04, 10], [0.12, f.near * 0.04, 10]], shade(paint, 0.85));
+  f.line([0.15, -0.08, 10], [0.15, 0.08, 10], 0x222222, 1);
+  f.circle(0.21, 0, 7.5, 1, 0xfff5c7);
+  rider(f, g, -0.08, 7.5, shade(paint, 0.7), 0xf5f5f5);
+}
+
+/** Bicycle with a rider, the slowest thing on the street. */
+export function drawBicycle(g: Graphics, dx: number, dy: number, shirt: number): void {
+  const f = frame(g, dx, dy);
+  g.ellipse(0, 1.4, 8, 2.4).fill({ color: COLORS.shadow, alpha: 0.24 });
+  for (const u of [-0.17, 0.17]) {
+    const [x, y] = f.point(u, 0, 2.6);
+    g.circle(x, y, 2.6).stroke({ color: 0x222222, width: 0.9 });
+  }
+  f.line([-0.17, 0, 2.6], [0, 0, 2.6], 0x1e88e5, 0.9);
+  f.line([0, 0, 2.6], [0.14, 0, 7.5], 0x1e88e5, 0.9);
+  f.line([-0.17, 0, 2.6], [-0.06, 0, 7], 0x1e88e5, 0.9);
+  f.line([-0.06, 0, 7], [0.12, 0, 7], 0x1e88e5, 0.9);
+  f.line([0.17, 0, 2.6], [0.14, 0, 7.5], 0x1e88e5, 0.9);
+  rider(f, g, -0.06, 7.5, shirt, null);
+}
+
+/** Municipal refuse truck with a ribbed compactor body and an orange beacon. */
+export function drawGarbageTruck(g: Graphics, dx: number, dy: number): void {
+  drawLorry(g, dx, dy, 0x9e9e9e, 0xf5f5f5);
+  const f = frame(g, dx, dy);
+  for (let u = -0.5; u < 0.18; u += 0.12) f.line([u, f.near * 0.181, 4], [u, f.near * 0.181, 18], 0x7a7a7a, 0.8);
+  f.face([[-0.3, f.near * 0.182, 8], [0.0, f.near * 0.182, 8], [0.0, f.near * 0.182, 12], [-0.3, f.near * 0.182, 12]], 0x2e7d32);
+  f.circle(0.42, 0, 14.6, 1.2, 0xff9800);
+}
+
+/** Ice-cream van with a cone on the roof and a pastel body. */
+export function drawIceCreamVan(g: Graphics, dx: number, dy: number): void {
+  drawCityCar(g, 0xfce4ec, false, dx, dy, 3);
+  const f = frame(g, dx, dy);
+  for (const v of [-0.17, 0.17]) f.face([[-0.35, v, 4], [0.1, v, 4], [0.1, v, 6.5], [-0.35, v, 6.5]], 0x4fc3f7);
+  const [x, y] = f.point(-0.05, 0, 16.5);
+  g.poly([x - 2.2, y, x + 2.2, y, x, y + 5]).fill(0xd7a35c);
+  g.circle(x, y - 0.6, 2.4).fill(0xf8bbd0);
+  g.circle(x, y - 2.6, 1.6).fill(0xfff9c4);
+}
+
+/** Paints one ambient-traffic model: 0-5 car bodies, then taxi, bus, lorry and the rest. */
 export function drawTrafficVehicle(
   g: Graphics, model: number, paint: number, electric: boolean, dx: number, dy: number, culture: 'scottish' | 'turkish' | string = 'turkish',
 ): void {
-  if (model === TAXI) drawTaxi(g, dx, dy);
+  if (model === MOTORBIKE) drawMotorbike(g, dx, dy, paint);
+  else if (model === BICYCLE) drawBicycle(g, dx, dy, paint);
+  else if (model === GARBAGE) drawGarbageTruck(g, dx, dy);
+  else if (model === ICE_CREAM) drawIceCreamVan(g, dx, dy);
+  else if (model === TAXI) drawTaxi(g, dx, dy);
   else if (model === BUS) drawBus(g, dx, dy, culture === 'scottish' ? 0x7a1f2b : 0x1d6fb8, Math.abs(paint) % 9);
   else if (model === LORRY) drawLorry(g, dx, dy, [0x2e7d32, 0xc62828, 0x1565c0, 0xef6c00][Math.abs(paint) % 4]!, shade(paint, 0.9));
   else drawCityCar(g, paint, electric, dx, dy, model);
 }
 
-/** Model for the n-th ambient vehicle: mostly cars, with taxis, a bus and lorries mixed in. */
-export function trafficModel(n: number, seed: number, roads: number): number {
+/**
+ * Model for the n-th ambient vehicle: mostly cars, with taxis, a bus, lorries, two-wheelers and,
+ * at their hours, the morning refuse round and the summer ice-cream van.
+ */
+export function trafficModel(n: number, seed: number, roads: number, hour = 12, season = 'summer'): number {
+  if (n === 1 && hour >= 6 && hour < 9) return GARBAGE;
+  if (n === 2 && season === 'summer' && hour >= 12 && hour < 19) return ICE_CREAM;
   if (roads >= 16 && n % 9 === 4) return BUS;
   if (n % 7 === 5) return LORRY;
   if (n % 5 === 2) return TAXI;
+  if (n % 6 === 3) return MOTORBIKE;
+  if (n % 8 === 7 && hour >= 7 && hour < 20 && season !== 'winter') return BICYCLE;
   return Math.abs(seed + n) % 6;
 }
+
+/** Relative cruising speed of a model (cars = 1). */
+export function modelSpeed(model: number): number {
+  if (model === BICYCLE) return 0.45;
+  if (model === BUS || model === LORRY || model === GARBAGE) return 0.68;
+  if (model === MOTORBIKE) return 1.15;
+  if (model === ICE_CREAM) return 0.55;
+  return 1;
+}
+
+/** Length class used for following distance: 0 small, 1 car, 2 long. */
+export const modelLength = (model: number): number =>
+  model === MOTORBIKE || model === BICYCLE ? 0 : model === BUS || model === LORRY || model === GARBAGE ? 2 : 1;
 
 /**
  * Narrow-body airliner in the vehicle frame: fuselage with a window line, swept wings with
