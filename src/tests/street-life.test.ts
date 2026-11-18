@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Graphics } from 'pixi.js';
-import { BUS, LORRY, MODEL_COUNT, TAXI, drawTrafficVehicle, trafficModel } from '../game/rendering/vehicles';
+import { BUS, LORRY, MODEL_COUNT, TAXI, drawAirliner, drawHeadlights, drawTrafficVehicle, trafficModel } from '../game/rendering/vehicles';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from '../game/rendering/pedestrians';
 import { isOpen, trafficShare, walkerShare } from '../game/rendering/dayRhythm';
 
@@ -33,6 +33,30 @@ describe('street vehicles', () => {
     };
     expect(width(BUS)).toBeGreaterThan(width(0) * 1.3);
     expect(width(LORRY)).toBeGreaterThan(width(0) * 1.1);
+  });
+
+  it('draws airliners along both runway axes, with lights at night', () => {
+    for (const [dx, dy] of HEADINGS) {
+      const day = new Graphics(), night = new Graphics();
+      drawAirliner(day, dx, dy, 0xc8102e, false);
+      drawAirliner(night, dx, dy, 0xc8102e, true);
+      const b = day.getLocalBounds();
+      // a plane is about 1.7 tiles long: wider than any bus on screen, never a thin sliver
+      expect(b.width, `${dx},${dy}`).toBeGreaterThan(55);
+      expect(b.height, `${dx},${dy}`).toBeLessThan(b.width);
+      expect(night.context.instructions.length).toBeGreaterThan(day.context.instructions.length);
+      day.destroy();
+      night.destroy();
+    }
+  });
+
+  it('casts headlight beams ahead of the vehicle', () => {
+    const g = new Graphics();
+    drawHeadlights(g, 1, 0);
+    const b = g.getLocalBounds();
+    expect(b.x).toBeGreaterThan(0);
+    drawHeadlights(g, -1, 0);
+    expect(g.getLocalBounds().x).toBeLessThan(0);
   });
 
   it('mixes taxis, buses and lorries into ordinary traffic', () => {

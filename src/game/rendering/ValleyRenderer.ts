@@ -30,7 +30,7 @@ import { getPavedLinks } from './roadGeometry';
 import { matchDayFor } from '../data/matchDays';
 import type { MatchDay } from '../data/matchDays';
 import { drawFootballSupporter, drawSupporterFlare } from './trafficSprites';
-import { BUS, LORRY, drawTrafficVehicle, trafficModel } from './vehicles';
+import { BUS, LORRY, drawHeadlights, drawTrafficVehicle, trafficModel } from './vehicles';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
 import { trafficShare, walkerShare } from './dayRhythm';
 import type { PedLook } from './pedestrians';
@@ -134,6 +134,8 @@ interface Walker {
 interface TrafficCar {
   c: Container;
   sprite: Graphics;
+  /** Headlight beams on the road ahead, shown after dusk. */
+  beam: Graphics;
   paint: number;
   electric: boolean;
   variant: number;
@@ -973,7 +975,7 @@ export class ValleyRenderer {
     for (const pv of this.propViews.values()) pv.c.tint = tint;
     for (const w of this.walkers) w.c.tint = tint;
     for (const w of this.matchFans) w.c.tint = tint;
-    for (const car of this.trafficCars) car.c.tint = tint;
+    for (const car of this.trafficCars) car.sprite.tint = tint;
     for (const guard of this.militiaSprites) guard.tint = tint;
     for (const b of this.boats) b.c.tint = tint;
     for (const bird of this.birds) bird.c.tint = tint;
@@ -1442,11 +1444,13 @@ export class ValleyRenderer {
       const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length);
       const dx = to[0] - start[0], dy = to[1] - start[1];
       drawTrafficVehicle(body, variant, paint, electric, dx, dy, view.game.culture);
-      holder.addChild(body);
+      const beam = new Graphics();
+      drawHeadlights(beam, dx, dy, variant === BUS || variant === LORRY ? 0.62 : 0.4);
+      holder.addChild(beam, body);
       holder.cullable = true;
       this.objects.addChild(holder);
       this.trafficCars.push({
-        c: holder, sprite: body, paint, electric, variant, heading: `${dx},${dy}`,
+        c: holder, sprite: body, beam, paint, electric, variant, heading: `${dx},${dy}`,
         from: [start[0], start[1]], to,
         prev: [start[0], start[1]], t: 0,
         speed: (variant === BUS || variant === LORRY ? 0.34 : 0.5) + Math.random() * 0.22,
@@ -1483,8 +1487,11 @@ export class ValleyRenderer {
       if (car.heading !== heading && (dx !== 0 || dy !== 0)) {
         car.sprite.clear();
         drawTrafficVehicle(car.sprite, car.variant, car.paint, car.electric, dx, dy, view.game.culture);
+        drawHeadlights(car.beam, dx, dy, car.variant === BUS || car.variant === LORRY ? 0.62 : 0.4);
         car.heading = heading;
       }
+      car.beam.visible = this.night > 0.3;
+      car.beam.alpha = Math.min(1, (this.night - 0.3) * 2);
       const x = car.from[0] + dx * car.t + 0.5;
       const y = car.from[1] + dy * car.t + 0.5;
       const prevDx = car.from[0] - car.prev[0];

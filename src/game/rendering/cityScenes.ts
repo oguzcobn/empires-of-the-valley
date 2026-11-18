@@ -6,11 +6,15 @@ import { isBuilt } from '../systems/economy';
 import { tileAt } from '../systems/grid';
 import { defOf } from '../data/buildings';
 import { HEIGHT_PX } from '../data/balance';
-import { isoX, isoY, P } from './iso';
+import { isoX, isoY } from './iso';
 import { drawCityCar, drawFireTruck, drawServiceVehicle } from './trafficSprites';
-import { drawLorry } from './vehicles';
+import { drawAirliner, drawLorry } from './vehicles';
+import { clockHour } from '../core/time';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
 import type { PedLook } from './pedestrians';
+
+/** Private cars of shoppers, diners and guests. */
+const CAR_PAINTS = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75, 0x8e44ad, 0x1b1b1b, 0xd35400, 0x95a5a6];
 
 const lerp = (a: MapPoint, b: MapPoint, t: number): MapPoint => ({
   x: a.x + (b.x - a.x) * t,
@@ -148,18 +152,24 @@ export class CityScenes {
               ? 0x295383
               : j.kind === 'delivery'
                 ? 0xb98749
-                : 0x619b98;
-      const key = `${j.kind}:${paint}:${Math.sign(dx)},${Math.sign(dy)}`;
+                : CAR_PAINTS[j.id % CAR_PAINTS.length]!;
+      // vehicles face along the dominant axis of their segment; raw deltas would skew and shrink them
+      // parked visitors stand nose-in across their bay, which is narrower than a car is long
+      const visitor = j.kind === 'shopping' || j.kind === 'dining' || j.kind === 'nightlife' || j.kind === 'hotel';
+      const [hx, hy] = !moving && visitor
+        ? [0, -1]
+        : Math.abs(dx) >= Math.abs(dy) ? [dx < 0 ? -1 : 1, 0] : [0, dy < 0 ? -1 : 1];
+      const key = `${j.kind}:${paint}:${hx},${hy}`;
       if (a.key !== key) {
         a.car.clear();
         if (j.kind === 'fire') {
-          drawFireTruck(a.car, dx || 1, dy);
+          drawFireTruck(a.car, hx, hy);
         } else if (j.kind === 'delivery') {
-          drawLorry(a.car, dx || 1, dy, [0xb98749, 0x2e7d32, 0xc62828][j.id % 3]!, 0x37474f);
+          drawLorry(a.car, hx, hy, [0xb98749, 0x2e7d32, 0xc62828][j.id % 3]!, 0x37474f);
         } else if (j.kind === 'ambulance' || j.kind === 'patrol') {
-          drawServiceVehicle(a.car, j.kind, dx || 1, dy);
+          drawServiceVehicle(a.car, j.kind, hx, hy);
         } else {
-          drawCityCar(a.car, paint, false, dx || 1, dy, j.id % 5);
+          drawCityCar(a.car, paint, false, hx, hy, j.id % 5);
         }
         a.key = key;
       }
@@ -262,10 +272,11 @@ export class CityScenes {
         a.root.zIndex = b.x + b.y + 3.1;
         if (a.key !== `idle:${b.definitionId}`) {
           a.car.clear();
+          // reversed into the bay, ready to drive out
           if (b.definitionId === 'fire_station') {
-            drawFireTruck(a.car, 1, 0);
+            drawFireTruck(a.car, 0, 1);
           } else {
-            drawServiceVehicle(a.car, b.definitionId === 'hospital' ? 'ambulance' : 'patrol', 1, 0);
+            drawServiceVehicle(a.car, b.definitionId === 'hospital' ? 'ambulance' : 'patrol', 0, 1);
           }
           a.key = `idle:${b.definitionId}`;
         }
@@ -286,34 +297,20 @@ export class CityScenes {
       a.root.zIndex = b.x + b.y + 11.1 + (at.alt > 0 ? 100 : 0);
       a.person.visible = a.red.visible = a.blue.visible = false;
       a.fx.clear();
-      if (a.key !== `${at.heading}`) {
+      // heading from the next point on the flight path; shadow on the apron while airborne
+      const ahead = flightPoint(f, b, Math.min(1, this.fraction + 0.08));
+      const vx = ahead.x - at.x, vy = ahead.y - at.y;
+      const [hx, hy] = Math.abs(vx) >= Math.abs(vy) ? [vx < 0 ? -1 : 1, 0] : [0, vy < 0 ? -1 : 1];
+      const night = clockHour(s.tick) >= 19 || clockHour(s.tick) < 6;
+      if (at.alt > 0) {
+        const k = Math.max(0.25, 1 - at.alt / 140);
+        a.fx.ellipse(0, at.alt + 2, 30 * k, 9 * k).fill({ color: 0x0e1b24, alpha: 0.22 * k });
+      }
+      const planeKey = `${hx},${hy}|${night}`;
+      if (a.key !== planeKey) {
         a.car.clear();
-        const pts = [
-          [0.7, 0],
-          [-0.25, -0.12],
-          [-0.45, -0.45],
-          [-0.65, -0.45],
-          [-0.5, -0.04],
-          [-0.7, 0.04],
-          [-0.5, 0.12],
-          [-0.6, 0.45],
-          [-0.4, 0.45],
-          [-0.2, 0.12],
-        ];
-        a.car
-          .poly(pts.flatMap(([x, y]) => P(x! * at.heading, y!)))
-          .fill(0xf5f5ec)
-          .stroke({ color: 0x54728a, width: 1 });
-        a.car
-          .poly(
-            [
-              P(-0.45 * at.heading, 0, 1),
-              P(-0.65 * at.heading, 0, 10),
-              P(-0.65 * at.heading, 0.08, 1),
-            ].flat(),
-          )
-          .fill(0x258eae);
-        a.key = `${at.heading}`;
+        drawAirliner(a.car, hx, hy, s.culture === 'scottish' ? 0x1d3f8f : 0xc8102e, night);
+        a.key = planeKey;
       }
     }
     for (const [id, a] of this.actors)
