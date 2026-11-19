@@ -27,3 +27,5 @@ Local Chromium could not start because Unix socket creation was restricted. Brow
 The user explicitly approved uploading this branch and opening a draft PR. The latest browser workflow status and visual-review results are recorded on PR #43 before proposing live deployment. Nothing has been merged or deployed.
 
 The simulation uses bounded representative trips rather than one independently simulated resident per population unit. Ambulance trips are scheduled service visits; a detailed disease/emergency model is outside this implementation. Flights are automatically queued passenger operations, not player-owned aircraft manufacturing. These distinctions keep the current game rules and performance budget explicit.
+
+> **Not (19 Kasım 2026):** Three.js 3D görünümü telefonda akıcı çalışmadığı ve yeni özelliklerin gerisinde kaldığı için kaldırıldı. Yukarıdaki 3D maddeleri tarihsel kayıttır; oyun yalnızca 2D (PixiJS) görünümle çalışır. Kod Git geçmişinde durur.

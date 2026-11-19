@@ -13,8 +13,6 @@ export interface AppSettings {
   graphics: GraphicsSetting;
   dayNight: boolean;
   weather: boolean;
-  /** Three.js view with real shadows and depth-of-field (beta); off = the classic 2D view. */
-  view3d: boolean;
 }
 
 /** Device class guess for the automatic quality: phones and low-memory devices start lower. */
@@ -62,7 +60,6 @@ export function defaultSettings(): AppSettings {
     graphics: 'auto',
     dayNight: true,
     weather: true,
-    view3d: false,
   };
 }
 
@@ -81,15 +78,10 @@ export function loadSettings(): AppSettings {
       if (GRAPHICS_SETTINGS.includes(r.graphics as GraphicsSetting)) base.graphics = r.graphics!;
       if (typeof r.dayNight === 'boolean') base.dayNight = r.dayNight;
       if (typeof r.weather === 'boolean') base.weather = r.weather;
-      if (typeof r.view3d === 'boolean') base.view3d = r.view3d;
     }
   } catch {
     /* keep defaults */
   }
-  // `?view=3d` / `?view=2d` picks the map view for this visit without touching the saved choice.
-  const forced = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('view') : null;
-  if (forced === '3d') base.view3d = true;
-  else if (forced === '2d') base.view3d = false;
   return base;
 }
 

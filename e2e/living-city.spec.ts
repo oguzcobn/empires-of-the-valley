@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 import type { GameState, BuildingId, BuildingInstance } from '../src/game/core/types';
 import { BUILDINGS } from '../src/game/data/buildings';
 
-for (const view of ['2d', '3d'])
+for (const view of ['2d'])
   test(`living city ${view}: services, flights, mobile and frame samples`, async ({ page }, testInfo) => {
     test.setTimeout(120000);
     const errors: string[] = [];

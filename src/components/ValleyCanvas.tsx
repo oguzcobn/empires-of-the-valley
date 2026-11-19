@@ -68,7 +68,6 @@ export function ValleyCanvas(): ReactElement {
   useEffect(() => { setPlacement(null); }, [tool]);
   const focus = useApp((s) => s.focus);
   const graphics = useApp((s) => s.settings.graphics);
-  const view3d = useApp((s) => s.settings.view3d);
   const [capNonce, setCapNonce] = useState(0);
   const quality = effectiveQuality({ graphics });
 
@@ -102,13 +101,7 @@ export function ValleyCanvas(): ReactElement {
       onHover: (tile) => useApp.getState().setHover(tile),
       onLowFps(fps) {
         const next = lowerQuality(effectiveQuality(useApp.getState().settings));
-        if (!next) {
-          if (useApp.getState().settings.view3d) {
-            useApp.getState().updateSettings({ view3d: false });
-            useApp.getState().toast('info', 'Akıcı oyun için 2D görünüme geçildi. Şehriniz ve kayıtlarınız korundu.');
-          }
-          return;
-        }
+        if (!next) return;
         setAutoCap(next);
         useApp.getState().toast('info', t('graphics.autoLowered', { fps, q: `@graphics.${next}` }));
         setCapNonce((n) => n + 1);
@@ -183,10 +176,7 @@ export function ValleyCanvas(): ReactElement {
         }
       },
     };
-    // The 3D view (and three.js with it) is only downloaded when the player switches it on.
-    const created: Promise<ValleyView> = view3d
-      ? import('../game/rendering3d/Valley3D').then((m) => m.Valley3D.create(host, callbacks, opts))
-      : ValleyRenderer.create(host, callbacks, opts);
+    const created: Promise<ValleyView> = ValleyRenderer.create(host, callbacks, opts);
     created
       .then((r) => {
         if (disposed) r.destroy();
@@ -197,11 +187,6 @@ export function ValleyCanvas(): ReactElement {
       })
       .catch((e: unknown) => {
         if (disposed) return;
-        if (view3d) {
-          useApp.getState().updateSettings({ view3d: false });
-          useApp.getState().toast('info', '3B harita yüklenemedi. Oyun ve kayıtlarınız korunarak 2B haritaya geçildi.');
-          return;
-        }
         setError(e instanceof Error ? e.message : String(e));
       });
     return () => {
@@ -209,7 +194,7 @@ export function ValleyCanvas(): ReactElement {
       renderer?.destroy();
       if (current === renderer) current = null;
     };
-  }, [quality, capNonce, view3d]);
+  }, [quality, capNonce]);
 
   useEffect(() => {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);
