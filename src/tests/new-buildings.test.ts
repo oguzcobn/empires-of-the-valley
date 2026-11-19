@@ -7,7 +7,7 @@ import { neighborhoodServices } from '../game/systems/crime';
 import { t } from '../i18n';
 import { home, newCampaign, tweak } from './helpers';
 
-const NEW: BuildingId[] = ['apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall', 'villa', 'tea_garden', 'post_office', 'gym', 'kindergarten', 'university', 'museum', 'bazaar', 'hamam'];
+const NEW: BuildingId[] = ['apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall', 'villa', 'tea_garden', 'post_office', 'gym', 'kindergarten', 'university', 'museum', 'bazaar', 'hamam', 'library', 'wind_turbine', 'solar_farm', 'bus_depot'];
 
 const withBuilding = (id: BuildingId, workers: number, dx = 1) => tweak(newCampaign(), (draft) => {
   const p = home(draft);

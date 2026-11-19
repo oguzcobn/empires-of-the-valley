@@ -113,6 +113,8 @@ interface BuildingView {
   /** Definition id and art seed, used for the hour-by-hour window lights. */
   kind: string;
   seed: number;
+  /** Turbine rotors, rotated every frame. */
+  rotors: Graphics[];
 }
 interface PropView {
   c: Container;
@@ -793,6 +795,7 @@ export class ValleyRenderer {
           smokeTimer: Math.random() * 400,
           kind: b.definitionId,
           seed: buildingArtSeed(b.id),
+          rotors: [],
         };
         this.buildingViews.set(b.id, bv);
       }
@@ -803,6 +806,10 @@ export class ValleyRenderer {
       if (sig !== bv.sig) {
         bv.sig = sig;
         this.redrawBuilding(bv, b, pal, view.detail);
+      }
+      // wind turbines turn while they are staffed and the game runs
+      if (bv.rotors.length && motion && view.game.speed > 0 && isOperating(b)) {
+        for (const rotor of bv.rotors) rotor.rotation += (dt / 1000) * 2.4 * (SPEED_FACTOR[view.game.speed] ?? 1);
       }
       if (flagNow && motion)
         bv.flags.forEach((fg, i) => drawFlag(fg, this.time / 160 + b.x + i, bv!.info.flags[i]?.color ?? COLORS.flag));
@@ -938,6 +945,23 @@ export class ValleyRenderer {
       extra.circle(bx, by + 4, 1.4).fill(0x3a2a1c);
     }
 
+    for (const rotor of bv.rotors) rotor.destroy();
+    bv.rotors = [];
+    if (isBuilt(b)) for (const spin of bv.info.spinners ?? []) {
+      const rotor = new Graphics();
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * Math.PI * 2;
+        const c = Math.cos(a), s = Math.sin(a);
+        const tip = [c * spin.r, s * spin.r], l = [-s * 1.6, c * 1.6], r = [s * 0.8, -c * 0.8];
+        rotor.poly([l[0]!, l[1]!, tip[0]! + l[0]! * 0.2, tip[1]! + l[1]! * 0.2, tip[0]!, tip[1]!, r[0]!, r[1]!]).fill(0xf4f6f7);
+      }
+      rotor.circle(0, 0, 1.8).fill(0xd9dee1);
+      rotor.position.set(spin.at[0], spin.at[1]);
+      rotor.rotation = bv.seed % 7;
+      // outside the body, which may be cached as a texture
+      bv.c.addChild(rotor);
+      bv.rotors.push(rotor);
+    }
     const anchors = isBuilt(b) ? bv.info.flags : [];
     while (bv.flags.length < anchors.length) {
       const fg = new Graphics();
@@ -1006,6 +1030,7 @@ export class ValleyRenderer {
     for (const bird of this.birds) bird.c.tint = tint;
     for (const bv of this.buildingViews.values()) {
       bv.body.tint = tint;
+      for (const rotor of bv.rotors) rotor.tint = tint;
       bv.glow.tint = 0xffffff;
       bv.glow.alpha = Math.min(0.65, this.night * 0.65) * windowLight(bv.kind, hour, bv.seed);
       // Do not light unbuilt or road-disconnected buildings.
@@ -1491,7 +1516,8 @@ export class ValleyRenderer {
       const paint = paints[this.trafficCars.length % paints.length]!;
       const electric = this.trafficCars.length % 3 === 0;
       const cal = calendar(view.game.tick);
-      const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length, clockHour(view.game.tick), cal.season, this.dropKind === 'snow');
+      const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length, clockHour(view.game.tick), cal.season, this.dropKind === 'snow',
+        p.buildings.some((b) => b.definitionId === 'bus_depot' && isOperating(b)));
       const dx = to[0] - start[0], dy = to[1] - start[1];
       drawTrafficVehicle(body, variant, paint, electric, dx, dy, view.game.culture);
       const beam = new Graphics();

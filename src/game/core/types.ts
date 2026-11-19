@@ -60,6 +60,10 @@ export type BuildingId =
   | 'museum'
   | 'bazaar'
   | 'hamam'
+  | 'library'
+  | 'wind_turbine'
+  | 'solar_farm'
+  | 'bus_depot'
   | LandmarkId;
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';

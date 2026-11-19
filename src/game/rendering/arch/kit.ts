@@ -36,6 +36,8 @@ export interface DrawCtx {
   wear: 0 | 1 | 2;
   /** Colour the night pass paints the next light panes with (neon); window yellow when unset. */
   glowColor?: number;
+  /** Rotor hubs the renderer spins (wind turbines): centre and blade length in px. */
+  spinners?: { at: Pt; r: number }[];
 }
 
 export function newCtx(

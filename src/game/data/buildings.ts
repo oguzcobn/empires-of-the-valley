@@ -176,6 +176,31 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
     levels: [level({ cost: { wood: u(25), stone: u(60), gold: u(25) }, buildTicks: 4 * DAY, workerSlots: 2,
       produces: { resourceId: 'gold', perDay: u(1.4) }, upkeepGold: u(0.2), requires: { population: 20 } })],
   },
+  library: {
+    id: 'library', category: 'education', era: 2, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 2 },
+    levels: [level({ cost: { wood: u(20), stone: u(22), gold: u(10) }, buildTicks: 2 * DAY, workerSlots: 1,
+      produces: { resourceId: 'research', perDay: u(1.5) }, upkeepGold: u(0.1), requires: { population: 14 } })],
+  },
+  wind_turbine: {
+    id: 'wind_turbine', category: 'production', era: 3, footprint: [1, 1], validTerrains: ['grass', 'fertile', 'sand', 'hill', 'terrace', 'rocky'],
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    levels: [level({ cost: { wood: u(10), stone: u(30), gold: u(25), tools: u(10) }, buildTicks: 3 * DAY, workerSlots: 1,
+      produces: { resourceId: 'gold', perDay: u(1.6) }, upkeepGold: u(0.08), requires: { population: 20 } })],
+  },
+  solar_farm: {
+    id: 'solar_farm', category: 'production', era: 3, footprint: [2, 2], validTerrains: LAND,
+    seasonal: true, usesTools: false, buildable: true, demolishable: true,
+    levels: [level({ cost: { wood: u(15), stone: u(30), gold: u(35), tools: u(14) }, buildTicks: 3 * DAY, workerSlots: 1,
+      produces: { resourceId: 'gold', perDay: u(3) }, upkeepGold: u(0.1), requires: { population: 22 } })],
+  },
+  bus_depot: {
+    id: 'bus_depot', category: 'governance', era: 3, footprint: [2, 2], validTerrains: LAND,
+    seasonal: false, usesTools: false, buildable: true, demolishable: true,
+    services: { community: 3 },
+    levels: [level({ cost: { wood: u(25), stone: u(50), gold: u(35), tools: u(10) }, buildTicks: 3 * DAY, workerSlots: 3, upkeepGold: u(0.3), requires: { population: 26 } })],
+  },
   aquapark: {
     id: 'aquapark', category: 'civic', era: 4, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
     seasonal: false, usesTools: false, buildable: true, demolishable: true,
