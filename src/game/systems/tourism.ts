@@ -42,7 +42,7 @@ const staffShare = (b: BuildingInstance): number => {
 };
 
 const landmarks = (p: Province): BuildingInstance[] =>
-  p.buildings.filter((b) => defOf(b).landmark && b.state === 'active' && b.connected);
+  p.buildings.filter((b) => defOf(b).landmark && isOperating(b));
 
 export function beds(p: Province): number {
   let n = 0;

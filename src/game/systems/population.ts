@@ -44,7 +44,9 @@ export function happinessFactors(p: Province): HappinessFactor[] {
     { id: 'employment', value: idleRatio <= 0.25 ? 5 : idleRatio <= 0.5 ? 0 : -5 },
     {
       id: 'education',
-      value: p.buildings.some((b) => b.definitionId === 'school' && isOperating(b)) ? 5 : 0,
+      value:
+        (p.buildings.some((b) => b.definitionId === 'school' && isOperating(b)) ? 5 : 0) +
+        (p.buildings.some((b) => b.definitionId === 'kindergarten' && isOperating(b)) ? 3 : 0),
     },
     { id: 'tax', value: TAX_HAPPINESS[p.taxRate] },
     { id: 'tools', value: p.stocks.tools <= 0 ? -3 : 0 },
@@ -124,7 +126,7 @@ export function populationDayEnd(s: GameState, p: Province, day: number): void {
   p.happiness += Math.max(-3, Math.min(2, delta));
 
   // children grow up
-  if (day - pop.lastMaturationDay >= MATURATION_INTERVAL_DAYS) {
+  if (day - pop.lastMaturationDay >= (p.buildings.some((b) => b.definitionId === 'kindergarten' && isOperating(b)) ? Math.floor(MATURATION_INTERVAL_DAYS / 2) : MATURATION_INTERVAL_DAYS)) {
     pop.lastMaturationDay = day;
     if (pop.children > 0) {
       pop.children -= 1;

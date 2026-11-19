@@ -122,8 +122,8 @@
 }
 
 @media (pointer: coarse) and (max-width: 600px), (pointer: coarse) and (max-height: 600px) {
-  .game-screen:is(.tool-build, .tool-road, .tool-roadPlan, .tool-hunt):not(.build-catalog-open) .left-column,
-  .game-screen:is(.tool-build, .tool-road, .tool-roadPlan, .tool-hunt):not(.build-catalog-open) .right-column {
+  .game-screen:is(.tool-build, .tool-road, .tool-roadPlan, .tool-hunt, .tool-demolish, .tool-pave, .tool-terrace, .tool-army):not(.build-catalog-open) .left-column,
+  .game-screen:is(.tool-build, .tool-road, .tool-roadPlan, .tool-hunt, .tool-demolish, .tool-pave, .tool-terrace, .tool-army):not(.build-catalog-open) .right-column {
     visibility: hidden;
   }
 }

@@ -29,7 +29,7 @@ export interface NewGameOptions {
 /** Builds the Phase 1 starting state: Bereket Vadisi, 12 settlers, hamlet, road and stocks. */
 export function createNewGame({ seed, mode, culture = LEGACY_STYLE, difficulty = 'normal' }: NewGameOptions): GameState {
   if (!isPlayableStyle(culture)) throw new Error(`culture ${culture} is not playable`);
-  const safeSeed = Math.abs(Math.trunc(seed)) % 2147483647;
+  const safeSeed = Number.isFinite(seed) ? Math.abs(Math.trunc(seed)) % 2147483647 : 1;
   const world = WORLD_BY_ID[HOME_PROVINCE_ID]!;
   const valley = generateValley(safeSeed, HOME_PROVINCE_ID, culture);
   const state: GameState = {

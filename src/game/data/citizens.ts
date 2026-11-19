@@ -119,14 +119,29 @@ function roster(p: Province): Roster {
  * real jobs in order; then the elders (retired), then the children (pupils). Names and ages are
  * hashed from the map seed so the same person keeps them between sessions.
  */
+const WOMEN_JP = ['Yuki', 'Haruka', 'Sakura', 'Aoi', 'Hana', 'Mei', 'Rin', 'Kana', 'Sora', 'Emi', 'Nana', 'Mio'];
+const MEN_JP = ['Kenji', 'Haruto', 'Ren', 'Takumi', 'Sota', 'Daiki', 'Kaito', 'Riku', 'Yuto', 'Sho', 'Akira', 'Koji'];
+const LAST_JP = ['Sato', 'Suzuki', 'Takahashi', 'Tanaka', 'Watanabe', 'Ito', 'Yamamoto', 'Nakamura', 'Kobayashi', 'Kato'];
+const WOMEN_CZ = ['Tereza', 'Eliška', 'Anna', 'Adéla', 'Karolína', 'Klára', 'Lucie', 'Markéta', 'Barbora', 'Veronika'];
+const MEN_CZ = ['Jakub', 'Jan', 'Tomáš', 'Matyáš', 'Lukáš', 'Ondřej', 'Vojtěch', 'Filip', 'Martin', 'Petr'];
+const LAST_CZ = ['Novák', 'Svoboda', 'Novotný', 'Dvořák', 'Černý', 'Procházka', 'Kučera', 'Veselý', 'Horák', 'Němec'];
+
 export function citizenAt(s: GameState, index: number): CitizenProfile {
-  const scottish = cityOf(s.cityId, s.culture).id === 'edinburgh';
+  const cityId = cityOf(s.cityId, s.culture).id;
   const p = homeProvince(s);
   const { adults, elders } = p.population;
   const hash = (Math.imul(s.seed ^ (index + 1), 0x45d9f3b) ^ (index * 12343)) >>> 0;
   const woman = (hash >>> 3) % 2 === 1;
-  const first = scottish ? (woman ? WOMEN_SC : MEN_SC) : woman ? WOMEN_TR : MEN_TR;
-  const last = scottish ? LAST_SC : LAST_TR;
+  const first =
+    cityId === 'edinburgh' ? (woman ? WOMEN_SC : MEN_SC)
+      : cityId === 'kyoto' ? (woman ? WOMEN_JP : MEN_JP)
+        : cityId === 'prague' ? (woman ? WOMEN_CZ : MEN_CZ)
+          : woman ? WOMEN_TR : MEN_TR;
+  const last =
+    cityId === 'edinburgh' ? LAST_SC
+      : cityId === 'kyoto' ? LAST_JP
+        : cityId === 'prague' ? LAST_CZ
+          : LAST_TR;
   const stage: LifeStage = index < adults ? 'adult' : index < adults + elders ? 'elder' : 'child';
   const age = stage === 'adult' ? 20 + (Math.floor(hash / 47) % 45) : stage === 'elder' ? 65 + (Math.floor(hash / 47) % 25) : 4 + (Math.floor(hash / 47) % 14);
   const r = roster(p);

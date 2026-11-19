@@ -114,7 +114,7 @@ export function Toolbar({ game }: { game: GameState }): ReactElement {
         </button>
         <button className={`btn tool game-menu-trigger ${menuOpen ? 'active' : ''}`} aria-expanded={menuOpen} aria-controls={menuOpen ? 'game-menu' : undefined}
           onClick={() => setMenuOpen((open) => !open)}>
-          <span className="glyph">☰</span><span>Menü</span>
+          <span className="glyph">☰</span><span>Paneller</span>
         </button>
       </div>
     </nav>

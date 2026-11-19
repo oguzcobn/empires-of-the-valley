@@ -40,8 +40,9 @@ export function securityDayEnd(s: GameState, p: Province): void {
     p.today.produced.gold += income;
     p.today.produced.food += food;
   }
+  const militiaWatch = (s.edicts ?? []).includes('militia_watch');
   if (guard > 0) {
-    const upkeep = Math.min(p.stocks.gold, guard * 40);
+    const upkeep = Math.min(p.stocks.gold, guard * (militiaWatch ? 50 : 40));
     p.stocks.gold -= upkeep;
     p.today.consumed.gold += upkeep;
   }
@@ -51,7 +52,7 @@ export function securityDayEnd(s: GameState, p: Province): void {
   // Deterministic campaign episode; no random attacks every frame at 4x speed.
   if (day < 45 || (day + s.seed % 29) % 40 !== 0) return;
   const towers = p.buildings.filter((b) => b.definitionId === 'watchtower' && isBuilt(b)).length;
-  const defense = guard + towers * 5 + (s.armyOrder === 'patrol' ? 5 : 0);
+  const defense = guard + towers * 5 + (s.armyOrder === 'patrol' ? 5 : 0) + (militiaWatch ? 10 : 0);
   const threat = 7 + districts * 2 + (day % 9);
   if (defense >= threat) {
     logEvent(s, 'success', 'event.raidDefended', { defenders: defense, attackers: threat });

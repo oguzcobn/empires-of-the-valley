@@ -147,6 +147,8 @@ let lastEventId = 0;
 let lastSpeed: 1 | 2 | 4 = 1;
 let sinceAutosave = 0;
 let saving = false;
+let pendingSave: { slot: SlotId; silent: boolean } | null = null;
+let saveFlight: Promise<boolean> | null = null;
 
 const initialSettings = loadSettings();
 setMuted(initialSettings.muted);
@@ -172,7 +174,7 @@ async function backupIfOld(source: string, raw: unknown): Promise<boolean> {
 
 export const useApp = create<AppStore>((set, get) => {
   /** Single place where a new game state enters the store: surfaces new events as notifications. */
-  function commit(next: GameState): void {
+  function commit(next: GameState, extra?: Partial<AppStore>): void {
     const state = get();
     let game = next;
     const toasts = [...state.toasts];
@@ -191,6 +193,7 @@ export const useApp = create<AppStore>((set, get) => {
       });
       if (event.kind === 'quest') playSfx('quest');
       else if (event.kind === 'success') playSfx('complete');
+      else if (event.kind === 'danger' || event.kind === 'warning') playSfx('error');
       if (event.kind === 'quest') autosave = true;
       if (event.key === 'event.chapterComplete') {
         chapterDialog = true;
@@ -200,7 +203,7 @@ export const useApp = create<AppStore>((set, get) => {
         }
       }
     }
-    set({ game, toasts: toasts.slice(-3), chapterDialog });
+    set({ ...extra, game, toasts: toasts.slice(-3), chapterDialog });
     if (autosave) void get().saveTo('auto', true); // milestone autosave
   }
 
@@ -208,7 +211,7 @@ export const useApp = create<AppStore>((set, get) => {
     accumulator = 0;
     sinceAutosave = 0;
     lastEventId = game.eventLog.reduce((max, e) => Math.max(max, e.id), 0);
-    if (game.speed !== 0) lastSpeed = game.speed;
+    lastSpeed = game.speed !== 0 ? game.speed : 1;
     set({
       screen: 'game',
       game,
@@ -221,6 +224,12 @@ export const useApp = create<AppStore>((set, get) => {
       chapterDialog: false,
       hover: null,
       person: null,
+      rotation: 0,
+      buildStyle: null,
+      buildDesign: null,
+      workshop: null,
+      focus: null,
+      lastSavedAt: null,
     });
   }
 
@@ -255,7 +264,8 @@ export const useApp = create<AppStore>((set, get) => {
     buildStyle: null,
     buildDesign: null,
     setBuildStyle(style) {
-      set({ buildStyle: style });
+      const curDesign = get().buildDesign;
+      set({ buildStyle: style, buildDesign: curDesign && curDesign.style === style ? curDesign : null });
       const tool = get().tool;
       if (tool.kind === 'build') get().startBuild(tool.buildingId);
     },
@@ -266,7 +276,7 @@ export const useApp = create<AppStore>((set, get) => {
     workshop: null,
     openWorkshop(target) {
       const game = get().game;
-      const fallback = (game?.culture === 'scottish' ? 'scottish' : 'turkish') as PlayableStyle;
+      const fallback = (game?.culture ?? 'turkish') as PlayableStyle;
       set({
         workshop: {
           buildingId: target?.buildingId ?? 'hut',
@@ -318,6 +328,10 @@ export const useApp = create<AppStore>((set, get) => {
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     },
     async importDesignFile(file) {
+      if (file.size > MAX_IMPORT_BYTES) {
+        get().toast('error', t('workshop.importFailed', { reason: 'tooLarge' }));
+        return false;
+      }
       const parsed = parseDesignFile(await file.text());
       if (!parsed.ok) {
         get().toast('error', t('workshop.importFailed', { reason: parsed.reason }));
@@ -329,6 +343,7 @@ export const useApp = create<AppStore>((set, get) => {
         get().toast('success', t('workshop.imported', { n }));
         return true;
       } catch (e) {
+        await get().refreshDesigns();
         get().toast('error', t('workshop.storageFailed', { detail: errorText(e) }));
         return false;
       }
@@ -372,7 +387,11 @@ export const useApp = create<AppStore>((set, get) => {
         return false;
       }
       if (cmd.type === 'setGameSpeed' && cmd.speed !== 0) lastSpeed = cmd.speed;
-      if (!quiet) playSfx(cmd.type === 'placeBuilding' || cmd.type === 'placeRoad' ? 'place' : 'click');
+      if (!quiet) {
+        const placeCmds = new Set(['placeBuilding', 'placeRoad', 'placeRoadRoute', 'paveRoad', 'buildTerrace', 'upgradeBuilding']);
+        const sound = placeCmds.has(cmd.type) ? 'place' : cmd.type === 'demolishBuilding' || cmd.type === 'clearTerrain' ? 'error' : 'click';
+        playSfx(sound);
+      }
       commit(result.state);
       return true;
     },
@@ -380,23 +399,24 @@ export const useApp = create<AppStore>((set, get) => {
     frame(dtMs) {
       const state = get();
       const now = performance.now();
-      if (state.toasts.some((x) => x.expires < now))
+      if (state.toasts.length > 0 && state.toasts.some((x) => x.expires < now))
         set({ toasts: state.toasts.filter((x) => x.expires >= now) });
       if (state.screen !== 'game' || !state.game) return;
+      const safeDt = dtMs > 0 ? dtMs : 0;
       // Dialogs that demand a decision hold the clock without changing the chosen speed.
       const held = state.introOpen || state.chapterDialog || state.confirm !== null;
-      const step = advanceClock(accumulator, dtMs, held ? 0 : state.game.speed);
+      const effectiveSpeed = held ? 0 : state.game.speed;
+      const step = advanceClock(accumulator, safeDt, effectiveSpeed);
       accumulator = step.accumulator;
       if (step.ticks > 0) {
         const t0 = performance.now();
         let game = state.game;
         for (let i = 0; i < step.ticks; i++) game = applyTick(game);
-        set({ tickMs: (performance.now() - t0) / step.ticks });
-        commit(game);
+        commit(game, { tickMs: (performance.now() - t0) / step.ticks });
       }
       const minutes = state.settings.autosaveMinutes;
-      if (minutes > 0) {
-        sinceAutosave += Math.min(dtMs, 1000);
+      if (minutes > 0 && effectiveSpeed > 0 && safeDt > 0) {
+        sinceAutosave += Math.min(safeDt, 1000);
         if (sinceAutosave >= minutes * 60_000) {
           sinceAutosave = 0;
           void get().saveTo('auto', true);
@@ -473,26 +493,42 @@ export const useApp = create<AppStore>((set, get) => {
 
     async saveTo(slot, silent = false) {
       const game = get().game;
-      if (!game || saving) return false;
-      const file = createSaveFile(game);
-      if (!file.ok) {
-        // A state that fails validation is never written (and never overwrites a good autosave).
-        get().toast('error', tm(file.error));
-        return false;
+      if (!game) return false;
+      if (saving) {
+        pendingSave = { slot, silent: pendingSave ? pendingSave.silent && silent : silent };
+        return saveFlight ?? false;
       }
-      saving = true;
-      try {
-        await writeSlot(slot, file.file);
-        set({ lastSavedAt: Date.now() });
-        if (!silent) get().toast('success', t('save.saved', { slot: `@save.slot.${slot}` }));
-        await get().refreshSlots();
-        return true;
-      } catch (e) {
-        get().toast('error', t('save.err.write', { detail: errorText(e) }));
-        return false;
-      } finally {
-        saving = false;
-      }
+      const runSave = async (targetSlot: SlotId, isSilent: boolean): Promise<boolean> => {
+        const current = get().game;
+        if (!current) return false;
+        const file = createSaveFile(current);
+        if (!file.ok) {
+          get().toast('error', tm(file.error));
+          return false;
+        }
+        saving = true;
+        try {
+          await writeSlot(targetSlot, file.file);
+          set({ lastSavedAt: Date.now() });
+          if (!isSilent) get().toast('success', t('save.saved', { slot: `@save.slot.${targetSlot}` }));
+          await get().refreshSlots();
+          return true;
+        } catch (e) {
+          get().toast('error', t('save.err.write', { detail: errorText(e) }));
+          return false;
+        } finally {
+          saving = false;
+          if (pendingSave) {
+            const next = pendingSave;
+            pendingSave = null;
+            saveFlight = runSave(next.slot, next.silent);
+          } else {
+            saveFlight = null;
+          }
+        }
+      };
+      saveFlight = runSave(slot, silent);
+      return saveFlight;
     },
 
     async loadFrom(slot) {
@@ -562,9 +598,11 @@ export const useApp = create<AppStore>((set, get) => {
         get().toast('error', t('save.err.tooLarge'));
         return false;
       }
+      let text = '';
       let loaded;
       try {
-        loaded = parseSaveText(await file.text());
+        text = await file.text();
+        loaded = parseSaveText(text);
       } catch (e) {
         get().toast('error', t('save.err.read', { detail: errorText(e) }));
         return false;
@@ -575,7 +613,7 @@ export const useApp = create<AppStore>((set, get) => {
       }
       let legacy = false;
       try {
-        legacy = await backupIfOld(`import-${file.name.slice(0, 40)}`, JSON.parse(await file.text()));
+        legacy = await backupIfOld(`import-${file.name.slice(0, 40)}`, JSON.parse(text));
       } catch {
         /* already validated above; a failed backup must not block the import */
       }
@@ -587,15 +625,32 @@ export const useApp = create<AppStore>((set, get) => {
     },
 
     async exitToTitle() {
-      if (get().game) await get().saveTo('auto', true);
+      if (get().game) {
+        await get().saveTo('auto', true);
+        if (saveFlight) await saveFlight;
+      }
+      accumulator = 0;
+      sinceAutosave = 0;
+      lastEventId = 0;
       set({
         screen: 'title',
         game: null,
+        tool: { kind: 'select' },
+        selectedBuildingId: null,
         panel: null,
+        buildOpen: false,
         confirm: null,
         toasts: [],
         chapterDialog: false,
         introOpen: false,
+        hover: null,
+        person: null,
+        rotation: 0,
+        buildStyle: null,
+        buildDesign: null,
+        workshop: null,
+        focus: null,
+        lastSavedAt: null,
       });
       await get().refreshSlots();
     },
@@ -623,9 +678,14 @@ export function startMainLoop(): () => void {
       void useApp.getState().saveTo('auto', true);
     last = performance.now();
   };
+  const onPageHide = (): void => {
+    if (useApp.getState().screen === 'game') void useApp.getState().saveTo('auto', true);
+  };
   document.addEventListener('visibilitychange', onHide);
+  window.addEventListener('pagehide', onPageHide);
   return () => {
     cancelAnimationFrame(raf);
     document.removeEventListener('visibilitychange', onHide);
+    window.removeEventListener('pagehide', onPageHide);
   };
 }

@@ -37,7 +37,7 @@ export const VESSELS: Record<VesselKind, VesselSpec> = {
     upkeepGold: u(0.4),
     cap: 6,
     attraction: 4,
-    salePrice: u(110),
+    salePrice: u(155),
   },
 };
 export const MAX_ORDERS = 4;

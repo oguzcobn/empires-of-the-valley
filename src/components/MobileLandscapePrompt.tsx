@@ -5,7 +5,9 @@ import { needsLandscapeHint, requestLandscapeMode } from '../app/landscape';
 /** Requests immersive landscape where possible, otherwise teaches manual device rotation. */
 export function MobileLandscapePrompt(): ReactElement | null {
   const [portraitPhone, setPortraitPhone] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return sessionStorage.getItem('eov.landscapeDismissed') === '1'; } catch { return false; }
+  });
   const [manual, setManual] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -14,10 +16,7 @@ export function MobileLandscapePrompt(): ReactElement | null {
     const update = () => {
       const show = needsLandscapeHint(window.innerWidth, window.innerHeight, coarse.matches);
       setPortraitPhone(show);
-      if (!show) {
-        setDismissed(false);
-        setManual(false);
-      }
+      if (!show) setManual(false);
     };
     update();
     window.addEventListener('resize', update);
@@ -40,7 +39,7 @@ export function MobileLandscapePrompt(): ReactElement | null {
   };
 
   return (
-    <div className="mobile-landscape-prompt" role="dialog" aria-label="Mobil yatay oyun önerisi" data-testid="mobile-landscape-prompt">
+    <div className="mobile-landscape-prompt" role="dialog" aria-modal="true" aria-label="Mobil yatay oyun önerisi" data-testid="mobile-landscape-prompt">
       <div className="landscape-phone-symbol" aria-hidden="true">↻</div>
       <strong>Yatay Ekranda Oyna</strong>
       <p>Şehir haritasını ve oyun menülerini daha rahat görmek için telefonunu yan çevir.</p>
@@ -48,7 +47,7 @@ export function MobileLandscapePrompt(): ReactElement | null {
       <button type="button" className="btn primary" disabled={pending} onClick={() => void enterLandscape()} data-testid="mobile-landscape-request">
         {pending ? 'Açılıyor…' : '⤢ Yatay Oyna / Tam Ekran'}
       </button>
-      <button type="button" className="btn" onClick={() => setDismissed(true)}>Dikey Devam Et</button>
+      <button type="button" className="btn" onClick={() => { setDismissed(true); try { sessionStorage.setItem('eov.landscapeDismissed', '1'); } catch { /* ignore */ } }}>Dikey Devam Et</button>
     </div>
   );
 }

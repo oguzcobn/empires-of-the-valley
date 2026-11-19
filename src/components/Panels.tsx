@@ -234,7 +234,7 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
             event.key === 'event.crimeTheft' || event.key === 'event.crimeVandalism' || event.key === 'event.crimePatrol',
           ).slice(-5).reverse();
           return incidents.length ? <ul>{incidents.map((event) => (
-            <li key={event.id}>{calendar(event.tick).day}. gün · {t(event.key, event.params)}</li>
+            <li key={event.id}>{calendar(event.tick).day + 1}. gün · {t(event.key, event.params)}</li>
           ))}</ul> : <p className="hint">Kayıtlı olay yok.</p>;
         })()}
       </section>
@@ -250,7 +250,7 @@ function PopulationPanel({ game }: { game: GameState }): ReactElement {
               <p className="hint">Acil çağrılar 30 nüfustan itibaren başlar. Görevli sağlıkçısı olan hastane 8 karelik alana ambulans gönderir; asfalt yol varsa ambulans gerçekten yola çıkar. Menzilde hastane yoksa yardım gecikir ve mutluluk düşer.</p>
               <h4>Son Acil Çağrılar</h4>
               {calls.length ? <ul>{calls.map((event) => (
-                <li key={event.id}>{calendar(event.tick).day}. gün · {t(event.key, event.params)}</li>
+                <li key={event.id}>{calendar(event.tick).day + 1}. gün · {t(event.key, event.params)}</li>
               ))}</ul> : <p className="hint">Kayıtlı çağrı yok.</p>}
             </>
           );

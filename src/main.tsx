@@ -15,7 +15,7 @@ createRoot(document.getElementById('root')!).render(<App />);
 
 // Debug/automation hook, enabled only with ?debug=1 or in dev. Used by the Playwright smoke test
 // to fast-forward the same pure simulation the game loop runs. It adds no gameplay features.
-if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
+if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).__EOV__ = {
     store: useApp,
     defs: BUILDINGS,

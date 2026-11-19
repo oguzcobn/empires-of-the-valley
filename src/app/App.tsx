@@ -5,7 +5,7 @@ import { TitleScreen } from '../components/TitleScreen';
 import { startMainLoop, useApp } from './store';
 import { ArtGallery } from '../components/ArtGallery';
 
-const GALLERY = new URLSearchParams(location.search).has('gallery');
+const GALLERY = import.meta.env.DEV && new URLSearchParams(location.search).has('gallery');
 
 export function App(): ReactElement {
   if (GALLERY) return <ArtGallery />;

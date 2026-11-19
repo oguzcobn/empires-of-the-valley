@@ -1,5 +1,6 @@
 import { mulPermille } from '../core/fixed';
 import { DIFFICULTY_RULES, difficultyOf } from '../data/difficulty';
+import { isMatchDay } from '../data/matchDays';
 import { calendar } from '../core/time';
 import type {
   BuildingId,
@@ -97,6 +98,23 @@ export function dailyOutput(s: GameState, p: Province, b: BuildingInstance): num
   rate = mulPermille(rate, conditionPermille(b.condition));
   if (def.id === 'school') rate = mulPermille(rate, bonusesOf(b.style).schoolPermille);
   if (def.usesTools && p.stocks.tools <= 0) rate = mulPermille(rate, NO_TOOLS_OUTPUT_PERMILLE);
+  // Ongoing Edicts, Public Transit (Bus Depot), Companies, and Match Day synergies
+  const edicts = s.edicts ?? [];
+  if (edicts.includes('shipyard_overtime') && (spec.produces.resourceId === 'tools' || spec.produces.resourceId === 'research'))
+    rate = mulPermille(rate, 1200);
+  if (edicts.includes('solar_subsidy') && (spec.produces.resourceId === 'research' || def.id === 'solar_farm' || def.id === 'wind_turbine'))
+    rate = mulPermille(rate, def.id === 'solar_farm' || def.id === 'wind_turbine' ? 1200 : 1150);
+  if (edicts.includes('free_zone_tax') && spec.produces.resourceId === 'gold' && ['market', 'bazaar', 'mall', 'bank', 'corporate_plaza'].includes(def.id))
+    rate = mulPermille(rate, 1250);
+  if (p.buildings.some((x) => x.definitionId === 'bus_depot' && isOperating(x)))
+    rate = mulPermille(rate, 1100);
+  const companyBonus = Math.min(200, (s.companies?.length ?? 0) * 20);
+  if (companyBonus > 0 && spec.produces.resourceId === 'gold')
+    rate = mulPermille(rate, 1000 + companyBonus);
+  if (isMatchDay(s.tick) && spec.produces.resourceId === 'gold' && p.buildings.some((x) => x.definitionId === 'trabzon_stadium' && isOperating(x)))
+    rate = mulPermille(rate, 1400);
+  if (def.id === 'factory' && p.stocks.wood <= 0)
+    rate = mulPermille(rate, 600);
   rate = mulPermille(rate, DIFFICULTY_RULES[difficultyOf(s.difficulty)].productionPermille);
   if (s.cheatProduction10x === true) rate *= 10;
   // extraction can never exceed what is physically left in range

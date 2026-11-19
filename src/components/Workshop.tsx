@@ -160,7 +160,7 @@ export function WorkshopPanel({ game }: { game: GameState }): ReactElement | nul
   const [buildingId, setBuildingId] = useState<BuildingId>(target?.buildingId ?? 'hut');
   const [style, setStyle] = useState<PlayableStyle>(target?.style ?? 'turkish');
   const maxLevel = BUILDINGS[buildingId].levels.length;
-  const [level, setLevel] = useState(maxLevel);
+  const [level, setLevel] = useState(1);
   const [look, setLook] = useState<BuildingLook>(target?.look ?? defaultLook(style, buildingId, maxLevel));
   const [name, setName] = useState('');
   const [winter, setWinter] = useState(false);
@@ -370,6 +370,7 @@ export function WorkshopPanel({ game }: { game: GameState }): ReactElement | nul
                     onClick={() => {
                       setBuildingId(d.buildingId);
                       setStyle(d.style);
+                      setLevel(1);
                       setLook(d.look);
                       setName(d.name);
                     }}

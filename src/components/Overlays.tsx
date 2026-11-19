@@ -178,7 +178,7 @@ export function IntroDialog({ game }: { game: GameState }): ReactElement | null 
     <Modal title={campaign ? t('intro.title') : t('intro.sandboxTitle')} onClose={closeIntro}>
       {campaign ? (
         <>
-          <p className="story">{t(game.cityId === 'edinburgh' || game.culture === 'scottish' ? 'intro.edinburgh' : 'intro.trabzon')}</p>
+          <p className="story">{t(game.cityId === 'edinburgh' || game.culture === 'scottish' ? 'intro.edinburgh' : game.cityId === 'kyoto' || game.culture === 'japanese' ? 'intro.kyoto' : game.cityId === 'prague' || game.culture === 'medieval_european' ? 'intro.prague' : 'intro.trabzon')}</p>
           <div className="mira">
             <span className="mira-face" aria-hidden="true">
               M

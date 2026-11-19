@@ -15,7 +15,7 @@ function level(partial: Partial<LevelSpec> & Pick<LevelSpec, 'cost' | 'buildTick
 /** Data-driven building catalog: the village (Phase 1), terraces and the historic landmarks. */
 const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
   hospital: {
-    id: 'hospital', category: 'civic', era: 1,
+    id: 'hospital', category: 'civic', era: 2,
     footprint: [2, 2], validTerrains: LAND, seasonal: false, usesTools: false,
     buildable: true, demolishable: true, services: { community: 4, safety: 4, safetyRadius: 5, healthRadius: 8 },
     levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
@@ -24,7 +24,7 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
       requires: { population: 20 } })],
   },
   factory: {
-    id: 'factory', category: 'production', era: 1,
+    id: 'factory', category: 'production', era: 2,
     footprint: [3, 3], validTerrains: LAND, seasonal: false, usesTools: false,
     buildable: true, demolishable: true, services: {  },
     levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
@@ -33,7 +33,7 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
       requires: { population: 20 } })],
   },
   hotel: {
-    id: 'hotel', category: 'housing', era: 1,
+    id: 'hotel', category: 'housing', era: 2,
     footprint: [2, 2], validTerrains: LAND, seasonal: false, usesTools: false,
     buildable: true, demolishable: true, services: { beds: 20, attraction: 5 },
     levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
@@ -42,7 +42,7 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
       requires: { population: 20 } })],
   },
   club: {
-    id: 'club', category: 'civic', era: 1,
+    id: 'club', category: 'civic', era: 2,
     footprint: [2, 2], validTerrains: LAND, seasonal: false, usesTools: false,
     buildable: true, demolishable: true, services: { community: 4, attraction: 8 },
     levels: [level({ cost: { wood: u(45), stone: u(40), gold: u(25), tools: u(10) },
@@ -60,7 +60,7 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
       requires: { population: 20 } })],
   },
   airport: {
-    id: 'airport', category: 'civic', era: 1,
+    id: 'airport', category: 'civic', era: 3,
     footprint: [8, 4], validTerrains: LAND, seasonal: false, usesTools: false,
     buildable: true, demolishable: true, services: { attraction: 6 },
     levels: [level({ cost: { wood: u(100), stone: u(120), gold: u(100), tools: u(10) },
@@ -90,7 +90,7 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
       produces: { resourceId: 'gold', perDay: u(2.5) }, upkeepGold: u(0.25), requires: { population: 24 } })],
   },
   pharmacy: {
-    id: 'pharmacy', category: 'civic', era: 2, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
+    id: 'pharmacy', category: 'civic', era: 1, footprint: [1, 1], validTerrains: LAND_AND_HILLS,
     seasonal: false, usesTools: false, buildable: true, demolishable: true,
     services: { pharmacyRadius: 4, community: 1 },
     levels: [level({ cost: { wood: u(12), stone: u(18), gold: u(12) }, buildTicks: 2 * DAY, workerSlots: 1, upkeepGold: u(0.12), requires: { population: 16 } })],
@@ -559,7 +559,7 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
   fire_station: {
     id: 'fire_station', category: 'civic', era: 1, footprint: [2, 2], validTerrains: LAND_AND_HILLS,
     seasonal: false, usesTools: false, buildable: true, demolishable: true,
-    services: { patrolRadius: 7, community: 3 },
+    services: { community: 3 },
     levels: [level({ cost: { wood: u(26), stone: u(28), gold: u(10) }, buildTicks: 3 * DAY, workerSlots: 2, upkeepGold: u(0.25) })],
   },
   shipyard: {

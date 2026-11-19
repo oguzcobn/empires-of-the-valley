@@ -36,8 +36,19 @@ export function markPerson(obj: Container, ref: PersonRef, activity: string, hei
     tag.height = height;
     return;
   }
+  if (tagged.size > 120) {
+    for (const c of tagged) {
+      if (c.destroyed || !c.parent) tagged.delete(c);
+    }
+  }
   tags.set(obj, { ref, activity, height });
   tagged.add(obj);
+}
+
+export function clearDestroyedPeople(): void {
+  for (const c of tagged) {
+    if (c.destroyed || !c.parent) tagged.delete(c);
+  }
 }
 
 /** Updates what a tagged person is doing without allocating. */

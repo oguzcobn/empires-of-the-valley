@@ -276,4 +276,9 @@ export class FrontierScenes {
       if (line) this.transport(s, kind, line, p, phase);
     }
   }
+
+  destroy(): void {
+    this.layer.destroy({ children: true });
+    this.lastProvince = null;
+  }
 }

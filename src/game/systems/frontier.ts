@@ -66,8 +66,14 @@ export function routeFrom(
 export function huntRoute(p: Province, x: number, y: number): MapPoint[] | null {
   const tc = townCenter(p);
   if (!tc) return null;
-  const starts = [{ x: tc.x + 1, y: tc.y + 2 }, { x: tc.x + 2, y: tc.y + 1 }]
-    .filter((point) => dryLand(tileAt(p, point.x, point.y)));
+  const starts: MapPoint[] = [];
+  for (let dy = -1; dy <= 2; dy++) {
+    for (let dx = -1; dx <= 2; dx++) {
+      if (dx >= 0 && dx <= 1 && dy >= 0 && dy <= 1) continue;
+      const pt = { x: tc.x + dx, y: tc.y + dy };
+      if (dryLand(tileAt(p, pt.x, pt.y))) starts.push(pt);
+    }
+  }
   return routeFrom(starts, (point) => point.x === x && point.y === y, (from, to) => {
     const tile = tileAt(p, to.x, to.y);
     return dryLand(tile) && Math.abs(tile.height - tileAt(p, from.x, from.y)!.height) <= 1;

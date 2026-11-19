@@ -18,7 +18,7 @@ import {
 import { neighborhoodServices } from '../game/systems/crime';
 import { buildingById } from '../game/systems/grid';
 import { landmarkStage, requiredTicks } from '../game/systems/tick';
-import { DESIGNABLE, PLAYABLE_STYLES } from '../game/data/architecture';
+import { DESIGNABLE, PLAYABLE_STYLES, PlayableStyle } from '../game/data/architecture';
 import { conditionBand, decayPerDay, levelCost, repairCost, restyleCost } from '../game/systems/architecture';
 import { fmtAmount, fmtInt, fmtRate, t, tm } from '../i18n';
 import { Bar, CostList, Row, costText } from './common';
@@ -152,7 +152,7 @@ function ArchitectureSection({ game, b }: { game: GameState; b: BuildingInstance
             useApp.getState().openWorkshop({
               buildingId: b.definitionId,
               instanceId: b.id,
-              style: b.style === 'scottish' ? 'scottish' : 'turkish',
+              style: b.style as PlayableStyle,
               look: b.look,
             })
           }
@@ -371,7 +371,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
           )}
         </h3>
         <button className="btn icon-btn" onClick={() => select(null)} aria-label={t('ui.close')}>
-          ✕
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
         </button>
       </header>
       <BuildingPreview id={b.definitionId} style={b.style} level={b.level} look={b.look} condition={b.condition} instanceId={b.id} />

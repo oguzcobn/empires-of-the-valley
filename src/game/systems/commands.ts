@@ -59,12 +59,13 @@ export const CITY_CONTRACTS = [
   { id: 'paloma-tourism-summit', title: 'Paloma Resort & Aquapark Zirvesi', client: 'Paloma Hotels', building: 'hotel' as const, cost: { food: 15000 }, gold: 36000, tools: 6000, happiness: 7 },
   { id: 'asbas-plaza-export', title: 'ASBAŞ Teknoloji & Lojistik Paketi', client: 'ASBAŞ', building: 'corporate_plaza' as const, cost: { tools: 10000, wood: 20000 }, gold: 42000, tools: 12000, happiness: 5 },
 ] as const;
+export const EDICT_COOLDOWN_TICKS = 7 * 24;
 export const CITY_EDICTS = [
-  { id: 'free_zone_tax', title: 'ASBAŞ Serbest Bölge Teşviki', desc: 'Yatırım ve mutluluk kazandırır.' },
-  { id: 'shipyard_overtime', title: 'Damen Tersanesi Çift Vardiya', desc: 'Alet ve araştırma kazandırır; mutluluğu azaltır.' },
-  { id: 'festival_aquapark', title: 'Palomaqua Şehir Festivali', desc: '5 altın karşılığında mutluluk kazandırır.' },
-  { id: 'solar_subsidy', title: 'Çatı GES Teşviki', desc: 'Araştırma ve mutluluk kazandırır.' },
-  { id: 'militia_watch', title: 'Liman Gönüllü Muhafızları', desc: 'Milis gücünü artırır.' },
+  { id: 'free_zone_tax', title: 'ASBAŞ Serbest Bölge Teşviki', desc: 'Vergi gelirini %20 azaltır; ticaret/pazar gelirini %25 ve mutluluğu +3 artırır (7 gün bekleme).' },
+  { id: 'shipyard_overtime', title: 'Damen Tersanesi Çift Vardiya', desc: 'Alet ve araştırma üretimini %20 artırır; mutluluğu -4 azaltır (7 gün bekleme).' },
+  { id: 'festival_aquapark', title: 'Palomaqua Şehir Festivali', desc: 'Açılışta 5 altın harcar; turizm ve mutluluğu +5 artırır (7 gün bekleme).' },
+  { id: 'solar_subsidy', title: 'Çatı GES Teşviki', desc: 'Araştırma üretimini %15, enerji kapasitesini %20 ve mutluluğu +2 artırır (7 gün bekleme).' },
+  { id: 'militia_watch', title: 'Liman Gönüllü Muhafızları', desc: 'Milis bakımını %25 artırır; baskın ve savaş savunmasını +10 güçlendirir (7 gün bekleme).' },
 ] as const;
 export const CITY_DILEMMAS = [
   { id: 'damen-vip-delegation', title: 'Damen Uluslararası Heyeti', desc: 'Heyeti nasıl ağırlayacaksın?', a: { label: 'VIP organizasyon', gold: -8000, tools: 8000, happiness: 6, research: 18000 }, b: { label: 'Teknik saha turu', gold: 10000, tools: 4000, happiness: 1 } },
@@ -330,10 +331,22 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
     case 'renameCitizen':
       return Number.isInteger(cmd.index) && cmd.index >= 0 && cmd.index < 500 && cmd.name.trim().length >= 2 && cmd.name.trim().length <= 40 ? null : { key: 'err.invalid' };
     case 'foundCompany':
-      return cmd.name.trim().length >= 2 && cmd.name.trim().length <= 48 && (s.companies?.length ?? 0) < 48
+      return (
+        Number.isInteger(cmd.founderIndex) &&
+        cmd.founderIndex >= 0 &&
+        cmd.founderIndex < 500 &&
+        cmd.sector.trim().length <= 80 &&
+        cmd.name.trim().length >= 2 &&
+        cmd.name.trim().length <= 48 &&
+        (s.companies?.length ?? 0) < 48
+      )
         ? missingFor(p, { gold: 3000 }) : { key: 'err.invalid' };
-    case 'renameCompany':
-      return cmd.name.trim().length >= 2 && cmd.name.trim().length <= 48 ? null : { key: 'err.invalid' };
+    case 'renameCompany': {
+      if (cmd.name.trim().length < 2 || cmd.name.trim().length > 48) return { key: 'err.invalid' };
+      const existing = (s.companies ?? []).some((item) => item.id === cmd.companyId);
+      if (!existing && cmd.companyId.startsWith('auto-') && (s.companies?.length ?? 0) >= 48) return { key: 'err.invalid' };
+      return null;
+    }
     case 'advanceAge': {
       const age = (s.age ?? 1) as CityAge;
       if (age >= 4) return { key: 'err.maxLevel' };
@@ -347,9 +360,12 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       if ('building' in c && c.building && !p.buildings.some((b) => (b.definitionId === c.building || (c.building === 'hotel' && b.definitionId === 'aquapark')) && isBuilt(b))) return { key: 'err.invalid' };
       return 'cost' in c && c.cost ? missingFor(p, c.cost) : null;
     }
-    case 'toggleEdict':
+    case 'toggleEdict': {
       if (!CITY_EDICT_IDS.includes(cmd.edictId)) return { key: 'err.invalid' };
+      const lastChanged = s.edictChangedAt?.[cmd.edictId];
+      if (lastChanged !== undefined && s.tick - lastChanged < EDICT_COOLDOWN_TICKS) return { key: 'err.invalid' };
       return cmd.edictId === 'festival_aquapark' && !s.edicts?.includes(cmd.edictId) ? missingFor(p, { gold: 5000 }) : null;
+    }
     case 'resolveDilemma': {
       const d = CITY_DILEMMAS.find((item) => item.id === cmd.dilemmaId);
       if (!d || s.resolvedDilemmas?.[cmd.dilemmaId] || (cmd.choice !== 'a' && cmd.choice !== 'b')) return { key: 'err.invalid' };
@@ -439,7 +455,8 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       if (!t) return { key: 'err.outOfBounds' };
       if (t.buildingId || t.road || transitOccupies(p, cmd.x, cmd.y)) return { key: 'err.occupied' };
       if (!['forest', 'stone', 'rocky', 'hill', 'mountain'].includes(t.terrain)) return { key: 'err.invalid' };
-      return null;
+      const clearCost = t.terrain === 'hill' || t.terrain === 'mountain' ? { gold: 4000 } : { gold: 1000 };
+      return missingFor(p, clearCost);
     }
     case 'expandMap': {
       if (p.width >= 96 && p.height >= 96) return { key: 'err.maxLevel' };
@@ -536,7 +553,7 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
     case 'attackDistrict': {
       const region = WORLD_BY_ID[cmd.provinceId];
       if (!region || region.id === s.homeProvinceId || s.claimedDistricts?.includes(region.id)) return { key: 'err.invalid' };
-      if (s.treaties?.[region.id] === 'non_aggression') return { key: 'err.truceActive' };
+      if (s.treaties?.[region.id] === 'non_aggression' || s.treaties?.[region.id] === 'alliance') return { key: 'err.truceActive' };
       const owned = [s.homeProvinceId, ...(s.claimedDistricts ?? [])];
       if (!region.neighbors.some((id) => owned.includes(id))) return { key: 'err.invalid' };
       if (s.mode === 'campaign' && !s.completedChapters.includes(1)) return { key: 'err.invalid' };
@@ -548,6 +565,7 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       if (!p.buildings.some((b) => b.definitionId === 'barracks' && b.level >= 2 && b.state === 'active' && b.workers > 0 && !b.unpaid))
         return { key: 'err.specialistBarracks' };
       if (specialistCount(s.specialists) >= (s.militia ?? 0)) return { key: 'err.specialistMilitia' };
+      if ((s.specialists?.[cmd.unit] ?? 0) >= 100) return { key: 'err.maxLevel' };
       return missingFor(p, { gold: UNITS[cmd.unit].gold * 1000 });
     case 'recruitMilitia':
       if (cmd.amount !== 5 || (s.militia ?? 0) + cmd.amount > 100) return { key: 'err.invalid' };
@@ -620,15 +638,11 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
     }
     case 'toggleEdict': {
       const list = (s.edicts ??= []);
+      (s.edictChangedAt ??= {})[cmd.edictId] = s.tick;
       if (list.includes(cmd.edictId)) list.splice(list.indexOf(cmd.edictId), 1);
       else {
         list.push(cmd.edictId);
-        const caps = storageCaps(s, p);
-        if (cmd.edictId === 'free_zone_tax') { p.stocks.gold += 10000; p.happiness = Math.min(100, p.happiness + 4); }
-        if (cmd.edictId === 'shipyard_overtime') { p.stocks.tools = Math.min(caps.tools, p.stocks.tools + 10000); p.stocks.research += 8000; p.happiness = Math.max(0, p.happiness - 2); }
-        if (cmd.edictId === 'festival_aquapark') { pay(p, { gold: 5000 }); p.happiness = Math.min(100, p.happiness + 8); }
-        if (cmd.edictId === 'solar_subsidy') { p.stocks.research += 12000; p.happiness = Math.min(100, p.happiness + 3); }
-        if (cmd.edictId === 'militia_watch') s.militia = Math.min(200, (s.militia ?? 0) + 4);
+        if (cmd.edictId === 'festival_aquapark') pay(p, { gold: 5000 });
       }
       break;
     }
@@ -727,6 +741,10 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
     case 'clearTerrain': {
       const t = p.tiles[idx(p, cmd.x, cmd.y)]!;
       const wasForest = t.terrain === 'forest';
+      const wasStone = t.terrain === 'stone';
+      const wasHillOrMountain = t.terrain === 'hill' || t.terrain === 'mountain';
+      const remainingDeposit = t.deposit;
+      pay(p, wasHillOrMountain ? { gold: 4000 } : { gold: 1000 });
       t.terrain = 'grass';
       t.deposit = 0;
       if (t.height > 0) {
@@ -736,7 +754,8 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
         );
         t.height = minNeighborH;
       }
-      refund(s, p, wasForest ? { wood: 15000 } : { stone: 15000 }, 1000);
+      const salvage = wasForest || wasStone ? Math.min(10000, remainingDeposit) : Math.min(5000, remainingDeposit || 3000);
+      if (salvage > 0) refund(s, p, wasForest ? { wood: salvage } : { stone: salvage }, 1000);
       logEvent(s, 'info', 'event.terrainCleared', {}, { x: cmd.x, y: cmd.y });
       break;
     }

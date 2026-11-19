@@ -26,6 +26,8 @@ export interface BackupRecord {
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
+const MAX_BACKUPS = 10;
+
 function db(): Promise<IDBPDatabase> {
   // v1: saves. v2 (architecture update): backups and workshop designs. Existing saves are kept.
   dbPromise ??= openDB(DB_NAME, 2, {
@@ -36,6 +38,12 @@ function db(): Promise<IDBPDatabase> {
         database.createObjectStore(BACKUPS, { keyPath: 'id' });
       if (!database.objectStoreNames.contains(DESIGNS))
         database.createObjectStore(DESIGNS, { keyPath: 'id' });
+    },
+    blocking() {
+      dbPromise = null;
+    },
+    terminated() {
+      dbPromise = null;
     },
   });
   dbPromise.catch(() => {
@@ -66,8 +74,12 @@ export async function listSlots(): Promise<{ slotId: SlotId; meta: SaveMeta }[]>
 }
 
 export async function writeBackup(source: string, schemaVersion: number, raw: unknown, now = new Date()): Promise<string> {
-  const id = `${source}-v${schemaVersion}-${now.toISOString()}`;
-  await (await db()).put(BACKUPS, { id, createdAt: now.toISOString(), source, schemaVersion, raw } satisfies BackupRecord);
+  const suffix = Math.random().toString(36).slice(2, 6);
+  const id = `${source}-v${schemaVersion}-${now.toISOString()}-${suffix}`;
+  const conn = await db();
+  await conn.put(BACKUPS, { id, createdAt: now.toISOString(), source, schemaVersion, raw } satisfies BackupRecord);
+  const all = ((await conn.getAll(BACKUPS)) as BackupRecord[]).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  for (const stale of all.slice(MAX_BACKUPS)) await conn.delete(BACKUPS, stale.id);
   return id;
 }
 

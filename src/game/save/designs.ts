@@ -65,7 +65,7 @@ export function exportDesigns(designs: DesignRecord[]): string {
 
 /** Parses an untrusted design file. Nothing is stored unless every design is valid. */
 export function parseDesignFile(text: string): DesignParse {
-  if (text.length > MAX_DESIGN_FILE_BYTES) return { ok: false, reason: 'tooLarge' };
+  if (new TextEncoder().encode(text).length > MAX_DESIGN_FILE_BYTES) return { ok: false, reason: 'tooLarge' };
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -85,22 +85,38 @@ export async function listDesigns(): Promise<DesignRecord[]> {
 export async function putDesign(d: DesignRecord): Promise<void> {
   if (!validateDesign(d)) throw new Error('invalid design');
   const db = await database();
-  const count = await db.count(DESIGNS);
-  const exists = await db.get(DESIGNS, d.id);
-  if (!exists && count >= MAX_DESIGNS) throw new Error(`max ${MAX_DESIGNS}`);
-  await db.put(DESIGNS, d);
+  const tx = db.transaction(DESIGNS, 'readwrite');
+  const exists = await tx.store.get(d.id);
+  if (!exists) {
+    const all = (await tx.store.getAll()) as unknown[];
+    const validCount = all.filter(validateDesign).length;
+    if (validCount >= MAX_DESIGNS) {
+      tx.abort();
+      throw new Error(`max ${MAX_DESIGNS}`);
+    }
+  }
+  await tx.store.put(d);
+  await tx.done;
 }
 
 export async function deleteDesign(id: string): Promise<void> {
   await (await database()).delete(DESIGNS, id);
 }
 
-/** Imported designs get fresh ids so they never overwrite local ones. */
+/** Imported designs get fresh ids so they never overwrite local ones, atomically in one transaction. */
 export async function importDesigns(designs: DesignRecord[]): Promise<number> {
-  let n = 0;
-  for (const d of designs) {
-    await putDesign({ ...d, id: newDesignId(Date.now(), Math.random()) });
-    n++;
+  if (!designs.every(validateDesign)) throw new Error('invalid design');
+  const db = await database();
+  const tx = db.transaction(DESIGNS, 'readwrite');
+  const existing = ((await tx.store.getAll()) as unknown[]).filter(validateDesign).length;
+  if (existing + designs.length > MAX_DESIGNS) {
+    tx.abort();
+    throw new Error(`max ${MAX_DESIGNS}`);
   }
-  return n;
+  const now = Date.now();
+  for (let i = 0; i < designs.length; i++) {
+    await tx.store.put({ ...designs[i]!, id: newDesignId(now + i, Math.random()) });
+  }
+  await tx.done;
+  return designs.length;
 }

@@ -39,6 +39,16 @@ export function validateInvariants(s: GameState): string[] {
 
   const owner = new Map<number, string>();
   const ids = new Set<string>();
+  let maxBuildingNum = 0;
+  for (const b of p.buildings) {
+    const m = /^b(\d+)$/.exec(b.id);
+    if (m) maxBuildingNum = Math.max(maxBuildingNum, Number(m[1]));
+  }
+  if (!Number.isInteger(s.nextBuildingId) || s.nextBuildingId <= maxBuildingNum)
+    errors.push('nextBuildingId invalid');
+  const maxEventNum = s.eventLog.reduce((mx, e) => Math.max(mx, e.id), 0);
+  if (!Number.isInteger(s.nextEventId) || s.nextEventId <= maxEventNum)
+    errors.push('nextEventId invalid');
   for (const b of p.buildings) {
     if (!BUILDINGS[b.definitionId]) {
       errors.push(`unknown building ${b.definitionId}`);

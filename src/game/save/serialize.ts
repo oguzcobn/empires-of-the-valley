@@ -61,7 +61,12 @@ export function loadSaveFile(raw: unknown): LoadResult {
   if (typeof raw !== 'object' || raw === null || (raw as { format?: unknown }).format !== SAVE_FORMAT) {
     return { ok: false, error: { key: 'save.err.notASave' } };
   }
-  const migrated = migrate((raw as { state?: unknown }).state);
+  let migrated;
+  try {
+    migrated = migrate((raw as { state?: unknown }).state);
+  } catch {
+    return { ok: false, error: { key: 'save.err.invalid', params: { detail: 'migration' } } };
+  }
   if (!migrated.ok) {
     return {
       ok: false,
@@ -86,7 +91,7 @@ export function loadSaveFile(raw: unknown): LoadResult {
 }
 
 export function parseSaveText(text: string): LoadResult {
-  if (text.length > MAX_IMPORT_BYTES) return { ok: false, error: { key: 'save.err.tooLarge' } };
+  if (new TextEncoder().encode(text).length > MAX_IMPORT_BYTES) return { ok: false, error: { key: 'save.err.tooLarge' } };
   let raw: unknown;
   try {
     raw = JSON.parse(text);

@@ -2385,3 +2385,83 @@ main.game-screen .quest.card > .reward { color: #e8c77f !important; }
 .upgrade-needs { list-style: none; margin: .3rem 0 .4rem; padding: 0; font-size: .82rem; display: grid; gap: .15rem; }
 .upgrade-needs .ok { color: #2e7d32; }
 .upgrade-needs .bad { color: #c62828; font-weight: 600; }
+
+
+/* === Audit Fixes: Dark Card Contrast (WCAG AA+), Layering, Focus & Touch Targets === */
+.game-screen .card .level {
+  background: #3a372a;
+  color: #f4ead5;
+  border-color: rgba(244, 234, 213, 0.25);
+}
+.game-screen .card .hint,
+.game-screen .card .why {
+  color: #d0cbc0;
+}
+.game-screen .card .upgrade-needs .ok {
+  color: #7beba3;
+}
+.game-screen .card .upgrade-needs .bad,
+.game-screen .card .status-inline.bad,
+.game-screen .card .cost.lacking {
+  color: #ff9c8a;
+}
+.game-screen .card .btn.link {
+  color: #8cc4ff;
+}
+.btn.primary {
+  background: #2f6e27;
+  color: #ffffff;
+}
+.road-plan-controls {
+  z-index: 12;
+}
+@media (max-width: 1050px) {
+  .paused-banner {
+    top: calc(var(--hud-bottom, 4.7rem) + 0.4rem);
+  }
+}
+@media (pointer: coarse) {
+  .speed-btn,
+  .mobile-placement-arrows button,
+  .mobile-placement-pad .mobile-place-actions button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+select:focus-visible,
+input[type="range"]:focus-visible,
+input[type="checkbox"]:focus-visible,
+.game-menu-close:focus-visible,
+.camera-rotate button:focus-visible,
+.mobile-placement-arrows button:focus-visible,
+.mobile-place-actions button:focus-visible {
+  outline: 2px solid #f5c45e;
+  outline-offset: 2px;
+}
+
+
+/* === Live Gameplay Test Fixes === */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+.game-screen .toasts {
+  top: calc(var(--hud-bottom, 3.6rem) + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  right: auto;
+  bottom: auto;
+  align-items: center;
+}
+.hud-resources {
+  scrollbar-width: none;
+}
+.hud-resources::-webkit-scrollbar {
+  display: none;
+}
+html, body, #root, .game-screen {
+  height: 100%;
+  max-height: 100dvh;
+}

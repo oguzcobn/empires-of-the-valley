@@ -28,7 +28,7 @@ export const CITIES: Record<CityId, CityInfo> = {
   },
   edinburgh: {
     id: 'edinburgh', name: 'Edinburgh', culture: 'scottish', playable: true,
-    leader: 'Jane Meagher', leaderTitle: 'City of Edinburgh Council Leader',
+    leader: 'Jane Meagher', leaderTitle: 'Edinburgh Belediye Başkanı',
     landmark: 'scott_monument',
     districts: [
       'Old Town','Leith','Portobello','Morningside','Corstorphine','New Town',
@@ -50,7 +50,7 @@ export const CITIES: Record<CityId, CityInfo> = {
     ],
   },
   prague: {
-    id: 'prague', name: 'Prague', culture: 'medieval_european', playable: true,
+    id: 'prague', name: 'Prag', culture: 'medieval_european', playable: true,
     leader: 'Kent Meclisi', leaderTitle: 'Orta Çağ Avrupa Şehri',
     // Temporary preview fallback; replace with a Prague landmark before unlocking.
     landmark: 'edinburgh_castle',

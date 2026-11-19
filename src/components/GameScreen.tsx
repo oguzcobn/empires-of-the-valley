@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { PersonCard } from './PersonCard';
 import type { MouseEvent as ReactMouseEvent, ReactElement } from 'react';
 import { useApp } from '../app/store';
@@ -27,12 +27,30 @@ import { MobileLandscapePrompt } from './MobileLandscapePrompt';
 import { ValleyCanvas, getRenderer } from './ValleyCanvas';
 
 /** Clickable overview map for quickly moving the camera around the valley. */
-function RadarMinimap({ game }: { game: GameState }): ReactElement {
+const RadarMinimap = memo(function RadarMinimap({ game }: { game: GameState }): ReactElement {
   const focusOn = useApp((s) => s.focusOn);
   const selectedId = useApp((s) => s.selectedBuildingId);
   const openPanel = useApp((s) => s.openPanel);
   const province = homeProvince(game);
-  const { width, height } = province;
+  const { width, height, tiles, buildings } = province;
+  const tileRects = useMemo(
+    () =>
+      tiles.map((tile, index) => {
+        const x = index % width;
+        const y = Math.floor(index / width);
+        if (tile.road) {
+          return <rect key={index} x={x} y={y} width={1.05} height={1.05} fill={tile.paved ? '#525866' : '#c2a675'} />;
+        }
+        const color = tile.terrain === 'water' || tile.terrain === 'lake' ? '#1f6f9f'
+          : tile.terrain === 'forest' ? '#234721'
+            : tile.terrain === 'stone' || tile.terrain === 'rocky' || tile.terrain === 'mountain' ? '#7c8288'
+              : tile.terrain === 'sand' ? '#d8c38a'
+                : tile.terrain === 'hill' || tile.terrain === 'terrace' ? '#71864a'
+                  : null;
+        return color ? <rect key={index} x={x} y={y} width={1.05} height={1.05} fill={color} /> : null;
+      }),
+    [tiles, width],
+  );
 
   const handleMapClick = (e: ReactMouseEvent<SVGSVGElement>): void => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -66,21 +84,8 @@ function RadarMinimap({ game }: { game: GameState }): ReactElement {
         aria-label="Vadi mini haritası. Tıklayarak kamerayı o noktaya taşı."
       >
         <rect x={0} y={0} width={width} height={height} fill="#365c32" />
-        {province.tiles.map((tile, index) => {
-          const x = index % width;
-          const y = Math.floor(index / width);
-          if (tile.road) {
-            return <rect key={index} x={x} y={y} width={1.05} height={1.05} fill={tile.paved ? '#525866' : '#c2a675'} />;
-          }
-          const color = tile.terrain === 'water' || tile.terrain === 'lake' ? '#1f6f9f'
-            : tile.terrain === 'forest' ? '#234721'
-              : tile.terrain === 'stone' || tile.terrain === 'rocky' || tile.terrain === 'mountain' ? '#7c8288'
-                : tile.terrain === 'sand' ? '#d8c38a'
-                  : tile.terrain === 'hill' || tile.terrain === 'terrace' ? '#71864a'
-                    : null;
-          return color ? <rect key={index} x={x} y={y} width={1.05} height={1.05} fill={color} /> : null;
-        })}
-        {province.buildings.map((building) => {
+        {tileRects}
+        {buildings.map((building) => {
           const [buildingWidth, buildingHeight] = defOf(building).footprint;
           const selected = building.id === selectedId;
           const fill = selected ? '#ffd54f'
@@ -103,7 +108,7 @@ function RadarMinimap({ game }: { game: GameState }): ReactElement {
       </svg>
     </section>
   );
-}
+});
 
 /** Keyboard shortcuts. Ignored while typing in a field; Esc always backs out one level. */
 function useShortcuts(): void {
@@ -114,6 +119,8 @@ function useShortcuts(): void {
         target &&
         (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')
       )
+        return;
+      if (e.key === ' ' && target && (target.tagName === 'BUTTON' || target.getAttribute('role') === 'button'))
         return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const s = useApp.getState();
@@ -146,7 +153,7 @@ function useShortcuts(): void {
         s.togglePause();
       } else if (key === '1') s.dispatch({ type: 'setGameSpeed', speed: 1 });
       else if (key === '2') s.dispatch({ type: 'setGameSpeed', speed: 2 });
-      else if (key === '3') s.dispatch({ type: 'setGameSpeed', speed: 4 });
+      else if (key === '3' || key === '4') s.dispatch({ type: 'setGameSpeed', speed: 4 });
       else if (key === 'b') s.toggleBuild();
       else if (key === 'r') s.setTool(s.tool.kind === 'road' ? { kind: 'select' } : { kind: 'road' });
       else if (key === 'p') s.setTool(s.tool.kind === 'pave' ? { kind: 'select' } : { kind: 'pave' });

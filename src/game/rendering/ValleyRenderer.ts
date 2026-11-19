@@ -261,6 +261,10 @@ export class ValleyRenderer {
   private under = new Graphics();
   private transportGround = new Graphics();
   private objects = new Container();
+  private readonly airLayer = new Container();
+  private trafficCacheTiles: Province['tiles'] | null = null;
+  private cachedLinkedRoads: [number, number][] = [];
+  private cachedLaneRoads: [number, number][] = [];
   private cityScenes = new CityScenes(this.objects);
   private workScenes = new WorkerScenes(this.objects);
   private frontier = new FrontierScenes(this.transportGround, this.objects);
@@ -395,7 +399,7 @@ export class ValleyRenderer {
     canvas.setAttribute('aria-label', 'Vadi haritası');
     host.appendChild(canvas);
     r.objects.sortableChildren = true;
-    r.world.addChild(r.ground, r.waterFx, r.transportGround, r.under, r.objects, r.ghost);
+    r.world.addChild(r.ground, r.waterFx, r.transportGround, r.under, r.objects, r.airLayer, r.ghost);
     r.app.stage.addChild(r.world, r.fx);
     r.bindInput(canvas);
     const first = r.view();
@@ -417,10 +421,26 @@ export class ValleyRenderer {
       this.app.ticker.remove(this.frame);
       this.cityScenes.destroy();
       this.workScenes.destroy();
+      this.frontier.destroy();
       this.signals.destroy();
       this.furniture.destroy();
       this.fireworks.destroy();
       this.waterLife.destroy();
+      for (const bv of this.buildingViews.values()) {
+        if (bv.body.isCachedAsTexture) bv.body.cacheAsTexture(false);
+      }
+      this.buildingViews.clear();
+      this.propViews.clear();
+      this.walkers.length = 0;
+      this.matchFans.length = 0;
+      this.trafficCars.length = 0;
+      this.fadingCars.length = 0;
+      this.militiaSprites.length = 0;
+      this.particles.length = 0;
+      this.boats.length = 0;
+      this.birds.length = 0;
+      this.prov = null;
+      this.cleanup.length = 0;
       for (const a of this.atlas.values()) a.tex.destroy(true);
       this.atlas.clear();
       // Never pass `true` as the first argument: it releases Pixi's global resources and breaks the
@@ -714,7 +734,18 @@ export class ValleyRenderer {
     // Respond to parent-iframe resizing; do not reset the user's zoom on
     // every simulation tick or React state update.
     if (this.app.screen.width !== this.cameraViewport.width ||
-        this.app.screen.height !== this.cameraViewport.height) this.resetCamera();
+        this.app.screen.height !== this.cameraViewport.height) {
+      if (this.cameraViewport.width === 0 || this.cameraViewport.height === 0) {
+        this.resetCamera();
+      } else {
+        const dx = (this.app.screen.width - this.cameraViewport.width) / 2;
+        const dy = (this.app.screen.height - this.cameraViewport.height) / 2;
+        this.cameraViewport = { width: this.app.screen.width, height: this.app.screen.height };
+        this.world.x += dx;
+        this.world.y += dy;
+        this.clampCamera();
+      }
+    }
     if (p.width !== this.size) {
       this.size = p.width;
       this.resetCamera();
@@ -993,7 +1024,10 @@ export class ValleyRenderer {
       }
       const staffed = specOf(b).workerSlots === 0 || b.workers > 0;
       const progress = b.state === 'active' ? 0 : b.progressTicks;
-      const look = b.look ? JSON.stringify(b.look) : '';
+      const lookChanged = (bv as unknown as { lookRef?: unknown }).lookRef !== b.look;
+      if (lookChanged) (bv as unknown as { lookRef?: unknown; lookKey?: string }).lookKey = b.look ? JSON.stringify(b.look) : '';
+      (bv as unknown as { lookRef?: unknown }).lookRef = b.look;
+      const look = (bv as unknown as { lookKey?: string }).lookKey ?? '';
       const sig = `${b.level}|${b.state}|${b.connected}|${b.unpaid}|${staffed}|${progress}|${season}|${b.style}|${look}|${conditionBand(b.condition)}|${view.detail}`;
       if (sig !== bv.sig) {
         bv.sig = sig;
@@ -1035,6 +1069,7 @@ export class ValleyRenderer {
     }
     for (const [id, bv] of this.buildingViews) {
       if (!seen.has(id)) {
+        if (bv.body.isCachedAsTexture) bv.body.cacheAsTexture(false);
         bv.c.destroy({ children: true });
         this.buildingViews.delete(id);
       }
@@ -1219,6 +1254,8 @@ export class ValleyRenderer {
     if (key === this.tintKey) return;
     this.tintKey = key;
     let tint = mix(0xffffff, 0x283959, this.night * 0.92);
+    const goldenHour = hour === 5 || hour === 6 || hour === 18 || hour === 19;
+    if (goldenHour && this.dropKind !== 'rain') tint = mix(tint, 0xffcfa3, 0.22);
     if (this.dropKind === 'overcast' || this.dropKind === 'rain') tint = mix(tint, 0xb8c0c8, 0.25);
     this.ground.tint = tint;
     this.waterFx.tint = tint;
@@ -1594,7 +1631,7 @@ export class ValleyRenderer {
       }
       const fx = w.from[0] + (w.to[0] - w.from[0]) * w.t + 0.5;
       const fy = w.from[1] + (w.to[1] - w.from[1]) * w.t + 0.5;
-      const bob = step > 0 && !w.cart ? Math.sin(this.time / 90 + w.phase) * 0.9 : 0;
+      const bob = step > 0 && !w.cart && !w.waiting ? Math.sin(this.time / 90 + w.phase) * 0.9 : 0;
       const lift = this.hz(p, w.from[0], w.from[1]) * (1 - w.t) + this.hz(p, w.to[0], w.to[1]) * w.t;
       const dx = w.to[0] - w.from[0];
       const dy = w.to[1] - w.from[1];
@@ -1738,8 +1775,13 @@ export class ValleyRenderer {
       if (n.length !== 2) return n.length > 2;
       return n[0]![0] !== n[1]![0] && n[0]![1] !== n[1]![1];
     };
-    const linked = this.roadTiles.filter(([x, y]) => isPaved(x, y) && neighbors(x, y, false).length > 0);
-    const lanes = this.roadTiles.filter(([x, y]) => isLane(x, y) && neighbors(x, y, true).length > 0);
+    if (this.trafficCacheTiles !== p.tiles) {
+      this.trafficCacheTiles = p.tiles;
+      this.cachedLinkedRoads = this.roadTiles.filter(([x, y]) => isPaved(x, y) && neighbors(x, y, false).length > 0);
+      this.cachedLaneRoads = this.roadTiles.filter(([x, y]) => isLane(x, y) && neighbors(x, y, true).length > 0);
+    }
+    const linked = this.cachedLinkedRoads;
+    const lanes = this.cachedLaneRoads;
     // rush hours fill the streets, nights empty them (see dayRhythm.ts)
     const desired = Math.round(Math.min(14, Math.floor(linked.length / 3)) * trafficShare(clockHour(view.game.tick)));
     const desiredCarts = lanes.length ? Math.min(3, p.buildings.filter((b) => specOf(b).produces && isOperating(b)).length) : 0;
@@ -1932,7 +1974,7 @@ export class ValleyRenderer {
     }
     car.c.position.set(isoX(car.px, car.py), isoY(car.px, car.py) - lift);
     if (car.c.alpha < 1) car.c.alpha = Math.min(1, car.c.alpha + 0.06);
-    car.c.zIndex = x + y + 0.035;
+    car.c.zIndex = car.px + car.py + 0.035;
   }
 
   private outline(
@@ -1960,8 +2002,8 @@ export class ValleyRenderer {
 
   private drawRange(g: Graphics, p: Province, id: BuildingId, x: number, y: number): void {
     const def = BUILDINGS[id];
+    const [w, h] = this.rot % 2 === 1 ? [def.footprint[1], def.footprint[0]] : def.footprint;
     if (def.services?.patrolRadius) {
-      const [w, h] = def.footprint;
       const r = def.services.patrolRadius;
       for (let dy = -r; dy < h + r; dy++) {
         for (let dx = -r; dx < w + r; dx++) {
@@ -1973,7 +2015,7 @@ export class ValleyRenderer {
     }
     if (!def.harvests) return;
     const r = def.harvests.radius;
-    this.outline(g, x - r, y - r, def.footprint[0] + 2 * r, def.footprint[1] + 2 * r, COLORS.range, 2, 0.7);
+    this.outline(g, x - r, y - r, w + 2 * r, h + 2 * r, COLORS.range, 2, 0.7);
     for (const i of tilesInRange(p, def, x, y)) {
       if (p.tiles[i]!.deposit > 0) this.tileFill(g, i % p.width, Math.floor(i / p.width), COLORS.range, 0.32);
     }

@@ -1,3 +1,4 @@
+import { getSharedAudioContext } from './audio';
 /**
  * City soundscape synthesised with Web Audio (no audio files): traffic hum that follows the
  * number of cars, wind, rain, birdsong by day, crickets on warm nights and a siren while an
@@ -92,7 +93,7 @@ class Ambience {
   }
 
   private build(): void {
-    const ctx = (this.ctx = new AudioContext());
+    const ctx = (this.ctx = getSharedAudioContext());
     const master = (this.master = ctx.createGain());
     master.gain.value = 0;
     master.connect(ctx.destination);
@@ -157,8 +158,9 @@ class Ambience {
     g.gain.value = 0;
     for (let i = 0; i < 6; i++) {
       const at = t + i * 0.05;
-      g.gain.setValueAtTime(0.012 * loud, at);
-      g.gain.setValueAtTime(0, at + 0.025);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.linearRampToValueAtTime(0.012 * loud, at + 0.004);
+      g.gain.linearRampToValueAtTime(0.0001, at + 0.025);
     }
     osc.connect(g).connect(this.master!);
     osc.start(t);
@@ -172,10 +174,14 @@ class Ambience {
     try {
       if (!this.ctx) this.build();
       const ctx = this.ctx!;
-      if (ctx.state === 'suspended' && this.unlocked) void ctx.resume();
       const t = ctx.currentTime;
-      this.master!.gain.setTargetAtTime(silent ? 0 : (volume / 100) * 0.5, t, 0.6);
-      if (silent) return;
+      if (silent) {
+        this.master!.gain.setTargetAtTime(0, t, 0.15);
+        if (ctx.state === 'running' && (s.paused || muted || volume === 0)) void ctx.suspend();
+        return;
+      }
+      if (ctx.state === 'suspended' && this.unlocked) void ctx.resume();
+      this.master!.gain.setTargetAtTime((volume / 100) * 0.5, t, 0.2);
       const mix = ambienceMix(s);
       const L = this.layers!;
       L.hum.gain.gain.setTargetAtTime(mix.hum * 0.22, t, 1.2);

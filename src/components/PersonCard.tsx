@@ -33,7 +33,7 @@ export function PersonCard({ game }: { game: GameState }): ReactElement | null {
         <h3>
           <span aria-hidden="true">{soldier ? '🪖' : who.stage === 'child' ? '🧒' : who.stage === 'elder' ? '🧓' : who.woman ? '👩' : '👨'}</span> {who.name}
         </h3>
-        <button className="btn icon-btn" onClick={() => selectPerson(null)} aria-label={t('ui.close')}>✕</button>
+        <button className="btn icon-btn" onClick={() => selectPerson(null)} aria-label={t('ui.close')}><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg></button>
       </header>
       <p className="person-doing">{pick.activity}</p>
       <div className="rows">

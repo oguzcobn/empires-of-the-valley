@@ -158,9 +158,8 @@ export function ValleyCanvas(): ReactElement {
           )
             return;
           const placed = homeProvince(useApp.getState().game!).buildings.at(-1)!;
-          if (tool.buildingId !== 'hut') {
+          if (tool.buildingId !== 'hut' && !s.buildOpen) {
             s.setTool({ kind: 'select' });
-            s.toggleBuild(false);
             s.select(placed.id);
           }
         } else if (tool.kind === 'hunt') {
@@ -186,24 +185,35 @@ export function ValleyCanvas(): ReactElement {
         }
       },
     };
+    let destroyTimer = 0;
     const created: Promise<ValleyView> = ValleyRenderer.create(host, callbacks, opts);
     created
       .then((r) => {
-        if (disposed) r.destroy();
-        else {
+        if (disposed) {
+          r.destroy();
+        } else {
           renderer = r;
           current = r;
-          if (previous && previous !== r) window.setTimeout(() => previous.destroy(), 120);
+          if (previous && previous !== r) {
+            destroyTimer = window.setTimeout(() => {
+              previous.destroy();
+              destroyTimer = 0;
+            }, 120);
+          }
         }
       })
       .catch((e: unknown) => {
+        if (previous) previous.destroy();
         if (disposed) return;
         setError(e instanceof Error ? e.message : String(e));
       });
     return () => {
       disposed = true;
-      // a rotation rebuild destroys the old view once the new one is ready (see above)
-      if (renderer && useApp.getState().rotation === rotation) {
+      if (destroyTimer) {
+        window.clearTimeout(destroyTimer);
+        if (previous) previous.destroy();
+      }
+      if (renderer) {
         renderer.destroy();
         if (current === renderer) current = null;
       }
@@ -217,8 +227,8 @@ export function ValleyCanvas(): ReactElement {
   // City soundscape: unlock audio on the first gesture, then follow the city a few times a second.
   useEffect(() => {
     const unlock = () => ambience.unlock();
-    window.addEventListener('pointerdown', unlock, { passive: true });
-    window.addEventListener('keydown', unlock);
+    window.addEventListener('pointerdown', unlock, { passive: true, once: true });
+    window.addEventListener('keydown', unlock, { once: true });
     const timer = window.setInterval(() => {
       const game = useApp.getState().game;
       const stats = current?.getStats();
@@ -355,9 +365,9 @@ export function ValleyCanvas(): ReactElement {
         </div>
       )}
       <div className="camera-rotate" role="group" aria-label="Kamerayı döndür">
-        <button type="button" onClick={() => useApp.getState().rotateCamera(-1)} title="Kamerayı sola döndür (Q)" aria-label="Kamerayı sola döndür">⟲</button>
+        <button type="button" onClick={() => useApp.getState().rotateCamera(-1)} title="Kamerayı sola döndür (Q)" aria-label="Kamerayı sola döndür"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M5 5H2V2M2.5 5A6 6 0 1 1 3 11.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
         <span aria-live="polite">{ROTATION_LABEL[rotation]}</span>
-        <button type="button" onClick={() => useApp.getState().rotateCamera(1)} title="Kamerayı sağa döndür (E)" aria-label="Kamerayı sağa döndür">⟳</button>
+        <button type="button" onClick={() => useApp.getState().rotateCamera(1)} title="Kamerayı sağa döndür (E)" aria-label="Kamerayı sağa döndür"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M11 5h3V2m-.5 3A6 6 0 1 0 13 11.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
       </div>
       {error && (
         <div className="canvas-error" role="alert">

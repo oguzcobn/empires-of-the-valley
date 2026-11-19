@@ -188,7 +188,7 @@ export function drawServiceVehicle(
  * extension ladder, water cannon monitor, and dual emergency beacons.
  */
 export function drawFireTruck(g: Graphics, dx: number, dy: number): void {
-  const ang = Math.atan2(dy || 0, dx || 1);
+  const ang = dx === 0 && dy === 0 ? 0 : Math.atan2(dy, dx);
   const c = Math.cos(ang);
   const s = Math.sin(ang);
   const rot = (u: number, v: number, z = 0): Pt => P(u * c - v * s, u * s + v * c, z);

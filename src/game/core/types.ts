@@ -135,7 +135,19 @@ export interface BuildingLook {
   courtyard: CourtyardType;
   decor: DecorType;
 }
-export type TechId = 'basic_agriculture' | 'forestry' | 'masonry' | 'storage' | 'literacy' | 'architecture';
+export type TechId =
+  | 'basic_agriculture'
+  | 'forestry'
+  | 'masonry'
+  | 'storage'
+  | 'literacy'
+  | 'architecture'
+  | 'guild_charters'
+  | 'urban_sanitation'
+  | 'steam_logistics'
+  | 'hydro_engineering'
+  | 'modern_grid'
+  | 'smart_metropolis';
 export type QuestId = 'q01' | 'q02' | 'q03' | 'q04' | 'q05' | 'q06' | 'q07' | 'q08' | 'q09' | 'q10' | 'q11' | 'q12' | 'q13' | 'q14' | 'q15' | 'q16';
 export type ProvinceId = string;
 export type DiplomacyPact = 'trade' | 'non_aggression' | 'alliance';
@@ -518,6 +530,7 @@ export interface GameState {
   companies?: CompanyRecord[];
   /** Active one-time civic decrees. */
   edicts?: CityEdictId[];
+  edictChangedAt?: Partial<Record<CityEdictId, number>>;
   completedContracts?: string[];
   resolvedDilemmas?: Record<string, 'a' | 'b'>;
 }

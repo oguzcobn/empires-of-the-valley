@@ -11,18 +11,7 @@ import { FOREST_REGROW_PER_DAY, FOREST_TILE_MAX, WINTER_WARNING_DAYS } from '../
 import { DIFFICULTY_RULES, difficultyOf } from '../data/difficulty';
 import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
-import {
-  dailyFoodNeed,
-  dailyOutput,
-  dailyTaxIncome,
-  dailyToolWear,
-  dailyTownIncome,
-  emptyResourceMap,
-  homeProvince,
-  isBuilt,
-  storageCaps,
-  techScalar,
-} from './economy';
+import { dailyFoodNeed, dailyOutput, dailyTaxIncome, dailyToolWear, dailyTownIncome, emptyResourceMap, homeProvince, isBuilt, storageCaps, techScalar, isOperating, totalPopulation } from './economy';
 import { logEvent } from './events';
 import { refreshConnectivity, tilesInRange } from './grid';
 import { populationDayEnd } from './population';
@@ -154,12 +143,24 @@ function harvest(p: Province, b: BuildingInstance, amount: number): number {
 function economyStep(s: GameState, p: Province, hour: number): void {
   const caps = storageCaps(s, p);
 
-  // 1. income
-  gain(p, 'gold', portion(dailyTownIncome(p) + dailyTaxIncome(p) + 1000 * Object.values(s.treaties ?? {}).filter((v) => v === 'trade').length, hour), caps.gold);
+  // 1. income (with free_zone_tax -20% tax policy and corporate tax from founded companies)
+  const edicts = s.edicts ?? [];
+  const rawTax = dailyTaxIncome(p);
+  const taxGold = edicts.includes('free_zone_tax') ? Math.floor((rawTax * 800) / 1000) : rawTax;
+  const companyTax = (s.companies?.length ?? 0) * 500;
+  gain(p, 'gold', portion(dailyTownIncome(p) + taxGold + companyTax + 1000 * Object.values(s.treaties ?? {}).filter((v) => v === 'trade').length, hour), caps.gold);
+  // Winter heating: modest wood demand offset by clean energy buildings
+  if (calendar(s.tick).season === 'winter') {
+    const cleanEnergy = p.buildings.filter((b) => (b.definitionId === 'wind_turbine' || b.definitionId === 'solar_farm') && isOperating(b)).length;
+    const heatingPerDay = Math.max(0, totalPopulation(p) * 80 - cleanEnergy * 1200);
+    if (heatingPerDay > 0) spend(p, 'wood', portion(heatingPerDay, hour));
+  }
 
-  // 2. upkeep, in stable building order. Unpaid buildings stand idle this tick.
-  for (const b of p.buildings) {
-    if (!isBuilt(b)) continue;
+  // 2. upkeep: pay resource producers first so civic buildings cannot paralyze the economy.
+  const builtOrdered = p.buildings
+    .filter((b) => isBuilt(b))
+    .sort((a, b) => Number(Boolean(specOf(b).produces)) - Number(Boolean(specOf(a).produces)));
+  for (const b of builtOrdered) {
     const due = portion(specOf(b).upkeepGold, hour);
     if (p.stocks.gold >= due) {
       spend(p, 'gold', due);
@@ -175,12 +176,16 @@ function economyStep(s: GameState, p: Province, hour: number): void {
     if (!produces) continue;
     const def = defOf(b);
     let amount = portion(dailyOutput(s, p, b), hour);
-    spend(p, 'tools', portion(dailyToolWear(b), hour));
     if (amount <= 0) continue;
     amount = Math.min(amount, Math.max(0, caps[produces.resourceId] - p.stocks[produces.resourceId]));
+    if (amount <= 0) continue;
     if (def.harvests) amount = harvest(p, b, amount);
     const added = gain(p, produces.resourceId, amount, caps[produces.resourceId]);
-    if (added > 0) questOnProduced(s, produces.resourceId, added);
+    if (added > 0) {
+      if (def.id === 'factory' && p.stocks.wood > 0) spend(p, 'wood', Math.min(p.stocks.wood, Math.floor(added * 0.4)));
+      spend(p, 'tools', portion(dailyToolWear(b), hour));
+      questOnProduced(s, produces.resourceId, added);
+    }
   }
 
   // 4. research points flow into the active project

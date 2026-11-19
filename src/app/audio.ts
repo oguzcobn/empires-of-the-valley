@@ -53,6 +53,11 @@ const NOTES: Record<Sfx, [number, number, OscillatorType][]> = {
   ],
 };
 
+export function getSharedAudioContext(): AudioContext {
+  ctx ??= new AudioContext();
+  return ctx;
+}
+
 export function playSfx(name: Sfx): void {
   if (muted || volume === 0) return;
   try {

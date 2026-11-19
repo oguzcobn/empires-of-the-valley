@@ -180,7 +180,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
           if (j.kind === 'fire') {
             const targetBld = p.buildings.find((b) => b.id === j.target);
             if (targetBld) {
-              targetBld.condition = Math.min(10000, targetBld.condition + 1500);
+              targetBld.condition = Math.min(10000, targetBld.condition + 600);
               logEvent(
                 s,
                 'success',
@@ -191,7 +191,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
             }
           } else {
             const amount =
-              j.kind === 'shopping' ? 100 : j.kind === 'dining' ? 180 : j.kind === 'hotel' ? 250 : 0;
+              j.kind === 'shopping' ? 100 : j.kind === 'dining' ? 180 : j.kind === 'nightlife' ? 220 : j.kind === 'hotel' ? 250 : 0;
             if (amount && p.stocks.food >= 100) {
               p.stocks.food -= 100;
               p.today.consumed.food += 100;
@@ -248,7 +248,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
         s.tick % 18 === 0 &&
         !life.flights.some((f) => f.airport === b.id) &&
         life.flights.length < 4 &&
-        beds(p) > 0 &&
+        beds(p) >= 4 &&
         p.stocks.gold >= 1000
       ) {
         p.stocks.gold -= 1000;
@@ -259,6 +259,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
       continue;
     }
     if (life.jobs.length >= 24 || s.tick % 4 !== 0) continue;
+    if (b.definitionId === 'fire_station' && s.tick % 24 !== 0) continue;
     if (b.definitionId === 'club' && clockHour(s.tick) < 18 && clockHour(s.tick) > 4) continue;
     const service = ['hospital', 'police_station', 'fire_station', 'factory'].includes(b.definitionId);
     const candidates = p.buildings.filter(

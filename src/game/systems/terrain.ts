@@ -220,7 +220,6 @@ export function surroundValley(seed: number, core: readonly Tile[]): Tile[] {
  * interior and hand-made landmark sites remain untouched. Existing saves are never regenerated.
  */
 export function applyCityGeography(tiles: Tile[], style: ArchitectureStyle): Tile[] {
-  if (style !== 'turkish' && style !== 'scottish') return tiles;
   const out = tiles.map((t) => ({ ...t }));
   const set = (x: number, y: number, terrain: TerrainId, height = 0): void => {
     if (x < 0 || y < 0 || x >= MAP_SIZE || y >= MAP_SIZE) return;
@@ -228,32 +227,48 @@ export function applyCityGeography(tiles: Tile[], style: ArchitectureStyle): Til
     out[y * MAP_SIZE + x] = tile(terrain, original.variant, height);
   };
 
-  // Black Sea in the north of Trabzon; Firth of Forth in the north of Edinburgh.
-  // Preserve the 3x3 hill at x=17..21 needed by the original landmark catalogue.
-  const seaDepth = style === 'turkish' ? 3 : 2;
-  for (let x = 5; x < MAP_SIZE; x++) {
-    if (x >= 17 && x <= 21) continue;
-    for (let y = 0; y < seaDepth; y++) set(x, y, 'lake');
-    set(x, seaDepth, 'sand');
+  if (style === 'turkish' || style === 'scottish') {
+    const seaDepth = style === 'turkish' ? 3 : 2;
+    for (let x = 5; x < MAP_SIZE; x++) {
+      if (x >= 17 && x <= 21) continue;
+      for (let y = 0; y < seaDepth; y++) set(x, y, 'lake');
+      set(x, seaDepth, 'sand');
+    }
   }
 
   if (style === 'turkish') {
-    // The steep southern and eastern Black Sea mountain flanks (Zigana & Boztepe slopes).
     for (let y = 25; y < MAP_SIZE; y++)
       for (let x = 28; x < MAP_SIZE; x++) {
         const edge = Math.min(4, 1 + (x - 28) + Math.floor((y - 25) / 2));
         set(x, y, edge >= 3 ? 'mountain' : 'hill', edge);
       }
-    // Forested uplands on the western flank, clear of the Sümela ledge.
     for (let y = 24; y < 29; y++)
       for (let x = 0; x < 3; x++) set(x, y, 'forest', 1);
-  } else {
-    // Edinburgh's Arthur's Seat inspired crag, on the outer east edge.
+  } else if (style === 'scottish') {
     for (let y = 16; y <= 23; y++)
       for (let x = 28; x < MAP_SIZE; x++) {
         const crest = x >= 30 && y >= 18 && y <= 21;
         set(x, y, crest ? 'mountain' : 'hill', crest ? 3 : 1);
       }
+  } else if (style === 'japanese') {
+    // Kyoto: Higashiyama eastern forested ridge & Arashiyama western bamboo/forest hills.
+    for (let y = 4; y < MAP_SIZE - 4; y++) {
+      for (let x = 29; x < MAP_SIZE; x++) {
+        const h = x >= 31 ? 2 : 1;
+        set(x, y, x >= 31 ? 'hill' : 'forest', h);
+      }
+    }
+    for (let y = 6; y < 22; y++) {
+      for (let x = 0; x < 3; x++) set(x, y, 'forest', x === 0 ? 2 : 1);
+    }
+  } else if (style === 'medieval_european') {
+    // Prague: Petrin & Hradcany stone heights on the northern/western rim.
+    for (let x = 3; x < 16; x++) {
+      for (let y = 0; y < 3; y++) set(x, y, y === 0 ? 'mountain' : 'hill', y === 0 ? 3 : 1);
+    }
+    for (let y = 26; y < MAP_SIZE; y++) {
+      for (let x = 27; x < MAP_SIZE; x++) set(x, y, 'forest', 1);
+    }
   }
   return out;
 }

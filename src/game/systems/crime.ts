@@ -64,6 +64,6 @@ export function crimeDayEnd(s: GameState, p: Province, day: number): void {
     logEvent(s, 'warning', 'event.crimeTheft', { ...where, gold: loss / 1000 }, at);
   } else {
     home.condition = Math.max(0, home.condition - 450);
-    logEvent(s, 'warning', 'event.crimeVandalism', { ...where, building: '@building.hut.name' }, at);
+    logEvent(s, 'warning', 'event.crimeVandalism', { ...where, building: `@building.${home.definitionId}.name` }, at);
   }
 }

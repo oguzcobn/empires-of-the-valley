@@ -132,7 +132,7 @@ export function queuePositions(
   /** Other street vehicles (ambient traffic) the journeys queue behind but never move. */
   fixed: readonly { x: number; y: number; hx: number; hy: number }[] = [],
 ): Map<number, MapPoint> {
-  const side = s.culture === 'scottish' ? -1 : 1;
+  const side = s.cityId === 'edinburgh' || (!s.cityId && s.culture === 'scottish') ? -1 : 1;
   const cars: { id: number; at: MapPoint; hx: number; hy: number; back: MapPoint }[] = [];
   for (const j of s.cityLife?.jobs ?? []) {
     if (j.stage !== 'outbound' && j.stage !== 'return') continue;
@@ -261,7 +261,7 @@ export class CityScenes {
         tileAt(p, Math.floor(end.x), Math.floor(end.y))?.road
       ) {
         const len = Math.hypot(dx, dy) || 1,
-          side = s.culture === 'scottish' ? -1 : 1;
+          side = s.cityId === 'edinburgh' || (!s.cityId && s.culture === 'scottish') ? -1 : 1;
         at = { x: at.x - (dy / len) * 0.13 * side, y: at.y + (dx / len) * 0.13 * side };
       }
       at = queued.get(j.id) ?? at;

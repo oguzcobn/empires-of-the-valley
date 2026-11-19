@@ -171,6 +171,7 @@ export const gameStateSchema = z
     citizenNames: z.record(z.string().regex(/^\d{1,3}$/), z.string().min(2).max(40)).optional(),
     companies: z.array(z.object({ id: shortText, name: z.string().min(2).max(48), sector: z.string().max(80), founderIndex: nat.max(499), buildingId: shortText.optional(), level: int.min(1).max(5), employees: nat.max(1000) }).strict()).max(48).optional(),
     edicts: z.array(z.enum(CITY_EDICT_IDS)).max(CITY_EDICT_IDS.length).optional(),
+    edictChangedAt: z.record(z.enum(CITY_EDICT_IDS), nat).optional(),
     completedContracts: z.array(shortText).max(32).optional(),
     resolvedDilemmas: z.record(z.enum(['a', 'b'])).optional(),
     settings: z.object({ autoPauseOnMilestone: z.boolean() }).strict(),
