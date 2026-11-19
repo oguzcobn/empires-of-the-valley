@@ -1,5 +1,6 @@
 import { CityWork } from './CityNews';
 import { getSfxVolume, setSfxVolume } from '../app/audio';
+import { getAmbienceVolume, setAmbienceVolume } from '../app/ambience';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { SLOT_IDS, useApp } from '../app/store';
@@ -761,6 +762,7 @@ function BackupList(): ReactElement | null {
 
 export function SettingsPanel({ game }: { game: GameState | null }): ReactElement {
   const [sfxVolume, updateSfxVolume] = useState(getSfxVolume);
+  const [ambVolume, updateAmbVolume] = useState(getAmbienceVolume);
   const [cheatCode, setCheatCode] = useState('');
   const settings = useApp((s) => s.settings);
   const { updateSettings, dispatch } = useApp.getState();
@@ -829,6 +831,25 @@ export function SettingsPanel({ game }: { game: GameState | null }): ReactElemen
           }}
         />
       </label>
+      <label className="field">
+        <span>Şehir sesleri: %{ambVolume}</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={ambVolume}
+          aria-label="Şehir sesleri"
+          data-testid="ambience-volume"
+          disabled={settings.muted}
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            setAmbienceVolume(next);
+            updateAmbVolume(next);
+          }}
+        />
+      </label>
+      <p className="hint">Trafik uğultusu, rüzgâr, yağmur, gündüz kuş cıvıltısı, sıcak gecelerde cırcır böcekleri ve acil durum sirenleri. Sıfıra çekince tamamen susar.</p>
       <label className="check-field">
         <input
           type="checkbox"

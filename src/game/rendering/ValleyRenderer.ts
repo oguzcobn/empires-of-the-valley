@@ -97,6 +97,8 @@ export interface RendererStats {
   props: number;
   walkers: number;
   particles: number;
+  /** Moving street vehicles (ambient traffic), for the soundscape. */
+  traffic?: number;
 }
 
 interface BuildingView {
@@ -301,6 +303,7 @@ export class ValleyRenderer {
       props: this.propViews.size,
       walkers: this.walkers.length + this.workScenes.count + this.birds.length,
       particles: this.particles.length,
+      traffic: this.trafficCars.length,
     };
   }
 
