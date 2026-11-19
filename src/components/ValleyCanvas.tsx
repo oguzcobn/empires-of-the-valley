@@ -10,6 +10,8 @@ import { planRoadRoute, validatePlacement } from '../game/systems/commands';
 import { buildingById, tileAt } from '../game/systems/grid';
 import { fmtAmount, t } from '../i18n';
 import { artDetail, effectiveQuality, lowerQuality, setAutoCap } from '../app/settings';
+import { ambience } from '../app/ambience';
+import { calendar } from '../game/core/time';
 
 /** The live renderer, for camera buttons and keyboard shortcuts. Null while not mounted. */
 let current: ValleyView | null = null;
@@ -212,6 +214,33 @@ export function ValleyCanvas(): ReactElement {
   useEffect(() => {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);
   }, [focus]);
+
+  // City soundscape: unlock audio on the first gesture, then follow the city a few times a second.
+  useEffect(() => {
+    const unlock = () => ambience.unlock();
+    window.addEventListener('pointerdown', unlock, { passive: true });
+    window.addEventListener('keydown', unlock);
+    const timer = window.setInterval(() => {
+      const game = useApp.getState().game;
+      const stats = current?.getStats();
+      if (!game || !stats) return;
+      const jobs = game.cityLife?.jobs ?? [];
+      ambience.update({
+        night: stats.night,
+        season: calendar(game.tick).season,
+        weather: stats.weather,
+        traffic: (stats.traffic ?? 0) + jobs.filter((j) => j.stage === 'outbound' || j.stage === 'return').length,
+        siren: jobs.some((j) => (j.kind === 'ambulance' || j.kind === 'patrol' || j.kind === 'fire') && j.stage === 'outbound'),
+        paused: game.speed === 0 || document.hidden,
+      });
+    }, 400);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.clearInterval(timer);
+      ambience.update({ night: 0, season: 'summer', weather: 'clear', traffic: 0, siren: false, paused: true });
+    };
+  }, []);
 
   const placementError = placement && game && tool.kind === 'build'
     ? validatePlacement(game, tool.buildingId, placement.x, placement.y, tool.style, tool.look ?? null)
