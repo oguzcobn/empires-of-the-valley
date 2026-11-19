@@ -975,6 +975,56 @@ export function drawStyledBuilding(
   return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
 }
 
+/** Yellow tower crane at the back corner of a large site; the jib swings with the build. */
+function towerCrane(ctx: DrawCtx, w: number, h: number, progress: number, seed: number): void {
+  const YELLOW = 0xf2b705;
+  const mu = w - 0.28, mv = 0.28;
+  const mastTop = 62 + Math.min(w, h) * 6;
+  const base = P(mu, mv, 0);
+  const top = P(mu, mv, mastTop);
+  box(ctx, mu - 0.12, mv - 0.12, mu + 0.12, mv + 0.12, 0, 3, 0x7a7f84);
+  for (const dx of [-2.2, 2.2]) line(ctx, [base[0] + dx, base[1]], [top[0] + dx, top[1]], YELLOW, 1.2);
+  for (let z = 4; z < mastTop - 2; z += 6) {
+    const a = P(mu, mv, z), b = P(mu, mv, z + 6);
+    line(ctx, [a[0] - 2.2, a[1]], [b[0] + 2.2, b[1]], YELLOW, 0.6);
+  }
+  // jib towards the site, counter-jib with concrete weights; angle set by progress and seed
+  const angle = ((seed % 7) / 7) * Math.PI * 0.6 + progress * Math.PI * 0.5 + Math.PI * 0.55;
+  const reach = Math.max(w, h) * 0.95;
+  const tip = P(mu + Math.cos(angle) * reach, mv + Math.sin(angle) * reach, mastTop + 2);
+  const tail = P(mu - Math.cos(angle) * 0.45, mv - Math.sin(angle) * 0.45, mastTop + 2);
+  line(ctx, tail, tip, YELLOW, 1.8);
+  line(ctx, [top[0], top[1] - 9], tip, 0x59636a, 0.6);
+  line(ctx, [top[0], top[1] - 9], tail, 0x59636a, 0.6);
+  line(ctx, top, [top[0], top[1] - 9], YELLOW, 1.4);
+  ctx.g.rect(tail[0] - 3, tail[1] - 1, 6, 4).fill(0x8d8d8d);
+  ctx.g.rect(top[0] - 2.5, top[1] - 4, 5, 4).fill(0x37474f);
+  // hook with a hanging load halfway along the jib
+  const hx = (top[0] + tip[0]) / 2 + (tip[0] - top[0]) * 0.2, hy = (top[1] + tip[1]) / 2 + (tip[1] - top[1]) * 0.2;
+  line(ctx, [hx, hy], [hx, hy + 26], 0x333333, 0.5);
+  ctx.g.rect(hx - 4, hy + 26, 8, 3).fill(0xc99a5b);
+  // red aircraft warning light on the top
+  const warn: Pt[] = [[top[0] - 1, top[1] - 10.5], [top[0] + 1, top[1] - 10.5], [top[0] + 1, top[1] - 8.5], [top[0] - 1, top[1] - 8.5]];
+  ctx.g.poly(warn.flat()).fill(0xff3b3b);
+  ctx.lights.push(warn);
+  if (top[1] - 12 < ctx.topY) ctx.topY = top[1] - 12;
+}
+
+/** A few hard-hat workers: on the slab, carrying planks and by the materials. */
+function siteWorkers(ctx: DrawCtx, w: number, h: number, top: number, seed: number): void {
+  const spots: [number, number, number][] = [[w * 0.55, h * 0.55, top], [0.3, h - 0.25, 0], [w - 0.35, h - 0.3, 0]];
+  spots.forEach(([u, v, z], i) => {
+    const [x, y] = P(u, v, z);
+    const vest = (seed + i) % 2 ? 0xff6f00 : 0xc6ff00;
+    ctx.g.rect(x - 1.3, y - 4, 1.1, 4).fill(0x37474f);
+    ctx.g.rect(x + 0.2, y - 4, 1.1, 4).fill(0x37474f);
+    ctx.g.roundRect(x - 2, y - 10, 4, 6, 1.2).fill(vest);
+    ctx.g.circle(x, y - 11.5, 1.8).fill(0xe0ac69);
+    ctx.g.ellipse(x, y - 12.6, 2.3, 1.2).fill(i === 1 ? 0xffffff : 0xf2b705);
+    if (i === 1) ctx.g.rect(x - 6, y - 9, 12, 1.2).fill(COLORS.plank);
+  });
+}
+
 /** Construction site in the building's culture: foundations, rising walls, scaffolding, materials. */
 export function drawStyledConstruction(
   g: Graphics,
@@ -1007,5 +1057,7 @@ export function drawStyledConstruction(
   // material piles: stone blocks and timber
   box(ctx, w - 0.42, h - 0.18, w - 0.2, h - 0.04, 0, 4, style === 'scottish' ? STONE.granite : STONE.sandstone);
   box(ctx, 0.08, h - 0.16, 0.4, h - 0.06, 0, 3, COLORS.plank);
-  return { lights: [], smoke: [], flags: [], height: Math.max(36, -ctx.topY) };
+  if (w * h >= 4) towerCrane(ctx, w, h, progress, seed);
+  siteWorkers(ctx, w, h, top, seed);
+  return { lights: ctx.lights, smoke: [], flags: [], height: Math.max(36, -ctx.topY) };
 }
