@@ -1,6 +1,6 @@
 import { mulPermille } from '../core/fixed';
 import { DIFFICULTY_RULES, difficultyOf } from '../data/difficulty';
-import { isMatchDay } from '../data/matchDays';
+import { matchDayFor } from '../data/matchDays';
 import { calendar } from '../core/time';
 import type {
   BuildingId,
@@ -111,7 +111,7 @@ export function dailyOutput(s: GameState, p: Province, b: BuildingInstance): num
   const companyBonus = Math.min(200, (s.companies?.length ?? 0) * 20);
   if (companyBonus > 0 && spec.produces.resourceId === 'gold')
     rate = mulPermille(rate, 1000 + companyBonus);
-  if (isMatchDay(s.tick) && spec.produces.resourceId === 'gold' && p.buildings.some((x) => x.definitionId === 'trabzon_stadium' && isOperating(x)))
+  if (Boolean(matchDayFor(s)) && spec.produces.resourceId === 'gold' && p.buildings.some((x) => x.definitionId === 'trabzon_stadium' && isOperating(x)))
     rate = mulPermille(rate, 1400);
   if (def.id === 'factory' && p.stocks.wood <= 0)
     rate = mulPermille(rate, 600);

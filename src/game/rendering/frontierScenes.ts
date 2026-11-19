@@ -278,7 +278,15 @@ export class FrontierScenes {
   }
 
   destroy(): void {
-    this.layer.destroy({ children: true });
-    this.lastProvince = null;
+    for (const g of this.animals) g.destroy();
+    for (const g of this.hunters) g.destroy();
+    this.animals.length = 0;
+    this.hunters.length = 0;
+    this.lines.destroy();
+    this.train.destroy();
+    this.plane.destroy();
+    this.lastProvince = undefined;
+    this.railRoute = undefined;
+    this.airRoute = undefined;
   }
 }
