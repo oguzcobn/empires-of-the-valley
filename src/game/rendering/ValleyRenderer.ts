@@ -35,6 +35,7 @@ import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
 import { trafficShare, walkerShare, windowLight } from './dayRhythm';
 import { TrafficLights } from './trafficLights';
 import { StreetFurniture } from './streetFurniture';
+import { Fireworks } from './fireworks';
 import type { PedLook } from './pedestrians';
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
@@ -189,6 +190,7 @@ export class ValleyRenderer {
   private frontier = new FrontierScenes(this.transportGround, this.objects);
   private signals = new TrafficLights(this.objects);
   private furniture = new StreetFurniture(this.objects);
+  private fireworks = new Fireworks(this.objects);
   private ghost = new Graphics();
   private fx = new Container();
   private drops: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
@@ -276,6 +278,7 @@ export class ValleyRenderer {
       this.workScenes.destroy();
       this.signals.destroy();
       this.furniture.destroy();
+      this.fireworks.destroy();
       for (const a of this.atlas.values()) a.tex.destroy(true);
       this.atlas.clear();
       // Never pass `true` as the first argument: it releases Pixi's global resources and breaks the
@@ -563,6 +566,7 @@ export class ValleyRenderer {
     this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt');
     this.updateWalkers(view, p, dt, motion);
     this.signals.update(this.time, this.night);
+    this.updateFireworks(view, p, motion ? dt : 0);
     this.updateTraffic(view, p, dt, motion);
     this.cityScenes.update(view.game, p, dt, !motion);
     this.updateMilitia(view, p, dt);
@@ -1422,6 +1426,24 @@ export class ValleyRenderer {
    * stay on their legal road tiles and use opposite lanes for UK vs Türkiye.
    * It deliberately does not drive on stairs, bridges or mountain trails.
    */
+  /**
+   * Fireworks after dark on match days (over the stadium) and while a city festival is on
+   * (over the aquapark or the town centre).
+   */
+  private updateFireworks(view: RendererView, p: Province, dt: number): void {
+    const hour = clockHour(view.game.tick);
+    const evening = this.night > 0.5 && (hour >= 20 || hour < 1);
+    const match = !!matchDayFor(view.game);
+    const festival = !!view.game.edicts?.includes('festival_aquapark');
+    const venue = (match && p.buildings.find((b) => b.definitionId === 'trabzon_stadium' && isBuilt(b))) ||
+      (festival && p.buildings.find((b) => b.definitionId === 'aquapark' && isBuilt(b))) ||
+      p.buildings.find((b) => b.definitionId === 'town_center');
+    if (!venue) return;
+    const [w, h] = defOf(venue).footprint;
+    const cx = venue.x + w / 2, cy = venue.y + h / 2;
+    this.fireworks.update(evening && (match || festival) && dt > 0, isoX(cx, cy), isoY(cx, cy) - this.hz(p, venue.x, venue.y) - 40, dt);
+  }
+
   private updateTraffic(view: RendererView, p: Province, dt: number, motion: boolean): void {
     const isPaved = (x: number, y: number): boolean => {
       const t = tileAt(p, x, y);
