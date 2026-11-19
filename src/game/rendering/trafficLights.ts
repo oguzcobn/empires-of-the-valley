@@ -119,6 +119,6 @@ export class TrafficLights {
   mayEnter(p: Province, x: number, y: number, dx: number, _dy: number, time: number): boolean {
     const j = this.junctions.get(y * p.width + x);
     if (!j) return true;
-    return signalAt(time, dx !== 0, j.offset) !== 'red';
+    return signalAt(time, dx !== 0, j.offset) === 'green';
   }
 }

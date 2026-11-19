@@ -6,6 +6,7 @@ import { isoX, isoY, P } from './iso';
 import { getPavedLinks, junctionKind } from './roadGeometry';
 import { drawPedestrian, randomPedLook } from './pedestrians';
 import { PERSON_SCALE } from './scale';
+import { markPerson } from './people';
 
 /**
  * Kerbside life along straight asphalt streets: street trees in planters and bus shelters with
@@ -204,6 +205,7 @@ export class StreetFurniture {
           const [x, y] = P(0.5 + Math.abs(spot.ny) * a + spot.nx * 0.33, 0.5 + Math.abs(spot.nx) * a + spot.ny * 0.33);
           person.position.set(x + ox, y + oy);
           person.scale.set(PERSON_SCALE);
+          markPerson(person, { kind: 'citizen', index: spot.x * 131 + spot.y * 17 + i }, 'Durakta otobüs bekliyor', 22);
           holder.addChild(person);
           this.bodies.push(person);
         }

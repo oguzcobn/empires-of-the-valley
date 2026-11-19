@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import { personPoints } from './game/rendering/people';
 import { App } from './app/App';
 import { useApp } from './app/store';
 import { getRenderer } from './components/ValleyCanvas';
@@ -35,6 +36,10 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
     },
     tilePoint(x: number, y: number): unknown {
       return getRenderer()?.tileToClient(x, y) ?? null;
+    },
+    /** Canvas positions of the people on screen (automated tests tap them). */
+    people(): unknown {
+      return personPoints();
     },
   };
 }

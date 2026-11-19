@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { PersonCard } from './PersonCard';
 import type { MouseEvent as ReactMouseEvent, ReactElement } from 'react';
 import { useApp } from '../app/store';
 import { calendar, clockHour } from '../game/core/time';
@@ -156,6 +157,8 @@ function useShortcuts(): void {
       else if (key === '+' || key === '=') getRenderer()?.zoomBy(1.2);
       else if (key === '-' || key === '_') getRenderer()?.zoomBy(1 / 1.2);
       else if (key === 'home') getRenderer()?.resetCamera();
+      else if (key === 'q') s.rotateCamera(-1);
+      else if (key === 'e') s.rotateCamera(1);
       else if (key === 'arrowleft' || key === 'a') getRenderer()?.panBy(pan, 0);
       else if (key === 'arrowright' || key === 'd') getRenderer()?.panBy(-pan, 0);
       else if (key === 'arrowup' || key === 'w') getRenderer()?.panBy(0, pan);
@@ -184,6 +187,7 @@ export function GameScreen({ game }: { game: GameState }): ReactElement {
         </>}
       </div>
       <div className="right-column">
+        <PersonCard game={game} />
         <Inspector game={game} />
         <AlertsList game={game} />
         <RadarMinimap game={game} />

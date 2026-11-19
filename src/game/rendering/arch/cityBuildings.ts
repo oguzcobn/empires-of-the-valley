@@ -1,6 +1,6 @@
 import type { ArchitectureStyle, BuildingId } from '../../core/types';
 import { P, shade } from '../iso';
-import { box, line, poly, quad, faceL, drawFlagPole } from './kit';
+import { box, line, poly, quad, faceL, drawFlagPole, isMirroredText } from './kit';
 import type { DrawCtx } from './kit';
 
 // Tiny original vector lettering stays legible in cached sprites, without per-frame DOM text.
@@ -46,8 +46,11 @@ function sign(
   for (const glyph of glyphs) {
     glyph.forEach((row, j) =>
       [...row].forEach((bit, i) => {
-        if (bit === '1')
-          quad(ctx, f, x + i * step, x + (i + 0.8) * step, z + 6 - j * 1.25, z + 7 - j * 1.25, 0xffffff);
+        if (bit !== '1') return;
+        const a = x + i * step, b = x + (i + 0.8) * step;
+        // mirrored sprites: write back to front so the sign reads left to right on screen
+        if (isMirroredText()) quad(ctx, f, 2 * u + width - b, 2 * u + width - a, z + 6 - j * 1.25, z + 7 - j * 1.25, 0xffffff);
+        else quad(ctx, f, a, b, z + 6 - j * 1.25, z + 7 - j * 1.25, 0xffffff);
       }),
     );
     x += (glyph[0]!.length + 1) * step;

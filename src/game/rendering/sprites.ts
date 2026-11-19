@@ -4,7 +4,7 @@ import type { PavedLinks } from './roadGeometry';
 import type { RoadType, TerrainId } from '../core/types';
 import { COLORS } from './palette';
 import type { SeasonPalette } from './palette';
-import { shade } from './iso';
+import { P, shade } from './iso';
 import { drawCityCar } from './trafficSprites';
 import type { Pt } from './iso';
 
@@ -478,14 +478,28 @@ export function drawVillager(g: Graphics, color: number, variant = 0): void {
   g.moveTo(-0.6, -11.2).lineTo(0.6, -11.2).stroke({ color: 0x864f44, width: 0.45 });
 }
 
-export function drawCart(g: Graphics, load: number): void {
-  // Rural roads share the detailed 2.5D pickup body used on paved streets.
-  // The previous sprite was just two rectangles and wheels, not a recognizable car.
-  drawCityCar(g, load, false, 1, 0, 4);
-  // Farm/utility cargo in the rear bed.
-  g.poly([-9, -4, -6.6, -6.4, -3, -4.8, -5.5, -2.3]).fill(0x77523a);
-  g.poly([-8.7, -4.3, -6.7, -6, -3.2, -4.6, -5.6, -2.5]).fill(0x9d7550);
-  g.moveTo(-7.7, -4).lineTo(-6.1, -2.9).stroke({ color: 0xe8c99b, width: 0.65 });
+/**
+ * Farm pickup with produce in the bed, drawn in its direction of travel like every street
+ * vehicle (the cargo sits in the vehicle frame, so it turns with the truck).
+ */
+export function drawCart(g: Graphics, load: number, dx = 1, dy = 0): void {
+  drawCityCar(g, 0x8b6a4a, false, dx, dy, 4);
+  const ux = dx || (dy ? 0 : 1), uy = dy;
+  const at = (u: number, v: number, z: number): number[] => P(u * ux - v * uy, u * uy + v * ux, z);
+  const u0 = -0.36, u1 = -0.06, w = 0.09, z0 = 7.8, z1 = 12.4;
+  const box = (a: number[][], color: number): void => { g.poly(a.flat()).fill(color); };
+  // far faces first so the crate reads as a solid block from every heading
+  const near = at(0, 1, 0)[1]! > at(0, -1, 0)[1]! ? 1 : -1;
+  const frontNear = at(1, 0, 0)[1]! > at(-1, 0, 0)[1]!;
+  box([at(u0, -near * w, z0), at(u1, -near * w, z0), at(u1, -near * w, z1), at(u0, -near * w, z1)], shade(load, 0.7));
+  const endFar = frontNear ? u0 : u1, endNear = frontNear ? u1 : u0;
+  box([at(endFar, -w, z0), at(endFar, w, z0), at(endFar, w, z1), at(endFar, -w, z1)], shade(load, 0.78));
+  box([at(u0, near * w, z0), at(u1, near * w, z0), at(u1, near * w, z1), at(u0, near * w, z1)], shade(load, 0.9));
+  box([at(endNear, -w, z0), at(endNear, w, z0), at(endNear, w, z1), at(endNear, -w, z1)], shade(load, 0.96));
+  box([at(u0, -w, z1), at(u1, -w, z1), at(u1, w, z1), at(u0, w, z1)], shade(load, 1.12));
+  // crate slats / bale twine
+  const a = at((u0 + u1) / 2, -w, z1), b = at((u0 + u1) / 2, w, z1);
+  g.moveTo(a[0]!, a[1]!).lineTo(b[0]!, b[1]!).stroke({ color: shade(load, 0.6), width: 0.6 });
 }
 
 /** Small vessels for the lake and river: fishing boat, cargo ship or yacht, with water wake. */

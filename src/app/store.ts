@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { nextRotation } from '../game/rendering/rotation';
+import type { Rotation } from '../game/rendering/rotation';
+import type { PersonPick } from '../game/rendering/people';
 import { advanceClock } from '../game/core/clock';
 import type { ArchitectureStyle, BuildingId, EventKind, GameMode, GameState, MessageRef } from '../game/core/types';
 import type { Tool } from '../game/rendering/ValleyRenderer';
@@ -85,6 +88,12 @@ interface AppStore {
   lastSavedAt: number | null;
   tickMs: number;
   focus: { x: number; y: number; n: number } | null;
+  /** Camera quarter turns (0 = the classic view from the south). */
+  rotation: Rotation;
+  rotateCamera(step: 1 | -1): void;
+  /** Person tapped on the map, shown in the person card. */
+  person: PersonPick | null;
+  selectPerson(person: PersonPick | null): void;
 
   startNewGame(mode: GameMode, seed: number, culture?: ArchitectureStyle, difficulty?: 'easy' | 'normal' | 'hard'): void;
   backups: BackupRecord[];
@@ -211,6 +220,7 @@ export const useApp = create<AppStore>((set, get) => {
       confirm: null,
       chapterDialog: false,
       hover: null,
+      person: null,
     });
   }
 
@@ -232,6 +242,14 @@ export const useApp = create<AppStore>((set, get) => {
     lastSavedAt: null,
     tickMs: 0,
     focus: null,
+    rotation: 0,
+    rotateCamera(step) {
+      set({ rotation: nextRotation(get().rotation, step) });
+    },
+    person: null,
+    selectPerson(person) {
+      set({ person, ...(person ? { selectedBuildingId: null } : {}) });
+    },
 
     backups: [],
     buildStyle: null,
@@ -398,7 +416,7 @@ export const useApp = create<AppStore>((set, get) => {
       });
     },
     select(id) {
-      set({ selectedBuildingId: id });
+      set({ selectedBuildingId: id, ...(id ? { person: null } : {}) });
     },
     openPanel(panel) {
       set({ panel });

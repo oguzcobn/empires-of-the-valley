@@ -35,6 +35,7 @@ import {
   shadowFor,
   wallBase,
   windowRows,
+  setMirroredText,
 } from './kit';
 import type { DrawCtx, RoofResult } from './kit';
 import { drawLandmark } from './landmarks';
@@ -904,6 +905,24 @@ export function drawStyledBuilding(
   detail: 0 | 1 | 2,
   seed: number,
   illuminated = false,
+  /** The renderer shows this sprite mirrored: lettering is written back to front to read right. */
+  mirrored = false,
+): SpriteInfo {
+  setMirroredText(mirrored);
+  try {
+    return drawStyledInner(g, b, pal, detail, seed, illuminated);
+  } finally {
+    setMirroredText(false);
+  }
+}
+
+function drawStyledInner(
+  g: Graphics,
+  b: StyledRef,
+  pal: SeasonPalette,
+  detail: 0 | 1 | 2,
+  seed: number,
+  illuminated: boolean,
 ): SpriteInfo {
   const wear = b.condition >= 5000 ? 0 : b.condition >= 2500 ? 1 : 2;
   const ctx = newCtx(g, detail, seed, pal.snow, wear, illuminated);

@@ -35,11 +35,11 @@ const BOTTOMS = [0x3b5578, 0x2b2f36, 0x5a5048, 0x8a7d62, 0x1f2124, 0x6d6f73, 0x4
 const UMBRELLAS = [0x1e88e5, 0xe53935, 0x43a047, 0xfdd835, 0x212121, 0x8e24aa];
 
 /** Random but plausible look; `rain` hands most adults an umbrella. */
-export function randomPedLook(rand: () => number, rain = false): PedLook {
+export function randomPedLook(rand: () => number, rain = false, who?: { kind: PedKind; woman: boolean }): PedLook {
   const pick = <T>(list: readonly T[]): T => list[Math.floor(rand() * list.length)]!;
   const r = rand();
-  const kind: PedKind = r < 0.38 ? 'man' : r < 0.76 ? 'woman' : r < 0.9 ? 'child' : 'elder';
-  const woman = kind === 'woman' || (kind !== 'man' && rand() < 0.5);
+  const kind: PedKind = who?.kind ?? (r < 0.38 ? 'man' : r < 0.76 ? 'woman' : r < 0.9 ? 'child' : 'elder');
+  const woman = who ? who.woman : kind === 'woman' || (kind !== 'man' && rand() < 0.5);
   const extras: PedExtra[] = kind === 'child'
     ? ['balloon', 'backpack', 'none', 'none']
     : kind === 'elder'
