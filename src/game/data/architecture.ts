@@ -433,7 +433,47 @@ export const DEFAULT_LOOKS: Partial<Record<ArchitectureStyle, LookTable>> = {
 export function defaultLook(style: ArchitectureStyle, id: BuildingId, level: number): BuildingLook {
   const table = (DEFAULT_LOOKS[style] ?? DEFAULT_LOOKS[LEGACY_STYLE])!;
   const levels = table[id] ?? table.farm!;
-  return levels[Math.max(0, Math.min(levels.length - 1, level - 1))]!;
+  const last = levels[Math.max(0, Math.min(levels.length - 1, level - 1))]!;
+  if (level <= levels.length) return last;
+  // level 5 is always the modern block; levels in between take one or two steps towards it
+  const out = modernLook(last, level >= 5 ? 3 : Math.min(2, level - levels.length), id);
+  return level === 4 && level - levels.length >= 2 ? { ...out, floors: modernLook(out, 1, id).floors } : out;
+}
+
+const FLOOR_STEPS: BuildingLook['floors'][] = [1, 2, 3, 4, 6, 8, 10];
+
+/**
+ * Appearance of the levels past a culture's written designs: each further level modernises the
+ * building a step. First a storey and bay windows, then iron balconies, lanterns and flowers;
+ * the third step is a rendered modern block with a flat lead roof.
+ */
+export function modernLook(base: BuildingLook, steps: number, id: BuildingId): BuildingLook {
+  const out: BuildingLook = { ...base };
+  const cap: BuildingLook['floors'] = id === 'hut' ? 6 : 4;
+  const up = (f: BuildingLook['floors']): BuildingLook['floors'] => {
+    const next = FLOOR_STEPS[FLOOR_STEPS.indexOf(f) + 1] ?? f;
+    return next > cap ? f : next;
+  };
+  if (steps >= 1) {
+    out.floors = up(out.floors);
+    out.windows = 'bay';
+    out.decor = out.decor === 'none' ? 'flowerboxes' : out.decor;
+  }
+  if (steps >= 2) {
+    out.balcony = out.balcony === 'none' ? 'iron' : out.balcony;
+    out.decor = 'lanterns';
+    out.garden = 'flowers';
+    out.door = 'fanlight';
+  }
+  if (steps >= 3) {
+    out.floors = up(out.floors);
+    out.roof = 'flat';
+    out.roofMaterial = 'lead';
+    out.wall = 'plaster';
+    out.facade = base.facade === 'white' ? 'sky' : 'white';
+    out.chimney = 'none';
+  }
+  return out;
 }
 
 /** Building types whose appearance the Architecture Workshop can design. */

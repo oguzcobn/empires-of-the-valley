@@ -129,8 +129,10 @@ export const sameLook = (a: BuildingLook | null, b: BuildingLook | null): boolea
 
 /** Highest number of floors a custom design shows at a given level (taller looks need upgrades). */
 export function maxFloors(definitionId: BuildingId, level: number): BuildingLook['floors'] {
-  const cap = definitionId === 'hut' ? level + 1 : level + 1;
-  return Math.max(1, Math.min(4, definitionId === 'hut' ? cap : Math.min(3, cap))) as BuildingLook['floors'];
+  // houses grow to a small block at level 5; other buildings gain a storey at level 4
+  const hut = [2, 3, 4, 4, 6] as const, other = [2, 3, 3, 4, 4] as const;
+  const table = definitionId === 'hut' ? hut : other;
+  return table[Math.max(0, Math.min(table.length - 1, level - 1))]! as BuildingLook['floors'];
 }
 
 /** Look used for drawing: custom designs are capped by the level; defaults are already level-specific. */

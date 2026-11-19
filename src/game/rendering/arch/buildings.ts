@@ -1,3 +1,4 @@
+import { BUILDINGS } from '../../data/buildings';
 import { drawCityBuilding } from './cityBuildings';
 import { DETAILED_CITY, drawDetailedCity } from './cityDetail';
 import type { CityKit } from './cityDetail';
@@ -37,6 +38,7 @@ import {
   windowRows,
   setMirroredText,
 } from './kit';
+import { drawLevelDressing } from './levelDressing';
 import type { DrawCtx, RoofResult } from './kit';
 import { drawLandmark } from './landmarks';
 import { turkishHutRailing } from './turkishHousing';
@@ -874,6 +876,32 @@ export const FOOTPRINT_PX_TOP = 0;
 /** Building helpers lent to the detailed city art (see cityDetail.ts). */
 const CITY_KIT: CityKit = { mass, smallTree, awning };
 
+/** Storeys a city building gains with its level: one at level 3, two at level 5. */
+export const extraFloors = (level: number): number => (level >= 5 ? 2 : level >= 3 ? 1 : 0);
+
+const LEVEL_KITS = new Map<number, CityKit>();
+/**
+ * The city kit for a building level: every block of the building rises by extraFloors storeys, and
+ * from level 4 its windows become modern bay glazing. Signs and roof plant follow the new roof.
+ */
+function levelKit(level: number): CityKit {
+  const extra = extraFloors(level);
+  if (!extra && level < 4) return CITY_KIT;
+  let kit = LEVEL_KITS.get(level);
+  if (!kit) {
+    kit = {
+      ...CITY_KIT,
+      mass: (ctx, look, u0, v0, u1, v1, o) => {
+        const grown = { ...look, floors: (look.floors + extra) as BuildingLook['floors'], ...(level >= 4 ? { windows: 'bay' as const } : {}) };
+        const opts = o ? { ...o, ...(o.floors !== undefined ? { floors: o.floors + extra } : {}), ...(level >= 4 && o.windows ? { windows: 'bay' as const } : {}) } : o;
+        return mass(ctx, grown, u0, v0, u1, v1, opts);
+      },
+    };
+    LEVEL_KITS.set(level, kit);
+  }
+  return kit;
+}
+
 export function buildingArtSeed(id: string): number {
   let value = 2166136261;
   for (let i = 0; i < id.length; i++) value = Math.imul(value ^ id.charCodeAt(i), 16777619);
@@ -927,11 +955,19 @@ function drawStyledInner(
   const wear = b.condition >= 5000 ? 0 : b.condition >= 2500 ? 1 : 2;
   const ctx = newCtx(g, detail, seed, pal.snow, wear, illuminated);
   const look = renderLook(b);
+  const dress = (): void => {
+    const def = BUILDINGS[b.definitionId];
+    if (!def.landmark) drawLevelDressing(ctx, def.footprint[0], def.footprint[1], b.level, b.style);
+  };
   if (DETAILED_CITY.has(b.definitionId)) {
-    drawDetailedCity(ctx, CITY_KIT, b.definitionId, look, b.style, pal, b.level);
+    drawDetailedCity(ctx, levelKit(b.level), b.definitionId, look, b.style, pal, b.level);
+    dress();
     return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY, spinners: ctx.spinners };
   }
-  if (drawCityBuilding(ctx, b.definitionId, b.style, b.level)) return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
+  if (drawCityBuilding(ctx, b.definitionId, b.style, b.level)) {
+    dress();
+    return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
+  }
   switch (b.definitionId) {
     case 'hut':
       house(ctx, b.look ? look : houseDesign(look, seed, wear > 0), b.style, b.level, pal);
@@ -994,6 +1030,7 @@ function drawStyledInner(
       drawLandmark(ctx, b.definitionId, pal);
   }
   void rnd;
+  dress();
   return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
 }
 

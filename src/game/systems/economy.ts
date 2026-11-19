@@ -65,7 +65,8 @@ export function storageCaps(
   for (const b of p.buildings) {
     if (!isBuilt(b) || b.id === without) continue;
     const storage = specOf(b).storage;
-    for (const key of Object.keys(storage) as ResourceId[]) caps[key] += storage[key] ?? 0;
+    // gold and research have no cap: vaults (banks) must not turn "unlimited" into a huge number
+    for (const key of Object.keys(storage) as ResourceId[]) if (caps[key] !== UNCAPPED) caps[key] += storage[key] ?? 0;
   }
   const mult = techScalar(s, 'storageMultiplier');
   for (const key of ['wood', 'stone', 'food', 'tools'] as const) {
