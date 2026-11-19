@@ -20,12 +20,12 @@ import { requiredTicks } from '../systems/tick';
 import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
 import { COLORS, SEASON_PALETTE } from './palette';
 import type { SeasonPalette } from './palette';
-import { drawBird, drawBoat, drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree, drawVillager } from './sprites';
+import { drawBird, drawBoat, drawCart, drawFlag, drawGroundTile, drawRocks, drawStump, drawTree } from './sprites';
 import { buildingArtSeed, drawStyledBuilding, drawStyledConstruction } from './arch/buildings';
 import type { SpriteInfo } from './arch/buildings';
 import { CULTURES } from '../data/architecture';
 import { conditionBand } from '../systems/architecture';
-import { findRoadPath } from './armyPath';
+import { findGroundPath, musterPoint } from './armyPath';
 import { getPavedLinks } from './roadGeometry';
 import { matchDayFor } from '../data/matchDays';
 import type { MatchDay } from '../data/matchDays';
@@ -34,6 +34,8 @@ import { drawHeadlights, drawTrafficVehicle, modelLength, modelSpeed, trafficMod
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
 import { trafficShare, walkerShare, windowLight } from './dayRhythm';
 import { TrafficLights } from './trafficLights';
+import { PERSON_SCALE, SOLDIER_SCALE, VEHICLE_SCALE } from './scale';
+import { drawSoldier, kitFor } from './soldiers';
 import { StreetFurniture } from './streetFurniture';
 import { Fireworks } from './fireworks';
 import { WaterLife } from './waterLife';
@@ -635,6 +637,8 @@ export class ValleyRenderer {
             height: t.height,
             frontLeft: tileAt(p, x, y + 1)?.height ?? -1,
             frontRight: tileAt(p, x + 1, y)?.height ?? -1,
+            // built-up ground and streets are held up by masonry, not bare earth
+            urban: t.road || !!t.buildingId || !!tileAt(p, x, y + 1)?.road || !!tileAt(p, x + 1, y)?.road,
           },
           t.roadType,
           detail,
@@ -1158,7 +1162,7 @@ export class ValleyRenderer {
     c.addChild(g);
     const flare = fanMatch ? new Graphics() : undefined;
     if (flare) c.addChild(flare);
-    c.scale.set(cart ? 0.82 : fanMatch ? 0.84 : 0.72);
+    c.scale.set(cart ? 0.72 : fanMatch ? 0.6 : PERSON_SCALE);
     c.cullable = true;
     this.objects.addChild(c);
     this.tintKey = -1;
@@ -1192,32 +1196,30 @@ export class ValleyRenderer {
       const i = this.militiaSprites.length;
       const c = new Container();
       const soldier = new Graphics();
-      drawVillager(soldier, i % 2 ? 0x416080 : 0x385675, i + 1);
-      soldier.ellipse(0, -15.3, 3.6, 1.4).fill(0x333a48);
-      soldier.moveTo(4.4, -9).lineTo(4.4, -2).stroke({ color: 0x858c96, width: 1 });
-      soldier.circle(-3.5, -6, 2.3).fill({ color: 0x65778b, alpha: 0.9 });
+      drawSoldier(soldier, kitFor(view.game.culture, i), 0);
       c.addChild(soldier);
-      c.scale.set(0.68);
+      c.scale.set(SOLDIER_SCALE);
       c.cullable = true;
       this.objects.addChild(c);
       this.militiaSprites.push(c);
     }
-    if (!count || !this.roadTiles.length) return;
+    if (!count) return;
     const goal = view.game.armyTarget;
     if (this.militiaPos === null) {
-      this.militiaPos = goal ? [goal.x, goal.y] : this.roadTiles[0]!;
+      this.militiaPos = goal ? [goal.x, goal.y] : musterPoint(p);
       this.militiaTargetKey = goal ? `${goal.x},${goal.y}` : '';
     }
     const key = goal ? `${goal.x},${goal.y}` : '';
     if (key !== this.militiaTargetKey) {
       this.militiaTargetKey = key;
       this.militiaRoute = goal
-        ? findRoadPath(p, this.militiaPos, [goal.x, goal.y]) ?? []
+        ? findGroundPath(p, this.militiaPos, [goal.x, goal.y]) ?? []
         : [];
       this.militiaRouteStep = 0;
       this.militiaRouteT = 0;
     }
     let pos: GridPoint = this.militiaPos;
+    let heading: GridPoint = [0, 0];
     if (this.militiaRoute.length > 1 && this.militiaRouteStep < this.militiaRoute.length - 1) {
       if (view.game.speed !== 0 && !view.reducedMotion) this.militiaRouteT += dt / 650;
       while (this.militiaRouteT >= 1 && this.militiaRouteStep < this.militiaRoute.length - 1) {
@@ -1227,6 +1229,7 @@ export class ValleyRenderer {
       const curr = this.militiaRoute[this.militiaRouteStep]!;
       const next = this.militiaRoute[Math.min(this.militiaRouteStep + 1, this.militiaRoute.length - 1)]!;
       this.militiaPos = curr;
+      heading = [next[0] - curr[0], next[1] - curr[1]];
       pos = [curr[0] + (next[0] - curr[0]) * this.militiaRouteT,
         curr[1] + (next[1] - curr[1]) * this.militiaRouteT];
       if (this.militiaRouteStep >= this.militiaRoute.length - 1) {
@@ -1235,14 +1238,28 @@ export class ValleyRenderer {
         this.militiaRoute = [];
       }
     }
+    // march in a column of twos along the heading; stand in two ranks when halted
     const z = this.hz(p, Math.floor(pos[0]), Math.floor(pos[1]));
+    const marching = heading[0] !== 0 || heading[1] !== 0;
+    const [fx, fy] = marching ? heading : [1, 0];
+    const frame = marching && view.game.speed !== 0 && !view.reducedMotion ? Math.floor(this.time / 120) % 8 : 0;
     for (let i = 0; i < this.militiaSprites.length; i++) {
       const c = this.militiaSprites[i]!;
-      const ox = (i % 4 - 1.5) * 5.5;
-      const oy = Math.floor(i / 4) * 4;
-      c.position.set(isoX(pos[0] + 0.5, pos[1] + 0.5) + ox,
-        isoY(pos[0] + 0.5, pos[1] + 0.5) + oy - z);
-      c.zIndex = pos[0] + pos[1] + 0.15 + i * 0.001;
+      const rank = Math.floor(i / 2), file = i % 2 ? 0.14 : -0.14;
+      // marching: a column of twos behind the leader; halted: two ranks side by side
+      const along = marching ? -rank * 0.17 : (i % 2 ? -0.1 : 0.1);
+      const across = marching ? file : (rank - 1.5) * 0.17;
+      // offsets in tile space: `along` the heading, `across` it
+      const u = pos[0] + 0.5 + fx * along - fy * across;
+      const v = pos[1] + 0.5 + fy * along + fx * across;
+      c.position.set(isoX(u, v), isoY(u, v) - z);
+      c.zIndex = u + v + 0.05;
+      const soldier = c.children[0] as Graphics;
+      const key = `${frame}|${marching ? `${fx},${fy}` : 'halt'}|${view.game.culture}`;
+      if (soldier.label !== key) {
+        soldier.label = key;
+        drawSoldier(soldier, kitFor(view.game.culture, i), frame + (i % 2) * 4, marching ? fx : 0, marching ? fy : 0);
+      }
     }
   }
 
@@ -1534,6 +1551,7 @@ export class ValleyRenderer {
       const beam = new Graphics();
       drawHeadlights(beam, dx, dy, modelLength(variant) === 2 ? 0.62 : modelLength(variant) === 0 ? 0.25 : 0.4);
       holder.addChild(beam, body);
+      holder.scale.set(VEHICLE_SCALE);
       holder.cullable = true;
       this.objects.addChild(holder);
       this.trafficCars.push({

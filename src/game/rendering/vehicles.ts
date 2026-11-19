@@ -325,16 +325,20 @@ export function drawAirliner(g: Graphics, dx: number, dy: number, livery: number
   }
 }
 
-/** Two soft headlight cones on the road ahead of a vehicle whose nose is `front` tiles out. */
+/**
+ * Headlights after dark: two bright lamps on the nose and a small, faint pool of light on the
+ * road just ahead. Kept short and soft so it never reads as a stripe across the street.
+ */
 export function drawHeadlights(g: Graphics, dx: number, dy: number, front = 0.4): void {
   g.clear();
   const ux = dx || (dy ? 0 : 1);
   const uy = dy;
-  const at = (u: number, v: number): Pt => P(u * ux - v * uy, u * uy + v * ux, 0.5);
-  for (const v of [-0.08, 0.08]) {
-    const cone = [at(front, v - 0.02), at(front + 0.75, v - 0.2), at(front + 0.82, v), at(front + 0.75, v + 0.2), at(front, v + 0.02)];
-    g.poly(cone.flat()).fill({ color: 0xfff2b0, alpha: 0.18 });
-    const core = [at(front, v - 0.01), at(front + 0.4, v - 0.08), at(front + 0.45, v), at(front + 0.4, v + 0.08), at(front, v + 0.01)];
-    g.poly(core.flat()).fill({ color: 0xfff7d0, alpha: 0.22 });
+  const at = (u: number, v: number, z = 0): Pt => P(u * ux - v * uy, u * uy + v * ux, z);
+  const [px, py] = at(front + 0.26, 0, 0.4);
+  g.ellipse(px, py, 7, 3.2).fill({ color: 0xfff2b0, alpha: 0.1 });
+  g.ellipse(px, py, 4, 1.8).fill({ color: 0xfff7d0, alpha: 0.12 });
+  for (const v of [-0.1, 0.1]) {
+    const [x, y] = at(front, v, 3.6);
+    g.circle(x, y, 1.1).fill({ color: 0xfffbe6, alpha: 0.95 });
   }
 }

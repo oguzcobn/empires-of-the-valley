@@ -451,6 +451,7 @@ export const tr = {
   'err.workerSlots': 'Bu yapıda en fazla {n} işçi çalışabilir.',
   'err.noIdleWorkers': 'Boşta işçi yok. Önce başka bir yapıdan işçi çek.',
   'err.invalid': 'Geçersiz işlem.',
+  'err.armyUnreachable': 'Birlikler oraya yürüyemez: su ya da binalarla çevrili bir yer seçtin.',
   'err.huntBusy': 'Av ekibi henüz dönmedi.',
   'err.noAnimal': 'Haritada bir hayvanın bulunduğu noktayı seç.',
   'err.huntRoute': 'Av ekibi bu noktaya ulaşamıyor.',
