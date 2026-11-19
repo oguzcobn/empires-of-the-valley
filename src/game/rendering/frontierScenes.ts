@@ -5,6 +5,7 @@ import { TICKS_PER_DAY } from '../core/time';
 import { HEIGHT_PX } from '../data/balance';
 import { tileAt } from '../systems/grid';
 import { shipment, wildlife } from '../systems/frontier';
+import type { Animal } from '../systems/frontier';
 import type { AnimalKind } from '../systems/frontier';
 import { isoX, isoY } from './iso';
 import { drawVillager } from './sprites';
@@ -215,13 +216,14 @@ export class FrontierScenes {
     }
   }
 
-  update(s: GameState, p: Province, seconds: number, huntMode: boolean): void {
+  /** `animals` overrides the wildlife list (the rotated camera passes the true map's animals, turned). */
+  update(s: GameState, p: Province, seconds: number, huntMode: boolean, animals?: Animal[]): void {
     this.time += seconds;
     if (this.lastTick !== s.tick) this.tickOffset = 0;
     this.tickOffset = Math.min(0.95, this.tickOffset + seconds * 1.75);
     if (this.lastTick !== s.tick || this.lastProvince?.tiles !== p.tiles || this.lastLines !== p.transit) {
       const seen = new Set<string>();
-      for (const spot of wildlife(p, s.seed, s.tick)) {
+      for (const spot of animals ?? wildlife(p, s.seed, s.tick)) {
         const key = `${spot.x},${spot.y}`;
         seen.add(key);
         if (!this.animals.has(key)) {

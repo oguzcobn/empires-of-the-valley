@@ -10,4 +10,6 @@ export interface ValleyView {
   tileToClient(x: number, y: number): { x: number; y: number };
   zoomBy(factor: number, sx?: number, sy?: number): void;
   panBy(dx: number, dy: number): void;
+  /** Camera centre (true map tile coordinates) and zoom, kept when the camera is rotated. */
+  getCamera(): { x: number; y: number; zoom: number };
 }

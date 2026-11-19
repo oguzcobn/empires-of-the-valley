@@ -811,8 +811,19 @@ export const signWidth = (text: string, px = 1.5): number => ([...text].length *
  * Painted lettering on a wall face. `t0` is the left edge of the text as seen on screen and
  * `zTop` its top edge; letters read left to right on both faces. `İ` gets its dot.
  */
+let mirroredText = false;
+/** While set, lettering is written mirrored so a sprite shown with scale.x = -1 reads correctly. */
+export function setMirroredText(on: boolean): void {
+  mirroredText = on;
+}
+export const isMirroredText = (): boolean => mirroredText;
+
 export function signText(ctx: DrawCtx, f: Face, t0: number, zTop: number, text: string, color: number, px = 1.5): void {
-  const step = (px / PX) * (f.side === 'L' ? 1 : -1);
+  let step = (px / PX) * (f.side === 'L' ? 1 : -1);
+  if (mirroredText) {
+    t0 += ([...text].length * 4 - 1) * step;
+    step = -step;
+  }
   let column = 0;
   const cell = (c: number, z0: number, z1: number): void => {
     const t = t0 + (column + c) * step;

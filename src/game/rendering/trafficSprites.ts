@@ -116,35 +116,69 @@ export function drawCityCar(
   line([-half - 0.009, -side * 0.3, 2.8], [-half - 0.009, side * 0.3, 2.8], 0xe6e8e8, 1.3);
 }
 
-/** Dedicated silhouettes and signage for emergency and service traffic. */
+/** A vehicle's own frame: u forward, v to the side, z up; plus which flank and end face the camera. */
+function vehicleFrame(dx: number, dy: number) {
+  const ux = dx || (dy ? 0 : 1), uy = dy;
+  const at = (u: number, v: number, z = 0): Pt => P(u * ux - v * uy, u * uy + v * ux, z);
+  return { at, near: at(0, 1)[1] > at(0, -1)[1] ? 1 : -1, frontNear: at(1, 0)[1] > at(-1, 0)[1] };
+}
+type VFrame = ReturnType<typeof vehicleFrame>;
+
+function vface(g: Graphics, f: VFrame, pts: [number, number, number][], color: number): void {
+  g.poly(pts.flatMap(([u, v, z]) => f.at(u, v, z))).fill(color);
+}
+
+/** A box in the vehicle frame painted far to near, so it reads as solid from every heading. */
+function vbox(g: Graphics, f: VFrame, u0: number, u1: number, w: number, z0: number, z1: number, color: number): void {
+  const flank = (v: number, k: number): void => vface(g, f, [[u0, v, z0], [u1, v, z0], [u1, v, z1], [u0, v, z1]], shade(color, k));
+  const end = (u: number, k: number): void => vface(g, f, [[u, -w, z0], [u, w, z0], [u, w, z1], [u, -w, z1]], shade(color, k));
+  flank(-f.near * w, 0.72);
+  end(f.frontNear ? u0 : u1, 0.8);
+  flank(f.near * w, 0.9);
+  end(f.frontNear ? u1 : u0, 0.96);
+  vface(g, f, [[u0, -w, z1], [u1, -w, z1], [u1, w, z1], [u0, w, z1]], shade(color, 1.12));
+}
+
+/** A stripe painted along the visible flank of a body of half width `w`. */
+function flankStripe(g: Graphics, f: VFrame, u0: number, u1: number, w: number, z0: number, z1: number, color: number): void {
+  const v = f.near * (w + 0.002);
+  vface(g, f, [[u0, v, z0], [u1, v, z0], [u1, v, z1], [u0, v, z1]], color);
+}
+
+/** Dedicated silhouettes and signage for emergency and service traffic, all in the vehicle frame. */
 export function drawServiceVehicle(
   g: Graphics,
   service: 'ambulance' | 'patrol' | 'delivery',
   dx: number,
   dy: number,
 ): void {
-  const forwardX = dx - dy >= 0 ? 1 : -1;
+  const f = vehicleFrame(dx, dy);
   if (service === 'ambulance') {
+    // white box van: red chevron band along the flank, light bar and red cross on the roof
     drawCityCar(g, 0xf5f7f5, false, dx, dy, 3);
-    g.roundRect(-6.4, -7.0, 12.8, 1.6, 0.4).fill(0xd6303f);
-    g.rect(-1.1, -10.3, 2.2, 5.1).fill(0xd6303f);
-    g.rect(-3.4, -8.7, 6.8, 1.8).fill(0xd6303f);
-    g.roundRect(-3.2, -9.7, 6.4, 1.2, 0.4).fill(0xfafafa);
-    g.circle(-2.2 * forwardX, -9.3, 1.0).fill(0x2083da);
-    g.circle(2.2 * forwardX, -9.3, 1.0).fill(0xe83b42);
+    flankStripe(g, f, -0.46, 0.46, 0.17, 4.6, 6.2, 0xd6303f);
+    flankStripe(g, f, -0.46, 0.46, 0.17, 6.6, 7.1, 0x1f6fd1);
+    vbox(g, f, 0.12, 0.27, 0.12, 15.8, 17.2, 0xe9edf2);
+    vface(g, f, [[-0.2, -0.025, 15.85], [0.0, -0.025, 15.85], [0.0, 0.025, 15.85], [-0.2, 0.025, 15.85]], 0xd6303f);
+    vface(g, f, [[-0.125, -0.09, 15.86], [-0.075, -0.09, 15.86], [-0.075, 0.09, 15.86], [-0.125, 0.09, 15.86]], 0xd6303f);
+    const [bx, by] = f.at(0.2, -0.09, 17.6), [rx, ry] = f.at(0.2, 0.09, 17.6);
+    g.circle(bx, by, 1.1).fill(0x2083da);
+    g.circle(rx, ry, 1.1).fill(0xe83b42);
   } else if (service === 'patrol') {
+    // blue patrol SUV: white band along the flank, POLİS light bar across the roof
     drawCityCar(g, 0x285084, false, dx, dy, 2);
-    g.roundRect(-6.1, -1.0, 12.2, 1.35, 0.35).fill(0xf2f5f9);
-    g.roundRect(-4.6, -2.0, 8.7, 1.4, 0.35).fill(0x1b365b);
-    g.roundRect(-3.8, -8.9, 7.6, 1.25, 0.3).fill(0x333f4e);
-    g.rect(-3.4, -8.7, 3.2, 0.95).fill(0x2e7bff);
-    g.rect(0.2, -8.7, 3.2, 0.95).fill(0xf23a42);
+    flankStripe(g, f, -0.43, 0.43, 0.17, 4.0, 5.6, 0xf2f5f9);
+    flankStripe(g, f, -0.43, 0.43, 0.17, 5.6, 6.2, 0xf2c230);
+    vbox(g, f, -0.08, 0.04, 0.13, 15.8, 17.0, 0x2b3442);
+    vbox(g, f, -0.075, 0.035, 0.125, 17.0, 17.6, 0x333f4e);
+    const [bx, by] = f.at(-0.02, -0.07, 17.7), [rx, ry] = f.at(-0.02, 0.07, 17.7);
+    g.circle(bx, by, 1.2).fill(0x2e7bff);
+    g.circle(rx, ry, 1.2).fill(0xf23a42);
   } else {
+    // delivery van: tall cargo box behind the cab with a brand band
     drawCityCar(g, 0xb98749, false, dx, dy, 3);
-    g.poly([-6.9, -6.7, -2.1, -9.6, 4.1, -6.8, -0.8, -4.1]).fill(0xe5d7bd);
-    g.poly([-6.9, -6.7, -0.8, -4.1, -0.8, 0.8, -6.9, -2.3]).fill(0xc5aa7b);
-    g.moveTo(-6.2, -3.9).lineTo(-1.6, -6.4).stroke({ color: 0x937750, width: 0.8 });
-    g.roundRect(-4.8, -4.2, 2.6, 1.3, 0.35).fill(0xf4ead8);
+    vbox(g, f, -0.47, 0.06, 0.18, 2.2, 18.5, 0xe5d7bd);
+    flankStripe(g, f, -0.45, 0.04, 0.18, 9.5, 11.5, 0xb98749);
   }
 }
 

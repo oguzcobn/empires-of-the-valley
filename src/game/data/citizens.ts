@@ -1,15 +1,81 @@
-import type { CompanyRecord, GameState } from '../core/types';
+import type { BuildingId, CompanyRecord, GameState, Province } from '../core/types';
 import { cityOf } from './cities';
-import { totalPopulation, homeProvince } from '../systems/economy';
+import { totalPopulation, homeProvince, isBuilt, isHome, isOperating } from '../systems/economy';
 
-const FIRST_TR = ['Oğuzhan','Mehmet','Ayşe','Ali','Fatma','Mustafa','Elif','Yusuf','Zeynep','Emre','Meryem','Burak','Derya','Seda','Hüseyin','Deniz','Ömer','Esra','Uğur'];
-const LAST_TR = ['Çoban','Yılmaz','Kaya','Öztürk','Demir','Aydın','Şahin','Arslan','Koç','Kılıç','Aksoy','Karadeniz'];
-const FIRST_SC = ['Eilidh','Callum','Isla','Finlay','Mairi','Hamish','Iona','Alistair','Fiona','Lewis','Ailsa','Angus','Rowan','Skye','Cameron','Morag'];
-const LAST_SC = ['MacLeod','Stewart','Campbell','Fraser','MacDonald','Murray','Douglas','Robertson','Sinclair','Grant','Reid','Kerr'];
-const JOBS = ['Çiftçi', 'İnşaatçı', 'Oduncu', 'Zanaatkâr', 'Öğrenci', 'Tüccar', 'İşçi', 'Balıkçı'];
+const MEN_TR = ['Oğuzhan','Mehmet','Ali','Mustafa','Yusuf','Emre','Burak','Hüseyin','Ömer','Uğur','Kerem','Murat','Serkan','Hakan','Cem','Tolga','Kaan','Arda'];
+const WOMEN_TR = ['Ayşe','Fatma','Elif','Zeynep','Meryem','Derya','Seda','Esra','Deniz','Ebru','Gamze','Selin','Büşra','Merve','Pınar','Nur','Hande','Cansu'];
+const LAST_TR = ['Çoban','Yılmaz','Kaya','Öztürk','Demir','Aydın','Şahin','Arslan','Koç','Kılıç','Aksoy','Karadeniz','Çelik','Yıldız','Doğan','Erdem','Polat','Kurt'];
+const MEN_SC = ['Callum','Finlay','Hamish','Alistair','Lewis','Angus','Cameron','Ewan','Fraser','Rory','Duncan','Craig','Euan','Gregor'];
+const WOMEN_SC = ['Eilidh','Isla','Mairi','Iona','Fiona','Ailsa','Rowan','Skye','Morag','Kirsty','Catriona','Shona','Heather','Lorna'];
+const LAST_SC = ['MacLeod','Stewart','Campbell','Fraser','MacDonald','Murray','Douglas','Robertson','Sinclair','Grant','Reid','Kerr','Henderson','Paterson'];
+
+/** Job titles at each workplace, handed out to its workers in turn. */
+const JOB_TITLES: Partial<Record<BuildingId, readonly string[]>> = {
+  town_center: ['Belediye memuru', 'Muhtar'],
+  farm: ['Çiftçi', 'Tarım işçisi'],
+  terrace_farm: ['Çiftçi', 'Bağcı'],
+  lumber_camp: ['Oduncu', 'Kereste ustası'],
+  quarry: ['Taş ocağı işçisi', 'Taş ustası'],
+  warehouse: ['Depo görevlisi', 'Forklift operatörü'],
+  granary: ['Ambar memuru'],
+  school: ['Öğretmen', 'Okul müdürü'],
+  market: ['Kasiyer', 'Market müdürü', 'Reyon görevlisi'],
+  inn: ['Hancı', 'Aşçı'],
+  watchtower: ['Bekçi'],
+  barracks: ['Er', 'Çavuş', 'Teğmen'],
+  mosque: ['İmam', 'Müezzin'],
+  church: ['Papaz', 'Kilise görevlisi'],
+  theatre: ['Tiyatro oyuncusu', 'Sahne teknisyeni'],
+  cinema: ['Sinema makinisti', 'Gişe görevlisi'],
+  hospital: ['Doktor', 'Hemşire', 'Paramedik', 'Cerrah'],
+  factory: ['Fabrika işçisi', 'Ustabaşı', 'Makine mühendisi', 'Kaynakçı'],
+  hotel: ['Resepsiyonist', 'Kat görevlisi', 'Otel aşçısı', 'Otel müdürü'],
+  club: ['DJ', 'Barmen', 'Güvenlik görevlisi'],
+  restaurant: ['Aşçı', 'Garson', 'Şef'],
+  airport: ['Pilot', 'Kabin memuru', 'Hava trafik kontrolörü', 'Yer hizmetleri görevlisi'],
+  corporate_plaza: ['Mühendis', 'Muhasebeci', 'Proje yöneticisi', 'Yazılımcı'],
+  apartment: ['Apartman görevlisi'],
+  park: ['Bahçıvan'],
+  gas_station: ['Pompacı', 'İstasyon müdürü'],
+  pharmacy: ['Eczacı', 'Eczane teknisyeni'],
+  bakery: ['Fırıncı', 'Pastacı'],
+  bank: ['Bankacı', 'Veznedar', 'Şube müdürü'],
+  mall: ['Satış danışmanı', 'Mağaza müdürü', 'Güvenlik görevlisi'],
+  villa: ['Bahçıvan'],
+  tea_garden: ['Çaycı', 'Garson'],
+  post_office: ['Postacı', 'Gişe memuru'],
+  gym: ['Antrenör', 'Fizyoterapist'],
+  kindergarten: ['Okul öncesi öğretmeni'],
+  university: ['Akademisyen', 'Araştırma görevlisi', 'Profesör'],
+  museum: ['Müze rehberi', 'Küratör'],
+  bazaar: ['Pazarcı', 'Manav'],
+  hamam: ['Tellak', 'Natır'],
+  library: ['Kütüphaneci'],
+  wind_turbine: ['Rüzgâr türbini teknisyeni'],
+  solar_farm: ['Enerji teknisyeni'],
+  bus_depot: ['Otobüs şoförü', 'Bakım ustası'],
+  aquapark: ['Cankurtaran', 'Animatör'],
+  police_station: ['Polis memuru', 'Komiser', 'Trafik polisi'],
+  fire_station: ['İtfaiye eri', 'İtfaiye çavuşu'],
+  shipyard: ['Gemi kaynakçısı', 'Tersane mühendisi', 'Tekne boyacısı', 'Gemi inşa ustası', 'Kalite kontrol uzmanı'],
+};
+
+export type LifeStage = 'adult' | 'elder' | 'child';
 
 /** Stable generated citizen identities based on city, seed and ordinal; no personally identifying data. */
-export interface CitizenProfile { id: string; name: string; occupation: string; age: number; }
+export interface CitizenProfile {
+  id: string;
+  index: number;
+  name: string;
+  occupation: string;
+  age: number;
+  stage: LifeStage;
+  woman: boolean;
+  /** Building the citizen works at (adults with a job). */
+  workplaceId?: string;
+  /** Home the citizen lives in, when the town has housing. */
+  homeId?: string;
+}
 export const COMPANY_SECTORS = ['Tersane & Denizcilik', 'Otelcilik & Turizm', 'Gemi Mühendisliği', 'Gastronomi & Marina', 'Sağlık', 'Yenilenebilir Enerji', 'Mobilite & Lojistik'] as const;
 const BUSINESS_NAMES: Partial<Record<string, readonly string[]>> = {
   corporate_plaza: ['Damen Shipyards Antalya Mühendislik Merkezi', 'ASBAŞ Serbest Bölge İşletmesi', 'DSAn Cadmatic & Rhino 3D Gemi Tasarım Ofisi', 'Solar Power Yenilenebilir Enerji'],
@@ -22,17 +88,76 @@ const BUSINESS_NAMES: Partial<Record<string, readonly string[]>> = {
   market: ['Liman Serbest Bölge Ticaret Merkezi', 'Boğaçayı Finans & Bankacılık Çarşısı'],
   airport: ['Antalya Uluslararası Havalimanı'],
 };
+interface Roster {
+  slots: { buildingId: string; title: string }[];
+  homes: string[];
+  school: boolean;
+}
+const rosters = new WeakMap<Province, Roster>();
+
+/** Job slots (one per assigned worker, in building order) and homes of the province. */
+function roster(p: Province): Roster {
+  const hit = rosters.get(p);
+  if (hit) return hit;
+  const slots: Roster['slots'] = [];
+  for (const b of p.buildings) {
+    if (!isOperating(b) || b.workers <= 0) continue;
+    const titles = JOB_TITLES[b.definitionId] ?? ['İşçi'];
+    for (let k = 0; k < b.workers; k++) slots.push({ buildingId: b.id, title: titles[k % titles.length]! });
+  }
+  const out: Roster = {
+    slots,
+    homes: p.buildings.filter((b) => isHome(b) && isBuilt(b)).map((b) => b.id),
+    school: p.buildings.some((b) => b.definitionId === 'school' && isOperating(b)),
+  };
+  rosters.set(p, out);
+  return out;
+}
+
+/**
+ * Citizen number `index` of the home town. Adults come first (0 .. adults-1) and hold the town's
+ * real jobs in order; then the elders (retired), then the children (pupils). Names and ages are
+ * hashed from the map seed so the same person keeps them between sessions.
+ */
 export function citizenAt(s: GameState, index: number): CitizenProfile {
   const scottish = cityOf(s.cityId, s.culture).id === 'edinburgh';
-  const first = scottish ? FIRST_SC : FIRST_TR;
-  const last = scottish ? LAST_SC : LAST_TR;
+  const p = homeProvince(s);
+  const { adults, elders } = p.population;
   const hash = (Math.imul(s.seed ^ (index + 1), 0x45d9f3b) ^ (index * 12343)) >>> 0;
+  const woman = (hash >>> 3) % 2 === 1;
+  const first = scottish ? (woman ? WOMEN_SC : MEN_SC) : woman ? WOMEN_TR : MEN_TR;
+  const last = scottish ? LAST_SC : LAST_TR;
+  const stage: LifeStage = index < adults ? 'adult' : index < adults + elders ? 'elder' : 'child';
+  const age = stage === 'adult' ? 20 + (Math.floor(hash / 47) % 45) : stage === 'elder' ? 65 + (Math.floor(hash / 47) % 25) : 4 + (Math.floor(hash / 47) % 14);
+  const r = roster(p);
+  const founded = s.companies?.find((company) => company.founderIndex === index);
+  const slot = stage === 'adult' ? r.slots[index] : undefined;
+  const occupation = founded ? `${founded.name} Kurucusu`
+    : stage === 'elder' ? 'Emekli'
+    : stage === 'child' ? (age >= 6 ? (r.school ? 'Öğrenci' : 'Okul çağında çocuk') : 'Okul öncesi çocuk')
+    : slot ? slot.title : 'İş arıyor';
+  const home = r.homes.length ? r.homes[index % r.homes.length] : undefined;
   return {
     id: `citizen-${index + 1}`,
+    index,
     name: s.citizenNames?.[String(index)]?.trim() || `${first[hash % first.length]} ${last[Math.floor(hash / 17) % last.length]}`,
-    occupation: s.companies?.find((company) => company.founderIndex === index) ? `${s.companies.find((company) => company.founderIndex === index)!.name} Kurucusu` : JOBS[Math.floor(hash / 31) % JOBS.length]!,
-    age: 18 + Math.floor(hash / 47) % 49,
+    occupation,
+    age,
+    stage,
+    woman,
+    ...(slot ? { workplaceId: slot.buildingId } : {}),
+    ...(home ? { homeId: home } : {}),
   };
+}
+
+/** Indices of the citizens who work at a building, in the order its workers are listed. */
+export function workersOf(s: GameState, buildingId: string): number[] {
+  const p = homeProvince(s);
+  const out: number[] = [];
+  roster(p).slots.forEach((slot, i) => {
+    if (slot.buildingId === buildingId && i < p.population.adults) out.push(i);
+  });
+  return out;
 }
 
 export function cityCompanies(s: GameState): CompanyRecord[] {

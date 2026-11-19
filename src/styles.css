@@ -2358,3 +2358,26 @@ main.game-screen .quest.card > .reward { color: #e8c77f !important; }
 @media (max-width: 780px) {
   .radar-minimap { display: none; }
 }
+
+/* person card (tap a townsperson on the map) */
+.person-card { overflow: auto; }
+.person-card h3 { display: flex; gap: .35rem; align-items: center; }
+.person-card .person-doing { font-style: italic; margin: .2rem 0 .4rem; font-size: .85rem; opacity: .9; }
+.person-card .actions { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .45rem; }
+
+/* camera rotation buttons on the map */
+.camera-rotate {
+  position: absolute; right: .6rem; bottom: 5.6rem; z-index: 6;
+  display: flex; align-items: center; gap: .25rem;
+  background: rgba(20, 28, 34, .72); color: #fff; border-radius: 999px; padding: .2rem .3rem;
+  font-size: .78rem; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.camera-rotate button {
+  width: 2rem; height: 2rem; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.14); color: #fff; font-size: 1.05rem;
+}
+.camera-rotate button:hover { background: rgba(255,255,255,.28); }
+.camera-rotate span { min-width: 3.6rem; text-align: center; }
+@media (max-height: 520px) {
+  .camera-rotate { right: auto; left: .6rem; bottom: .6rem; }
+}

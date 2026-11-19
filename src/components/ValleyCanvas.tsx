@@ -5,6 +5,7 @@ import { DEMOLISH_REFUND_PERMILLE } from '../game/data/balance';
 import { ValleyRenderer } from '../game/rendering/ValleyRenderer';
 import type { RendererHost } from '../game/rendering/ValleyRenderer';
 import type { ValleyView } from '../game/rendering/view';
+import { ROTATION_LABEL } from '../game/rendering/rotation';
 import { homeProvince, idleWorkers } from '../game/systems/economy';
 import { planRoadRoute, validatePlacement } from '../game/systems/commands';
 import { buildingById, tileAt } from '../game/systems/grid';
@@ -70,6 +71,7 @@ export function ValleyCanvas(): ReactElement {
   const graphics = useApp((s) => s.settings.graphics);
   const [capNonce, setCapNonce] = useState(0);
   const quality = effectiveQuality({ graphics });
+  const rotation = useApp((s) => s.rotation);
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -77,9 +79,14 @@ export function ValleyCanvas(): ReactElement {
       resolution: quality === 'low' ? 1 : quality === 'medium' ? 1.5 : quality === 'high' ? 2 : 2.5,
       antialias: quality !== 'low',
       cacheBodies: quality === 'low' || quality === 'medium',
+      rotation,
+      // keep looking at the same spot when the camera turns or the renderer is rebuilt
+      camera: current?.getCamera() ?? null,
     };
     let disposed = false;
     let renderer: ValleyView | null = null;
+    // the previous view stays on screen until the new one has drawn (no blank flash on rotation)
+    const previous = current;
     setError(null);
     const callbacks: RendererHost = {
       getView() {
@@ -99,6 +106,9 @@ export function ValleyCanvas(): ReactElement {
           : null;
       },
       onHover: (tile) => useApp.getState().setHover(tile),
+      onPersonClick(person) {
+        useApp.getState().selectPerson(person);
+      },
       onLowFps(fps) {
         const next = lowerQuality(effectiveQuality(useApp.getState().settings));
         if (!next) return;
@@ -183,6 +193,7 @@ export function ValleyCanvas(): ReactElement {
         else {
           renderer = r;
           current = r;
+          if (previous && previous !== r) window.setTimeout(() => previous.destroy(), 120);
         }
       })
       .catch((e: unknown) => {
@@ -191,10 +202,13 @@ export function ValleyCanvas(): ReactElement {
       });
     return () => {
       disposed = true;
-      renderer?.destroy();
-      if (current === renderer) current = null;
+      // a rotation rebuild destroys the old view once the new one is ready (see above)
+      if (renderer && useApp.getState().rotation === rotation) {
+        renderer.destroy();
+        if (current === renderer) current = null;
+      }
     };
-  }, [quality, capNonce]);
+  }, [quality, capNonce, rotation]);
 
   useEffect(() => {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);
@@ -340,6 +354,11 @@ export function ValleyCanvas(): ReactElement {
           </div>
         </div>
       )}
+      <div className="camera-rotate" role="group" aria-label="Kamerayı döndür">
+        <button type="button" onClick={() => useApp.getState().rotateCamera(-1)} title="Kamerayı sola döndür (Q)" aria-label="Kamerayı sola döndür">⟲</button>
+        <span aria-live="polite">{ROTATION_LABEL[rotation]}</span>
+        <button type="button" onClick={() => useApp.getState().rotateCamera(1)} title="Kamerayı sağa döndür (E)" aria-label="Kamerayı sağa döndür">⟳</button>
+      </div>
       {error && (
         <div className="canvas-error" role="alert">
           <b>{t('ui.renderError')}</b>

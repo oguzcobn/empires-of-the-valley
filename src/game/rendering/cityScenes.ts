@@ -1,10 +1,11 @@
 import { Container, Graphics } from 'pixi.js';
 import type { GameState, MapPoint, Province } from '../core/types';
-import { bay, door, flightDuration, validCityJob } from '../systems/cityLife';
+import { bay as trueBay, door as trueDoor, flightDuration, validCityJob } from '../systems/cityLife';
+import type { BuildingInstance } from '../core/types';
+import { footprintOf, isSwapped } from './rotation';
 import type { Flight } from '../systems/cityLife';
 import { isBuilt } from '../systems/economy';
 import { tileAt } from '../systems/grid';
-import { defOf } from '../data/buildings';
 import { HEIGHT_PX } from '../data/balance';
 import { isoX, isoY } from './iso';
 import { drawCityCar, drawFireTruck, drawServiceVehicle } from './trafficSprites';
@@ -13,6 +14,7 @@ import { clockHour } from '../core/time';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
 import { PERSON_SCALE, VEHICLE_SCALE } from './scale';
 import type { PedLook } from './pedestrians';
+import { markPerson } from './people';
 
 /** Private cars of shoppers, diners and guests. */
 const CAR_PAINTS = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75, 0x8e44ad, 0x1b1b1b, 0xd35400, 0x95a5a6];
@@ -25,7 +27,16 @@ export function flightPoint(
   f: Flight,
   b: MapPoint,
   fraction: number,
+  swapped = false,
 ): MapPoint & { alt: number; heading: number } {
+  const local = flightLocal(f, fraction);
+  // a rotated airport is drawn mirrored: its runway runs along y
+  return swapped ? { ...local, x: b.x + local.y, y: b.y + local.x } : { ...local, x: b.x + local.x, y: b.y + local.y };
+}
+
+/** Flight position relative to the airport's top corner (runway along x). */
+function flightLocal(f: Flight, fraction: number): MapPoint & { alt: number; heading: number } {
+  const b = { x: 0, y: 0 };
   const t = Math.min(1, (f.age + fraction) / flightDuration(f.phase));
   if (f.phase === 'landing') return { x: b.x - 2 + t * 7.7, y: b.y + 0.72, alt: 50 * (1 - t), heading: 1 };
   if (f.phase === 'takeoff')
@@ -49,6 +60,20 @@ export function flightPoint(
   const at = lerp(path[i]!, path[i + 1]!, local);
   return { x: b.x + at.x, y: b.y + at.y, alt: 0, heading: f.phase === 'taxiIn' ? 1 : -1 };
 }
+/** Building-relative points of a rotated non-square building follow its mirrored art. */
+const local = (b: BuildingInstance, q: MapPoint): MapPoint => (isSwapped(b) ? { x: b.x + (q.y - b.y), y: b.y + (q.x - b.x) } : q);
+const bay = (b: BuildingInstance, slot = 0): MapPoint => local(b, trueBay(b, slot));
+const door = (b: BuildingInstance): MapPoint => local(b, trueDoor(b));
+const ACTIVITY: Record<string, string> = {
+  shopping: 'Alışverişe gidiyor',
+  dining: 'Restoranda yemek yiyor',
+  nightlife: 'Gece kulübüne gidiyor',
+  hotel: 'Otele giriş yapıyor',
+  ambulance: 'Hastaya yardıma koşuyor',
+  patrol: 'Devriye görevinde',
+  fire: 'Yangına müdahale ediyor',
+  delivery: 'Teslimat yapıyor',
+};
 interface Actor {
   root: Container;
   car: Graphics;
@@ -78,7 +103,14 @@ const QUEUE_GAP = 0.5;
  * several can share a road tile; cars in the same lane and heading queue up behind the leader
  * instead of being drawn through each other. Visual only: saved journeys are untouched.
  */
-export function queuePositions(s: GameState, p: Province, fraction: number): Map<number, MapPoint> {
+/** Clearance a journey keeps from a vehicle crossing its path. */
+const CROSS_GAP = 0.5;
+
+export function queuePositions(
+  s: GameState, p: Province, fraction: number,
+  /** Other street vehicles (ambient traffic) the journeys queue behind but never move. */
+  fixed: readonly { x: number; y: number; hx: number; hy: number }[] = [],
+): Map<number, MapPoint> {
   const side = s.culture === 'scottish' ? -1 : 1;
   const cars: { id: number; at: MapPoint; hx: number; hy: number; back: MapPoint }[] = [];
   for (const j of s.cityLife?.jobs ?? []) {
@@ -98,11 +130,22 @@ export function queuePositions(s: GameState, p: Province, fraction: number): Map
   // leaders first: furthest along their heading
   cars.sort((a, b) => (b.at.x * b.hx + b.at.y * b.hy) - (a.at.x * a.hx + a.at.y * a.hy));
   const out = new Map<number, MapPoint>();
-  const placed: typeof cars = [];
+  const placed: typeof cars = fixed.map((o, i) => ({ id: -1 - i, at: { x: o.x, y: o.y }, hx: o.hx, hy: o.hy, back: { x: o.x, y: o.y } }));
   for (const car of cars) {
     let at = car.at;
     for (const lead of placed) {
-      if (lead.hx * car.hx + lead.hy * car.hy < 0.9) continue;
+      if (lead.hx * car.hx + lead.hy * car.hy < 0.9) {
+        // a vehicle crossing just ahead: hold back until it has cleared the lane
+        const ox = lead.at.x - at.x, oy = lead.at.y - at.y;
+        const along = ox * car.hx + oy * car.hy;
+        const across = Math.abs(ox * -car.hy + oy * car.hx);
+        if (across < 0.32 && along > -0.12 && along < CROSS_GAP) {
+          const maxBack = (at.x - car.back.x) * car.hx + (at.y - car.back.y) * car.hy + 0.45;
+          const shift = Math.min(maxBack, CROSS_GAP - along);
+          if (shift > 0) at = { x: at.x - car.hx * shift, y: at.y - car.hy * shift };
+        }
+        continue;
+      }
       const ox = lead.at.x - at.x, oy = lead.at.y - at.y;
       const along = ox * car.hx + oy * car.hy;
       const across = Math.abs(ox * -car.hy + oy * car.hx);
@@ -125,6 +168,10 @@ export class CityScenes {
   private tick = -1;
   private fraction = 0;
   private time = 0;
+  /** Ambient street traffic this frame: journeys queue behind it. */
+  obstacles: { x: number; y: number; hx: number; hy: number }[] = [];
+  /** Journey vehicles on the move (tile coordinates), for ambient traffic to give way to. */
+  drivers: { x: number; y: number; hx: number; hy: number; len: number }[] = [];
   constructor(private parent: Container) {}
   private actor(id: string): Actor {
     let a = this.actors.get(id);
@@ -169,7 +216,8 @@ export class CityScenes {
       a.root.position.set(isoX(at.x, at.y), isoY(at.x, at.y) - h - alt);
       a.root.zIndex = at.x + at.y + 0.08 + (alt > 0 ? 100 : 0);
     };
-    const queued = queuePositions(s, p, this.fraction);
+    const queued = queuePositions(s, p, this.fraction, this.obstacles);
+    this.drivers = [];
     for (const j of s.cityLife?.jobs ?? []) {
       if (!validCityJob(p, j)) continue;
       const target = p.buildings.find((b) => b.id === j.target)!;
@@ -194,9 +242,13 @@ export class CityScenes {
       }
       at = queued.get(j.id) ?? at;
       place(a, at);
+      if (moving && (dx || dy)) {
+        const len = Math.hypot(dx, dy);
+        this.drivers.push({ x: at.x, y: at.y, hx: dx / len, hy: dy / len, len: j.kind === 'fire' || j.kind === 'delivery' ? 0.6 : 0.44 });
+      }
       const own = p.buildings.find((b) => b.id === tileAt(p, Math.floor(at.x), Math.floor(at.y))?.buildingId);
       if (own && at.y >= own.y + 1.12) {
-        const [w, h] = defOf(own).footprint;
+        const [w, h] = footprintOf(own);
         a.root.zIndex = own.x + own.y + w + h - 0.9;
       }
       const paint =
@@ -233,6 +285,10 @@ export class CityScenes {
       a.person.visible =
         ['walkIn', 'walkOut'].includes(j.stage) || (j.stage === 'inside' && j.kind === 'dining');
       if (a.person.visible) {
+        // the driver is staff of the dispatching building; visitors are townsfolk
+        const staff = j.kind === 'ambulance' || j.kind === 'patrol' || j.kind === 'fire' || j.kind === 'delivery';
+        markPerson(a.person, staff ? { kind: 'worker', buildingId: j.source, slot: j.id % 4 } : { kind: 'citizen', index: j.id * 7 + 3 },
+          j.stage === 'walkOut' ? (staff ? 'Görevini bitirip araca dönüyor' : 'Arabasına dönüyor') : ACTIVITY[j.kind], 22);
         const park = j.path.at(-1)!,
           entry = door(target);
         let personAt =
@@ -265,7 +321,7 @@ export class CityScenes {
       // Fire emergency flames on the target building + high-pressure water spray from the fire truck!
       a.fx.clear();
       if (j.kind === 'fire' && j.stage !== 'return' && j.stage !== 'walkOut') {
-        const [tw, th] = defOf(target).footprint;
+        const [tw, th] = footprintOf(target);
         const fireWorldX = target.x + tw * 0.48;
         const fireWorldY = target.y + th * 0.45;
         const fxX = isoX(fireWorldX - at.x, fireWorldY - at.y);
@@ -346,7 +402,7 @@ export class CityScenes {
       const id = `flight:${b.id}`;
       seen.add(id);
       const a = this.actor(id),
-        at = flightPoint(f, b, this.fraction);
+        at = flightPoint(f, b, this.fraction, isSwapped(b));
       place(a, at, at.alt);
       a.car.scale.set(1);
       // Approach altitude is relative to the runway, not changing terrain under the aircraft.
@@ -355,7 +411,7 @@ export class CityScenes {
       a.person.visible = a.red.visible = a.blue.visible = false;
       a.fx.clear();
       // heading from the next point on the flight path; shadow on the apron while airborne
-      const ahead = flightPoint(f, b, Math.min(1, this.fraction + 0.08));
+      const ahead = flightPoint(f, b, Math.min(1, this.fraction + 0.08), isSwapped(b));
       const vx = ahead.x - at.x, vy = ahead.y - at.y;
       const [hx, hy] = Math.abs(vx) >= Math.abs(vy) ? [vx < 0 ? -1 : 1, 0] : [0, vy < 0 ? -1 : 1];
       const night = clockHour(s.tick) >= 19 || clockHour(s.tick) < 6;

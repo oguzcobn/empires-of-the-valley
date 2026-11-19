@@ -14,7 +14,7 @@ import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import type { RoadPlan, RoadPoint } from '../systems/commands';
 import { validatePlacement } from '../systems/commands';
 import { homeProvince, isBuilt, isOperating, totalPopulation } from '../systems/economy';
-import { NEIGHBORS4, buildingById, footprintTiles, tileAt, tilesInRange } from '../systems/grid';
+import { NEIGHBORS4, buildingById, tileAt, tilesInRange } from '../systems/grid';
 import { checkRoadSite } from '../systems/placement';
 import { requiredTicks } from '../systems/tick';
 import { TH, TW, isoX, isoY, P, worldToTile } from './iso';
@@ -25,7 +25,7 @@ import { buildingArtSeed, drawStyledBuilding, drawStyledConstruction } from './a
 import type { SpriteInfo } from './arch/buildings';
 import { CULTURES } from '../data/architecture';
 import { conditionBand } from '../systems/architecture';
-import { findGroundPath, musterPoint } from './armyPath';
+import { findGroundPath, marchable, musterPoint } from './armyPath';
 import { getPavedLinks } from './roadGeometry';
 import { matchDayFor } from '../data/matchDays';
 import type { MatchDay } from '../data/matchDays';
@@ -41,6 +41,15 @@ import { Fireworks } from './fireworks';
 import { WaterLife } from './waterLife';
 import type { PedLook } from './pedestrians';
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
+import { blocksFollowing, bodiesOverlap, heldByFollowing, junctionClear } from './trafficRules';
+import { buildingDepths } from './depthSort';
+import { markPerson, pickPerson, setActivity } from './people';
+import type { PersonPick } from './people';
+import { citizenAt } from '../data/citizens';
+import { footprintOf, footprintTilesOf, isSwapped, rotTile, rotateAnimals, rotateGame, rotPoint, unrotPoint, unrotRect, unrotTile } from './rotation';
+import type { Rotation } from './rotation';
+import { wildlife } from '../systems/frontier';
+import type { TrafficAgent } from './trafficRules';
 import type { GridPoint } from './armyPath';
 import { CityScenes } from './cityScenes';
 import { WorkerScenes } from './workerScenes';
@@ -79,11 +88,17 @@ export interface RendererOptions {
   antialias: boolean;
   /** Cache building bodies as textures (cheaper frames, used on low/medium quality). */
   cacheBodies: boolean;
+  /** Quarter turns of the camera (see rotation.ts); fixed for the renderer's lifetime. */
+  rotation?: Rotation;
+  /** Start the camera here (true map tile coordinates and world scale) instead of fitting the map. */
+  camera?: { x: number; y: number; zoom: number } | null;
 }
 
 export interface RendererHost {
   getView(): RendererView | null;
   onTileClick(x: number, y: number, buildingId: string | null): void;
+  /** A person on the map was tapped (select tool only). */
+  onPersonClick?(person: PersonPick): void;
   onRoadPaint(x: number, y: number): void;
   onHover(tile: { x: number; y: number } | null): void;
   onCancel(): void;
@@ -102,6 +117,8 @@ export interface RendererStats {
   particles: number;
   /** Moving street vehicles (ambient traffic), for the soundscape. */
   traffic?: number;
+  trafficMoving?: number;
+  trafficOverlaps?: number;
   /** Beach-goers, swimmers and sailing boats. */
   waterLife?: number;
 }
@@ -147,8 +164,23 @@ interface Walker {
   cart: boolean;
   fan?: boolean;
   flare?: Graphics;
+  /** Who this is (citizen number). */
+  citizen: number;
+  child: boolean;
 }
 interface TrafficCar {
+  id: number;
+  /** Farm pickup on any road, including dirt lanes (street traffic keeps to asphalt). */
+  rural: boolean;
+  /** Produce colour for farm pickups. */
+  load: number;
+  /** Real ms spent held by other traffic (not by red lights): long jams despawn the car. */
+  waited: number;
+  /** Last drawn centre and heading, the input to the right-of-way rules. */
+  px: number;
+  py: number;
+  hx: number;
+  hy: number;
   c: Container;
   sprite: Graphics;
   /** Headlight beams on the road ahead, shown after dusk. */
@@ -188,6 +220,16 @@ const SPEED_FACTOR: Record<number, number> = { 0: 0, 1: 1, 2: 1.6, 4: 2.4 };
  * reported through RendererHost callbacks and turned into commands by the app layer.
  * Layers (bottom to top): ground, water fx, ground overlays, depth-sorted objects, ghost.
  */
+/** What a townsperson out walking is doing at this hour. */
+function walkerActivity(hour: number, child: boolean): string {
+  if (hour >= 7 && hour < 9) return child ? 'Okula gidiyor' : 'İşe gidiyor';
+  if (hour >= 12 && hour < 13) return 'Öğle arasında dışarıda';
+  if (hour >= 16 && hour < 19) return child ? 'Okuldan eve dönüyor' : 'İşten eve dönüyor';
+  if (hour >= 19 && hour < 23) return 'Akşam yürüyüşünde';
+  if (hour >= 23 || hour < 6) return 'Gece eve dönüyor';
+  return 'Şehirde dolaşıyor';
+}
+
 export class ValleyRenderer {
   private app = new Application();
   private world = new Container();
@@ -216,6 +258,8 @@ export class ValleyRenderer {
   private cameraViewport = { width: 0, height: 0 };
   private prov: Province | null = null;
   private opts: RendererOptions = { resolution: 2, antialias: true, cacheBodies: false };
+  private rot: Rotation = 0;
+  private rotatedFor: { view: RendererView; out: RendererView } | null = null;
   private buildingViews = new Map<string, BuildingView>();
   private propViews = new Map<number, PropView>();
   private walkers: Walker[] = [];
@@ -240,6 +284,8 @@ export class ValleyRenderer {
   private time = 0;
   private waterTimer = 0;
   private flagTimer = 0;
+  /** Building layout the current draw order was computed for. */
+  private depthKey = '';
   private ghostSig = '';
   private pointers = new Map<number, { x: number; y: number }>();
   private drag: { lastX: number; lastY: number; total: number; button: number; paint: boolean } | null = null;
@@ -251,9 +297,62 @@ export class ValleyRenderer {
 
   private constructor(private cb: RendererHost) {}
 
+  /** The host's view as the camera sees it: every map position turned by the camera rotation. */
+  private view(): RendererView | null {
+    const v = this.cb.getView();
+    if (!v || this.rot === 0) return v;
+    const hit = this.rotatedFor;
+    if (hit && hit.view.game === v.game && hit.view.roadPlan === v.roadPlan && hit.view.tool === v.tool &&
+      hit.view.selectedBuildingId === v.selectedBuildingId && hit.view.detail === v.detail && hit.view.reducedMotion === v.reducedMotion)
+      return hit.out;
+    const home = homeProvince(v.game);
+    const t = <Q extends { x: number; y: number }>(q: Q): Q => {
+      const [x, y] = rotTile(q.x, q.y, home.width, home.height, this.rot);
+      return { ...q, x, y };
+    };
+    const plan = v.roadPlan
+      ? { ...v.roadPlan, tiles: v.roadPlan.tiles.map(t), paveTiles: v.roadPlan.paveTiles.map(t), blocked: v.roadPlan.blocked ? t(v.roadPlan.blocked) : null }
+      : v.roadPlan;
+    const tool = v.tool.kind === 'roadPlan'
+      ? { ...v.tool, ...(v.tool.start ? { start: t(v.tool.start) } : {}), ...(v.tool.end ? { end: t(v.tool.end) } : {}) }
+      : v.tool;
+    const out: RendererView = { ...v, game: rotateGame(v.game, this.rot), roadPlan: plan, tool };
+    this.rotatedFor = { view: v, out };
+    return out;
+  }
+
+  /** True (unrotated) map size of the home province. */
+  private trueSize(): [number, number] {
+    const v = this.cb.getView();
+    if (!v) return [this.size, this.size];
+    const p = homeProvince(v.game);
+    return [p.width, p.height];
+  }
+
+  /** True map point -> the point drawn on screen. */
+  private toView(x: number, y: number): [number, number] {
+    const [w, h] = this.trueSize();
+    return rotPoint(x, y, w, h, this.rot);
+  }
+
+  /** Camera centre in true tile coordinates and zoom, for keeping the view across a rotation. */
+  getCamera(): { x: number; y: number; zoom: number } {
+    const { width, height } = this.app.screen;
+    const s = this.world.scale.x;
+    const t = worldToTile((width / 2 - this.world.x) / s, (height / 2 - this.world.y) / s);
+    const [w, h] = this.trueSize();
+    const [x, y] = unrotPoint(t.x, t.y, w, h, this.rot);
+    return { x, y, zoom: s };
+  }
+
+  get rotation(): Rotation {
+    return this.rot;
+  }
+
   static async create(host: HTMLElement, cb: RendererHost, opts?: Partial<RendererOptions>): Promise<ValleyRenderer> {
     const r = new ValleyRenderer(cb);
     r.opts = { ...r.opts, ...opts };
+    r.rot = r.opts.rotation ?? 0;
     await r.app.init({
       resizeTo: host,
       antialias: r.opts.antialias,
@@ -276,7 +375,14 @@ export class ValleyRenderer {
     r.world.addChild(r.ground, r.waterFx, r.transportGround, r.under, r.objects, r.ghost);
     r.app.stage.addChild(r.world, r.fx);
     r.bindInput(canvas);
+    const first = r.view();
+    if (first) r.size = homeProvince(first.game).width;
     r.resetCamera();
+    const cam = r.opts.camera;
+    if (cam) {
+      r.world.scale.set(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, cam.zoom)));
+      r.centerOnTile(cam.x, cam.y);
+    }
     r.app.ticker.add(r.frame);
     return r;
   }
@@ -311,6 +417,8 @@ export class ValleyRenderer {
       walkers: this.walkers.length + this.workScenes.count + this.birds.length,
       particles: this.particles.length,
       traffic: this.trafficCars.length,
+      trafficMoving: this.trafficMoving,
+      trafficOverlaps: this.trafficOverlaps,
       waterLife: this.waterLife.count,
     };
   }
@@ -328,10 +436,16 @@ export class ValleyRenderer {
     const scale = Math.max(MIN_ZOOM, Math.min(1.2, usableWidth / boundsWidth, usableHeight / boundsHeight));
     this.world.scale.set(scale);
     this.cameraViewport = { width, height };
-    this.centerOnTile(this.size / 2, this.size / 2 + 0.5);
+    this.centerView(this.size / 2, this.size / 2 + 0.5);
   }
 
-  centerOnTile(x: number, y: number): void {
+  centerOnTile(tx: number, ty: number): void {
+    const [x, y] = this.toView(tx, ty);
+    this.centerView(x, y);
+  }
+
+  /** Centres the camera on a point of the drawn (rotated) map. */
+  private centerView(x: number, y: number): void {
     const { width, height } = this.app.screen;
     const s = this.world.scale.x;
     this.world.position.set(width / 2 - isoX(x, y) * s, height / 2 - isoY(x, y) * s);
@@ -339,10 +453,11 @@ export class ValleyRenderer {
   }
 
   /** Client (viewport) coordinates of a tile centre — used by automated browser tests. */
-  tileToClient(x: number, y: number): { x: number; y: number } {
+  tileToClient(tx: number, ty: number): { x: number; y: number } {
+    const [x, y] = this.toView(tx + 0.5, ty + 0.5).map((n) => n - 0.5) as [number, number];
     const rect = this.app.canvas.getBoundingClientRect();
     const s = this.world.scale.x;
-    const view = this.cb.getView();
+    const view = this.view();
     const h = view ? this.hz(homeProvince(view.game), x, y) : 0;
     return {
       x: rect.left + this.world.x + isoX(x + 0.5, y + 0.5) * s,
@@ -390,7 +505,7 @@ export class ValleyRenderer {
     const s = this.world.scale.x;
     const px = (e.clientX - rect.left - this.world.x) / s;
     const py = (e.clientY - rect.top - this.world.y) / s;
-    const view = this.cb.getView();
+    const view = this.view();
     const flat = worldToTile(px, py);
     if (!view) return { fx: flat.x, fy: flat.y };
     // raised ground: the visible tile is the front-most one whose top surface is under the pointer
@@ -405,10 +520,33 @@ export class ValleyRenderer {
     return { fx: t.x, fy: t.y };
   }
 
+  /** Footprint of the building being placed, as drawn in this rotation. */
+  private toolFootprint(id: BuildingId): [number, number] {
+    const [w, h] = BUILDINGS[id].footprint;
+    return this.rot % 2 ? [h, w] : [w, h];
+  }
+
+  /**
+   * A drawn tile as the game knows it. While placing a building the hovered tile is the drawn
+   * top corner of its footprint, so the true anchor is that rectangle's true top corner.
+   */
+  private outTile(x: number, y: number): { x: number; y: number } {
+    if (this.rot === 0) return { x, y };
+    const tool = this.cb.getView()?.tool;
+    const [W, H] = this.trueSize();
+    if (tool?.kind === 'build') {
+      const [fw, fh] = this.toolFootprint(tool.buildingId);
+      const r = unrotRect(x, y, fw, fh, W, H, this.rot);
+      return { x: r.x, y: r.y };
+    }
+    const [tx, ty] = unrotTile(x, y, W, H, this.rot);
+    return { x: tx, y: ty };
+  }
+
   private setHover(tile: { x: number; y: number } | null): void {
     if (tile?.x === this.hover?.x && tile?.y === this.hover?.y) return;
     this.hover = tile;
-    this.cb.onHover(tile);
+    this.cb.onHover(tile ? this.outTile(tile.x, tile.y) : null);
   }
 
   private pickBuilding(p: Province, fx: number, fy: number): string | null {
@@ -417,7 +555,7 @@ export class ValleyRenderer {
       if (!id) continue;
       const b = buildingById(p, id);
       if (!b) continue;
-      const [w, h] = defOf(b).footprint;
+      const [w, h] = footprintOf(b);
       // apparent height above the footprint centre (sprite heights are measured from its top vertex)
       const height = (this.buildingViews.get(id)?.info.height ?? 14) + (w + h) * 8;
       if (height >= 32 * k - 6) return id;
@@ -441,7 +579,8 @@ export class ValleyRenderer {
       const key = `${x},${y}`;
       if (key === this.lastPaint) return;
       this.lastPaint = key;
-      this.cb.onRoadPaint(x, y);
+      const out = this.outTile(x, y);
+      this.cb.onRoadPaint(out.x, out.y);
     };
     on('pointerdown', (e) => {
       canvas.setPointerCapture(e.pointerId);
@@ -452,7 +591,7 @@ export class ValleyRenderer {
         this.drag = null;
         return;
       }
-      const view = this.cb.getView();
+      const view = this.view();
       const isPaint = (view?.tool.kind === 'road' || view?.tool.kind === 'pave') && e.button === 0;
       this.drag = { lastX: e.clientX, lastY: e.clientY, total: 0, button: e.button, paint: isPaint };
       this.lastPaint = '';
@@ -502,8 +641,16 @@ export class ValleyRenderer {
         return;
       }
       if (drag.button !== 0) return;
-      const view = this.cb.getView();
+      const view = this.view();
       if (!view) return;
+      if (view.tool.kind === 'select' && this.cb.onPersonClick) {
+        const rect = canvas.getBoundingClientRect();
+        const person = pickPerson(e.clientX - rect.left, e.clientY - rect.top, e.pointerType === 'mouse' ? 5 : 9);
+        if (person) {
+          this.cb.onPersonClick(person);
+          return;
+        }
+      }
       const { fx, fy } = this.tileFromEvent(e);
       const p = homeProvince(view.game);
       const pickTall = view.tool.kind === 'select' || view.tool.kind === 'demolish';
@@ -511,7 +658,8 @@ export class ValleyRenderer {
       const y = Math.floor(fy);
       const buildingId = pickTall ? this.pickBuilding(p, fx, fy) : (tileAt(p, x, y)?.buildingId ?? null);
       if (e.pointerType !== 'mouse') this.setHover(tileAt(p, x, y) ? { x, y } : null);
-      this.cb.onTileClick(x, y, buildingId);
+      const out = this.outTile(x, y);
+      this.cb.onTileClick(out.x, out.y, buildingId);
     };
     on('pointerup', up);
     on('pointercancel', up);
@@ -533,7 +681,7 @@ export class ValleyRenderer {
   // ------------------------------------------------------------------ frame
 
   private frame = (ticker: Ticker): void => {
-    const view = this.cb.getView();
+    const view = this.view();
     if (!view || this.destroyed) return;
     const dt = Math.min(ticker.deltaMS, 100);
     this.time += dt;
@@ -579,7 +727,12 @@ export class ValleyRenderer {
     this.syncBuildings(view, p, pal, cal.season, dt, motion);
     const workerStep = motion ? (dt / 1000) * Math.min(1.35, SPEED_FACTOR[view.game.speed] ?? 0) : 0;
     this.workScenes.update(p, cal.season, view.selectedBuildingId, workerStep, !motion);
-    this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt');
+    {
+      const trueGame = this.cb.getView()!.game;
+      const trueP = homeProvince(trueGame);
+      this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt',
+        this.rot ? rotateAnimals(wildlife(trueP, trueGame.seed, trueGame.tick), trueP, this.rot) : undefined);
+    }
     this.updateWalkers(view, p, dt, motion);
     this.signals.update(this.time, this.night);
     this.furniture.setNight(this.night);
@@ -612,7 +765,7 @@ export class ValleyRenderer {
     this.roadTiles = [];
     this.pavedRoadTiles = [];
     // painter's order along diagonals so raised tiles and their cliffs overlap correctly
-    const detail = this.cb.getView()?.detail ?? 2;
+    const detail = this.view()?.detail ?? 2;
     for (let sum = 0; sum <= p.width + p.height - 2; sum++)
       for (let x = Math.max(0, sum - p.height + 1); x <= Math.min(p.width - 1, sum); x++) {
         const y = sum - x;
@@ -778,8 +931,7 @@ export class ValleyRenderer {
     if (flagNow) this.flagTimer = 0;
     for (const b of p.buildings) {
       seen.add(b.id);
-      const def = defOf(b);
-      const [w, h] = def.footprint;
+      const [w, h] = footprintOf(b);
       let bv = this.buildingViews.get(b.id);
       if (!bv) {
         const c = new Container();
@@ -792,9 +944,11 @@ export class ValleyRenderer {
         body.addChild(g);
         c.addChild(body, glow, extra);
         c.cullable = true;
-        const base = Math.min(...footprintTiles(def, b.x, b.y).map(([fx, fy]) => tileAt(p, fx, fy)?.height ?? 0));
+        const base = Math.min(...footprintTilesOf(b).map(([fx, fy]) => tileAt(p, fx, fy)?.height ?? 0));
         c.position.set(isoX(b.x, b.y), isoY(b.x, b.y) - base * HEIGHT_PX);
         c.zIndex = b.x + w + b.y + h - 1;
+        // a non-square building seen from the side: its art mirrored swaps width and depth
+        if (isSwapped(b)) c.scale.x = -1;
         this.objects.addChild(c);
         bv = {
           c,
@@ -836,11 +990,23 @@ export class ValleyRenderer {
         if (bv.smokeTimer <= 0) {
           bv.smokeTimer = 420 + Math.random() * 260;
           const g = new Graphics().circle(0, 0, 2.6).fill({ color: COLORS.smoke, alpha: 0.8 });
-          g.position.set(bv.c.x + anchor[0], bv.c.y + anchor[1]);
+          g.position.set(bv.c.x + anchor[0] * bv.c.scale.x, bv.c.y + anchor[1]);
           g.zIndex = bv.c.zIndex + 0.5;
           this.objects.addChild(g);
           this.particles.push({ g, life: 1 });
         }
+      }
+    }
+    const depthKey = p.buildings.map((b) => `${b.id}:${b.x},${b.y}`).join('|');
+    if (depthKey !== this.depthKey) {
+      this.depthKey = depthKey;
+      const depths = buildingDepths(p.buildings.map((b) => {
+        const [w, h] = footprintOf(b);
+        return { id: b.id, x: b.x, y: b.y, w, h };
+      }));
+      for (const b of p.buildings) {
+        const bv = this.buildingViews.get(b.id);
+        if (bv) bv.c.zIndex = depths.get(b.id) ?? bv.c.zIndex;
       }
     }
     for (const [id, bv] of this.buildingViews) {
@@ -862,7 +1028,7 @@ export class ValleyRenderer {
     bv.info =
       b.state === 'construction' && !landmarkSite
         ? drawStyledConstruction(g, w, h, b.progressTicks / Math.max(1, requiredTicks(b)), b.style, detail, seed)
-        : drawStyledBuilding(g, b, pal, detail, seed);
+        : drawStyledBuilding(g, b, pal, detail, seed, false, isSwapped(b));
     if (bv.mask) {
       bv.body.mask = null;
       bv.mask.destroy();
@@ -894,7 +1060,7 @@ export class ValleyRenderer {
     bv.glow.clear();
     // The illuminated version paints each window before subsequent roof/occluder
     // geometry. Alpha blends with the unlit version, preserving all window depth.
-    if (isBuilt(b) && !landmarkSite) drawStyledBuilding(bv.glow, b, pal, detail, seed, true);
+    if (isBuilt(b) && !landmarkSite) drawStyledBuilding(bv.glow, b, pal, detail, seed, true, isSwapped(b));
     bv.glow.alpha = Math.min(1, this.night * 1.1);
     bv.glow.visible = this.night > 0.02 && isBuilt(b) && b.connected;
     if (this.opts.cacheBodies && landmarkSite && bv.body.isCachedAsTexture) bv.body.cacheAsTexture(false);
@@ -1149,7 +1315,7 @@ export class ValleyRenderer {
     }
   }
 
-  private spawnWalker(cart: boolean, fanMatch?: MatchDay, index = 0): Walker | null {
+  private spawnWalker(cart: boolean, fanMatch?: MatchDay, index = 0, s?: GameState): Walker | null {
     const starts = fanMatch && this.pavedRoadTiles.length ? this.pavedRoadTiles : this.roadTiles;
     if (!starts.length) return null;
     const start = starts[Math.floor(Math.random() * starts.length)]!;
@@ -1157,7 +1323,15 @@ export class ValleyRenderer {
     const g = new Graphics();
     if (fanMatch) drawFootballSupporter(g, fanMatch, index);
     else if (cart) drawCart(g, [0xb98a5a, 0xe2bb45, 0x9aa0a6][Math.floor(Math.random() * 3)]!);
-    const look = !fanMatch && !cart ? randomPedLook(Math.random, this.dropKind === 'rain') : undefined;
+    // every walker is a real townsperson: their figure follows their age and sex
+    const game = s ?? this.view()?.game;
+    const total = game ? totalPopulation(homeProvince(game)) : 0;
+    const adults = game ? homeProvince(game).population.adults : 0;
+    const citizen = total ? Math.floor(Math.random() * (fanMatch ? Math.max(1, adults) : total)) : 0;
+    const who = game && total ? citizenAt(game, citizen) : null;
+    const look = !fanMatch && !cart
+      ? randomPedLook(Math.random, this.dropKind === 'rain', who ? { kind: who.stage === 'child' ? 'child' : who.stage === 'elder' ? 'elder' : who.woman ? 'woman' : 'man', woman: who.woman } : undefined)
+      : undefined;
     if (look) drawPedestrian(g, look, 0);
     c.addChild(g);
     const flare = fanMatch ? new Graphics() : undefined;
@@ -1166,7 +1340,10 @@ export class ValleyRenderer {
     c.cullable = true;
     this.objects.addChild(c);
     this.tintKey = -1;
+    if (!cart) markPerson(c, { kind: 'citizen', index: citizen }, fanMatch ? 'Maç günü taraftar korteji ile yürüyor' : 'Şehirde yürüyor', fanMatch ? 30 : 22);
     return {
+      citizen,
+      child: who?.stage === 'child',
       c,
       from: [start[0], start[1]],
       to: [start[0], start[1]],
@@ -1202,6 +1379,7 @@ export class ValleyRenderer {
       c.cullable = true;
       this.objects.addChild(c);
       this.militiaSprites.push(c);
+      markPerson(c, { kind: 'soldier', index: i }, 'Nöbet tutuyor', 34);
     }
     if (!count) return;
     const goal = view.game.armyTarget;
@@ -1254,6 +1432,7 @@ export class ValleyRenderer {
       const v = pos[1] + 0.5 + fy * along + fx * across;
       c.position.set(isoX(u, v), isoY(u, v) - z);
       c.zIndex = u + v + 0.05;
+      setActivity(c, marching ? 'Emredilen noktaya yürüyor' : 'Nöbet tutuyor, silahı hazır');
       const soldier = c.children[0] as Graphics;
       const key = `${frame}|${marching ? `${fx},${fy}` : 'halt'}|${view.game.culture}`;
       if (soldier.label !== key) {
@@ -1313,12 +1492,12 @@ export class ValleyRenderer {
   /** Visual-only villagers and carts wandering the road network. The economy never reads them. */
   private updateWalkers(view: RendererView, p: Province, dt: number, motion: boolean): void {
     const wantVillagers = Math.round(Math.min(18, Math.max(0, Math.floor(totalPopulation(p) / 2) - this.workScenes.count)) * walkerShare(clockHour(view.game.tick)));
-    const wantCarts = Math.min(3, p.buildings.filter((b) => specOf(b).produces && isOperating(b)).length);
+    const wantCarts = 0; // farm pickups drive with the street traffic (updateTraffic)
     const count = (cart: boolean): number => this.walkers.filter((w) => w.cart === cart).length;
     for (const cart of [false, true]) {
       const want = cart ? wantCarts : wantVillagers;
       while (count(cart) < want) {
-        const w = this.spawnWalker(cart);
+        const w = this.spawnWalker(cart, undefined, 0, view.game);
         if (!w) break;
         this.walkers.push(w);
       }
@@ -1340,7 +1519,7 @@ export class ValleyRenderer {
         const fans = 10;
         let leaderStart: [number, number] | null = null;
         for (let i = 0; i < fans; i++) {
-          const fan = this.spawnWalker(false, match, i);
+          const fan = this.spawnWalker(false, match, i, view.game);
           if (!fan) continue;
           if (!leaderStart) leaderStart = [fan.from[0], fan.from[1]];
           fan.from = [leaderStart[0], leaderStart[1]];
@@ -1368,6 +1547,8 @@ export class ValleyRenderer {
       const waiting = !w.cart && w.t <= kerb + 1e-3 && nextT > kerb &&
         !this.signals.mayEnter(p, w.to[0], w.to[1], w.to[0] - w.from[0], w.to[1] - w.from[1], this.time);
       w.t = waiting ? Math.max(w.t, kerb) : nextT;
+      if (waiting !== w.waiting && !w.cart)
+        setActivity(w.c, waiting ? 'Karşıya geçmek için yeşil ışığı bekliyor' : walkerActivity(clockHour(view.game.tick), w.child));
       w.waiting = waiting;
       if (w.t >= 1) {
         const options = (
@@ -1503,7 +1684,7 @@ export class ValleyRenderer {
       (festival && p.buildings.find((b) => b.definitionId === 'aquapark' && isBuilt(b))) ||
       p.buildings.find((b) => b.definitionId === 'town_center');
     if (!venue) return;
-    const [w, h] = defOf(venue).footprint;
+    const [w, h] = footprintOf(venue);
     const cx = venue.x + w / 2, cy = venue.y + h / 2;
     this.fireworks.update(evening && (match || festival) && dt > 0, isoX(cx, cy), isoY(cx, cy) - this.hz(p, venue.x, venue.y) - 40, dt);
   }
@@ -1513,108 +1694,191 @@ export class ValleyRenderer {
       const t = tileAt(p, x, y);
       return !!t?.road && (t.roadType === 'bridge' || (!!t.paved && t.roadType === 'dirt'));
     };
-    const neighbors = (x: number, y: number): [number, number][] =>
-      (NEIGHBORS4.map(([dx, dy]) => [x + dx, y + dy] as [number, number]))
-        .filter(([nx, ny]) =>
-          isPaved(nx, ny) &&
-          tileAt(p, nx, ny)?.height === tileAt(p, x, y)?.height);
-    const linked = this.roadTiles.filter(([x, y]) => neighbors(x, y).length > 0);
+    const isLane = (x: number, y: number): boolean => {
+      const t = tileAt(p, x, y);
+      return !!t?.road && t.roadType !== 'stairs' && t.roadType !== 'tunnel';
+    };
+    const drivable = (rural: boolean) => (rural ? isLane : isPaved);
+    const neighbors = (x: number, y: number, rural: boolean): [number, number][] => {
+      const ok = drivable(rural);
+      const h = tileAt(p, x, y)?.height ?? 0;
+      return NEIGHBORS4.map(([dx, dy]) => [x + dx, y + dy] as [number, number]).filter(([nx, ny]) => {
+        if (!ok(nx, ny)) return false;
+        const dh = Math.abs((tileAt(p, nx, ny)?.height ?? 0) - h);
+        return rural ? dh <= 1 : dh === 0;
+      });
+    };
+    /** Junctions and corners need a clear box before a vehicle turns into them. */
+    const isJunction = (x: number, y: number, rural: boolean): boolean => {
+      const n = neighbors(x, y, rural);
+      if (n.length !== 2) return n.length > 2;
+      return n[0]![0] !== n[1]![0] && n[0]![1] !== n[1]![1];
+    };
+    const linked = this.roadTiles.filter(([x, y]) => isPaved(x, y) && neighbors(x, y, false).length > 0);
+    const lanes = this.roadTiles.filter(([x, y]) => isLane(x, y) && neighbors(x, y, true).length > 0);
     // rush hours fill the streets, nights empty them (see dayRhythm.ts)
     const desired = Math.round(Math.min(14, Math.floor(linked.length / 3)) * trafficShare(clockHour(view.game.tick)));
-    // Deleted or demolished paved roads must immediately release their cars.
-    for (let i = this.trafficCars.length - 1; i >= 0; i--) {
-      const car = this.trafficCars[i]!;
-      if (!isPaved(car.from[0], car.from[1]) || !isPaved(car.to[0], car.to[1])) {
-        car.c.destroy({ children: true });
-        this.trafficCars.splice(i, 1);
+    const desiredCarts = lanes.length ? Math.min(3, p.buildings.filter((b) => specOf(b).produces && isOperating(b)).length) : 0;
+    const remove = (car: TrafficCar): void => {
+      car.c.destroy({ children: true });
+      this.trafficCars.splice(this.trafficCars.indexOf(car), 1);
+    };
+    // Deleted or demolished roads must immediately release their vehicles.
+    for (const car of [...this.trafficCars])
+      if (!drivable(car.rural)(car.from[0], car.from[1]) || !drivable(car.rural)(car.to[0], car.to[1])) remove(car);
+    const count = (rural: boolean): number => this.trafficCars.filter((c) => c.rural === rural).length;
+    for (const rural of [false, true]) {
+      const want = rural ? desiredCarts : desired;
+      while (count(rural) > want) remove(this.trafficCars.find((c) => c.rural === rural)!);
+      const pool = rural ? lanes : linked;
+      let attempts = 0;
+      while (count(rural) < want && attempts++ < 18 && pool.length) {
+        const start = pool[Math.floor(Math.random() * pool.length)]!;
+        const possible = neighbors(start[0], start[1], rural);
+        if (!possible.length) continue;
+        // never spawn on top of another vehicle
+        if (this.trafficCars.some((car) => Math.hypot(car.px - start[0] - 0.5, car.py - start[1] - 0.5) < 0.8)) continue;
+        const to = possible[Math.floor(Math.random() * possible.length)]!;
+        this.trafficCars.push(this.makeVehicle(view, p, rural, linked.length, start, to));
       }
-    }
-    while (this.trafficCars.length > desired) this.trafficCars.pop()!.c.destroy({ children: true });
-    let attempts = 0;
-    while (this.trafficCars.length < desired && attempts++ < 18) {
-      if (!linked.length) break;
-      const start = linked[Math.floor(Math.random() * linked.length)]!;
-      const possible = neighbors(start[0], start[1]);
-      if (!possible.length) continue;
-      if (this.trafficCars.some((car) => car.from[0] === start[0] && car.from[1] === start[1])) continue;
-      const to = possible[Math.floor(Math.random() * possible.length)]!;
-      const holder = new Container();
-      const body = new Graphics();
-      const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
-      const paint = paints[this.trafficCars.length % paints.length]!;
-      const electric = this.trafficCars.length % 3 === 0;
-      const cal = calendar(view.game.tick);
-      const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length, clockHour(view.game.tick), cal.season, this.dropKind === 'snow',
-        p.buildings.some((b) => b.definitionId === 'bus_depot' && isOperating(b)));
-      const dx = to[0] - start[0], dy = to[1] - start[1];
-      drawTrafficVehicle(body, variant, paint, electric, dx, dy, view.game.culture);
-      const beam = new Graphics();
-      drawHeadlights(beam, dx, dy, modelLength(variant) === 2 ? 0.62 : modelLength(variant) === 0 ? 0.25 : 0.4);
-      holder.addChild(beam, body);
-      holder.scale.set(VEHICLE_SCALE);
-      holder.cullable = true;
-      this.objects.addChild(holder);
-      this.trafficCars.push({
-        c: holder, sprite: body, beam, paint, electric, variant, heading: `${dx},${dy}`,
-        from: [start[0], start[1]], to,
-        prev: [start[0], start[1]], t: 0,
-        speed: (0.5 + Math.random() * 0.22) * modelSpeed(variant),
-      });
     }
     const uk = view.game.cityId === 'edinburgh' ||
       (!view.game.cityId && view.game.culture === 'scottish');
-    for (const car of this.trafficCars) {
-      if (!isPaved(car.from[0], car.from[1]) || !isPaved(car.to[0], car.to[1])) {
-        car.c.visible = false;
-        car.t = 1;
-        continue;
-      }
-      car.c.visible = true;
-      const carAhead = this.trafficCars.some((other) =>
-        other !== car && other.from[0] === car.from[0] &&
-        other.from[1] === car.from[1] && other.to[0] === car.to[0] &&
-        other.to[1] === car.to[1] && other.t > car.t &&
-        other.t - car.t < (modelLength(other.variant) === 2 || modelLength(car.variant) === 2 ? 0.62 : 0.36));
-      if (!carAhead && motion && view.game.speed !== 0) {
-        // wait at the stop line (just before the junction tile) while its light is red
-        const next = car.t + Math.min(0.12, dt / 1000) * car.speed;
-        const stop = modelLength(car.variant) === 2 ? 0.18 : 0.3;
-        const red = car.t <= stop + 1e-3 && next > stop &&
-          !this.signals.mayEnter(p, car.to[0], car.to[1], car.to[0] - car.from[0], car.to[1] - car.from[1], this.time);
-        car.t = red ? Math.max(car.t, stop) : next;
+    const lengthOf = (car: TrafficCar): number => {
+      if (car.rural) return 0.44;
+      const m = modelLength(car.variant);
+      return m === 2 ? 0.66 : m === 0 ? 0.22 : 0.42;
+    };
+    const agents: TrafficAgent[] = this.trafficCars.map((car) => ({ id: car.id, x: car.px, y: car.py, hx: car.hx, hy: car.hy, len: lengthOf(car) }));
+    // journey vehicles (ambulances, deliveries, visitors) keep their schedule: everyone gives way to them
+    const journeys: TrafficAgent[] = this.cityScenes.drivers.map((d, i) => ({ id: -1 - i, ...d }));
+    const all = [...agents, ...journeys];
+    const held = heldByFollowing(all);
+    for (const a of agents) if (journeys.some((j) => blocksFollowing(a, j))) held.add(a.id);
+    const running = motion && view.game.speed !== 0;
+    const startT = new Map(this.trafficCars.map((c) => [c.id, c.t]));
+    for (const car of [...this.trafficCars]) {
+      const me = agents.find((a) => a.id === car.id)!;
+      if (running) {
+        if (held.has(car.id)) car.waited += dt;
+        else {
+          const next = car.t + Math.min(0.12, dt / 1000) * car.speed;
+          const stop = modelLength(car.variant) === 2 && !car.rural ? 0.18 : 0.3;
+          const crossing = car.t <= stop + 1e-3 && next > stop;
+          const red = crossing && !this.signals.mayEnter(p, car.to[0], car.to[1], car.to[0] - car.from[0], car.to[1] - car.from[1], this.time);
+          const boxBlocked = crossing && !red && isJunction(car.to[0], car.to[1], car.rural) && !junctionClear(me, all, car.to[0], car.to[1]);
+          if (red || boxBlocked) car.t = Math.max(car.t, stop);
+          else {
+            // last guard: never drive into another body, whatever the rules above missed
+            const [nx, ny] = this.lanePoint(car, Math.min(next, 1), uk);
+            const moved = { ...me, x: nx, y: ny };
+            const hit = all.some((o) => o.id !== me.id && bodiesOverlap(moved, o) && !bodiesOverlap(me, o));
+            if (hit) car.waited += dt;
+            else car.t = next;
+          }
+          // a red light is a normal wait; only jams count towards giving up
+          if (boxBlocked) car.waited += dt;
+          else if (!red && car.t === next) car.waited = 0;
+        }
+        // gridlock: the vehicle turns off the map rather than drive through another one
+        if (car.waited > 9000) {
+          remove(car);
+          continue;
+        }
       }
       if (car.t >= 1) {
         car.prev = car.from;
         car.from = car.to;
-        const directions = neighbors(car.from[0], car.from[1]);
+        const directions = neighbors(car.from[0], car.from[1], car.rural);
         const forward = directions.filter(([x, y]) => x !== car.prev[0] || y !== car.prev[1]);
         const choice = forward.length ? forward : directions;
         car.to = choice.length ? choice[Math.floor(Math.random() * choice.length)]! : car.from;
         car.t = 0;
       }
-      const dx = car.to[0] - car.from[0];
-      const dy = car.to[1] - car.from[1];
-      const heading = `${dx},${dy}`;
-      if (car.heading !== heading && (dx !== 0 || dy !== 0)) {
-        car.sprite.clear();
-        drawTrafficVehicle(car.sprite, car.variant, car.paint, car.electric, dx, dy, view.game.culture);
-        drawHeadlights(car.beam, dx, dy, modelLength(car.variant) === 2 ? 0.62 : modelLength(car.variant) === 0 ? 0.25 : 0.4);
-        car.heading = heading;
-      }
-      car.beam.visible = this.night > 0.3;
-      car.beam.alpha = Math.min(1, (this.night - 0.3) * 2);
-      const x = car.from[0] + dx * car.t + 0.5;
-      const y = car.from[1] + dy * car.t + 0.5;
-      const prevDx = car.from[0] - car.prev[0];
-      const prevDy = car.from[1] - car.prev[1];
-      const [laneX, laneY] = smoothVehicleTurnOffset(prevDx, prevDy, dx, dy, car.t, uk);
-      const lift = this.hz(p, car.from[0], car.from[1]);
-      car.c.position.set(
-        isoX(x + laneX, y + laneY),
-        isoY(x + laneX, y + laneY) - lift + (motion ? Math.sin(this.time / 330 + car.t) * 0.23 : 0),
-      );
-      car.c.zIndex = x + y + 0.035;
+      this.placeVehicle(view, p, car, uk);
+      // later cars this frame see where this one is now
+      me.x = car.px;
+      me.y = car.py;
+      me.hx = car.hx;
+      me.hy = car.hy;
     }
+    this.cityScenes.obstacles = this.trafficCars.map((c) => ({ x: c.px, y: c.py, hx: c.hx, hy: c.hy }));
+    this.trafficMoving = this.trafficCars.filter((c) => c.t !== startT.get(c.id)).length;
+    let overlaps = 0;
+    for (let i = 0; i < agents.length; i++)
+      for (let j = i + 1; j < all.length; j++) if (bodiesOverlap(agents[i]!, all[j]!)) overlaps++;
+    this.trafficOverlaps = overlaps;
+  }
+
+  private nextVehicleId = 1;
+  /** Vehicles that moved in the last frame and body overlaps left on screen (stats, tests). */
+  private trafficMoving = 0;
+  private trafficOverlaps = 0;
+
+  private makeVehicle(view: RendererView, p: Province, rural: boolean, roads: number, start: [number, number], to: [number, number]): TrafficCar {
+    const holder = new Container();
+    const body = new Graphics();
+    const paints = [0xe4e7ec, 0xbe4741, 0x345a89, 0x364b54, 0xe4b755, 0x7d9a75];
+    const n = this.trafficCars.length;
+    const paint = paints[n % paints.length]!;
+    const electric = !rural && n % 3 === 0;
+    const cal = calendar(view.game.tick);
+    const variant = rural ? 4 : trafficModel(n, start[0] * 5 + start[1] * 7, roads, clockHour(view.game.tick), cal.season, this.dropKind === 'snow',
+      p.buildings.some((b) => b.definitionId === 'bus_depot' && isOperating(b)));
+    const load = [0xc9a24a, 0x7c9b47, 0xa8743f][Math.floor(Math.random() * 3)]!;
+    const beam = new Graphics();
+    holder.addChild(beam, body);
+    holder.scale.set(VEHICLE_SCALE);
+    holder.cullable = true;
+    this.objects.addChild(holder);
+    const car: TrafficCar = {
+      id: this.nextVehicleId++, rural, load, waited: 0,
+      px: start[0] + 0.5, py: start[1] + 0.5, hx: to[0] - start[0], hy: to[1] - start[1],
+      c: holder, sprite: body, beam, paint, electric, variant, heading: '',
+      from: [start[0], start[1]], to,
+      prev: [start[0], start[1]], t: 0,
+      speed: rural ? 0.5 : (0.5 + Math.random() * 0.22) * modelSpeed(variant),
+    };
+    this.tintKey = -1;
+    return car;
+  }
+
+  /** Lane position (tile coordinates) of a vehicle at progress t on its current segment. */
+  private lanePoint(car: TrafficCar, t: number, uk: boolean): [number, number] {
+    const dx = car.to[0] - car.from[0], dy = car.to[1] - car.from[1];
+    const [lx, ly] = smoothVehicleTurnOffset(car.from[0] - car.prev[0], car.from[1] - car.prev[1], dx, dy, t, uk);
+    return [car.from[0] + dx * t + 0.5 + lx, car.from[1] + dy * t + 0.5 + ly];
+  }
+
+  /** Redraws a vehicle for its heading and moves it into its lane. */
+  private placeVehicle(view: RendererView, p: Province, car: TrafficCar, uk: boolean): void {
+    const dx = car.to[0] - car.from[0];
+    const dy = car.to[1] - car.from[1];
+    const heading = `${dx},${dy}`;
+    if (car.heading !== heading && (dx !== 0 || dy !== 0)) {
+      car.sprite.clear();
+      if (car.rural) drawCart(car.sprite, car.load, dx, dy);
+      else drawTrafficVehicle(car.sprite, car.variant, car.paint, car.electric, dx, dy, view.game.culture);
+      car.beam.clear();
+      drawHeadlights(car.beam, dx, dy, car.rural ? 0.4 : modelLength(car.variant) === 2 ? 0.62 : modelLength(car.variant) === 0 ? 0.25 : 0.4);
+      car.heading = heading;
+    }
+    car.beam.visible = this.night > 0.3;
+    car.beam.alpha = Math.min(1, (this.night - 0.3) * 2);
+    const x = car.from[0] + dx * car.t + 0.5;
+    const y = car.from[1] + dy * car.t + 0.5;
+    const prevDx = car.from[0] - car.prev[0];
+    const prevDy = car.from[1] - car.prev[1];
+    const [laneX, laneY] = smoothVehicleTurnOffset(prevDx, prevDy, dx, dy, car.t, uk);
+    const lift = this.hz(p, car.from[0], car.from[1]) * (1 - car.t) + this.hz(p, car.to[0], car.to[1]) * car.t;
+    car.px = x + laneX;
+    car.py = y + laneY;
+    if (dx || dy) {
+      car.hx = dx;
+      car.hy = dy;
+    }
+    car.c.position.set(isoX(car.px, car.py), isoY(car.px, car.py) - lift);
+    car.c.zIndex = x + y + 0.035;
   }
 
   private outline(
@@ -1670,7 +1934,7 @@ export class ValleyRenderer {
 
     const selected = view.selectedBuildingId ? buildingById(p, view.selectedBuildingId) : undefined;
     if (selected) {
-      const [w, h] = defOf(selected).footprint;
+      const [w, h] = footprintOf(selected);
       this.drawRange(g, p, selected.definitionId, selected.x, selected.y);
       const pulse = view.reducedMotion ? 0.9 : 0.65 + Math.sin(this.time / 260) * 0.3;
       this.outline(g, selected.x, selected.y, w, h, COLORS.select, 3, pulse);
@@ -1697,24 +1961,18 @@ export class ValleyRenderer {
       if (anchor) this.outline(g, anchor.x, anchor.y, 1, 1, COLORS.select, 3, 0.95);
     } else if (hover) {
       if (tool.kind === 'build') {
-        const def = BUILDINGS[tool.buildingId];
+        const [fw, fh] = this.toolFootprint(tool.buildingId);
+        const trueAnchor = this.outTile(hover.x, hover.y);
+        const trueGame = this.cb.getView()?.game ?? view.game;
         const ok =
-          validatePlacement(view.game, tool.buildingId, hover.x, hover.y, tool.style ?? view.game.culture, tool.look ?? null) ===
+          validatePlacement(trueGame, tool.buildingId, trueAnchor.x, trueAnchor.y, tool.style ?? view.game.culture, tool.look ?? null) ===
           null;
         this.drawRange(g, p, tool.buildingId, hover.x, hover.y);
-        for (const [x, y] of footprintTiles(def, hover.x, hover.y)) {
-          if (tileAt(p, x, y)) this.tileFill(g, x, y, ok ? COLORS.ok : COLORS.bad, 0.5);
-        }
-        this.outline(
-          g,
-          hover.x,
-          hover.y,
-          def.footprint[0],
-          def.footprint[1],
-          ok ? COLORS.ok : COLORS.bad,
-          2,
-          0.95,
-        );
+        for (let y = hover.y; y < hover.y + fh; y++)
+          for (let x = hover.x; x < hover.x + fw; x++)
+            if (tileAt(p, x, y)) this.tileFill(g, x, y, ok ? COLORS.ok : COLORS.bad, 0.5);
+        this.outline(g, hover.x, hover.y, fw, fh, ok ? COLORS.ok : COLORS.bad, 2, 0.95);
+        const mirrored = fw !== BUILDINGS[tool.buildingId].footprint[0];
         ghostSig = `${tool.buildingId}|${hover.x}|${hover.y}|${ok}|${tool.style ?? ''}|${tool.look ? JSON.stringify(tool.look) : ''}`;
         if (ghostSig !== this.ghostSig) {
           this.ghost.clear();
@@ -1730,7 +1988,10 @@ export class ValleyRenderer {
             pal,
             view.detail,
             7,
+            false,
+            mirrored,
           );
+          this.ghost.scale.x = mirrored ? -1 : 1;
           this.ghost.position.set(isoX(hover.x, hover.y), isoY(hover.x, hover.y) - this.hz(p, hover.x, hover.y));
           this.ghost.alpha = ok ? 0.7 : 0.35;
         }
@@ -1746,7 +2007,7 @@ export class ValleyRenderer {
         this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2, 0.95);
       } else if (tool.kind === 'army') {
         const t = tileAt(p, hover.x, hover.y);
-        const ok = !!t?.road && (view.game.militia ?? 0) > 0;
+        const ok = !!t && marchable(p, hover.x, hover.y, [hover.x, hover.y]) && (view.game.militia ?? 0) > 0;
         this.tileFill(g, hover.x, hover.y, ok ? COLORS.ok : COLORS.bad, 0.4);
         this.outline(g, hover.x, hover.y, 1, 1, ok ? COLORS.ok : COLORS.bad, 2.2, 0.9);
       } else if (tool.kind === 'road') {
@@ -1757,7 +2018,7 @@ export class ValleyRenderer {
         const t = tileAt(p, hover.x, hover.y);
         const b = t?.buildingId ? buildingById(p, t.buildingId) : undefined;
         const color = tool.kind === 'demolish' ? COLORS.bad : 0xffffff;
-        if (b) this.outline(g, b.x, b.y, defOf(b).footprint[0], defOf(b).footprint[1], color, 2, 0.85);
+        if (b) this.outline(g, b.x, b.y, footprintOf(b)[0], footprintOf(b)[1], color, 2, 0.85);
         else
           this.outline(
             g,

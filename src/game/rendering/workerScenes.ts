@@ -1,4 +1,5 @@
 import { Graphics, GraphicsContext } from 'pixi.js';
+import { markPerson, setActivity } from './people';
 import type { Container } from 'pixi.js';
 import type { BuildingId, BuildingInstance, Province, Tile } from '../core/types';
 import type { Season } from '../core/time';
@@ -144,6 +145,12 @@ function siteRoute(p: Province, b: BuildingInstance, job: WorkerJob, worker: num
   return { length: 0.46, siteDepth, points: [point, { ...point, x: point.x + 0.46 }] };
 }
 
+const WORK_ACTIVITY: Record<WorkerJob, string> = {
+  farming: 'Tarlada çalışıyor',
+  logging: 'Ağaç kesiyor',
+  quarrying: 'Taş kırıyor',
+};
+
 export class WorkerScenes {
   private workers = new Map<string, Worker>();
   private frames = new Map<string, GraphicsContext>();
@@ -193,6 +200,7 @@ export class WorkerScenes {
         const variant = (b.x + b.y + i) % 2;
         const sprite = new Graphics(this.frameFor(job, 'walk', 0, variant));
         sprite.scale.set(0.6);
+        markPerson(sprite, { kind: 'worker', buildingId: b.id, slot: i }, 'İşe yürüyor', 30);
         sprite.tint = this.tint;
         sprite.cullable = true;
         this.layer.addChild(sprite);
@@ -255,7 +263,8 @@ export class WorkerScenes {
       const height = point.height + (next.height - point.height) * ratio;
       sprite.position.set(isoX(x, y), isoY(x, y) - height);
       sprite.zIndex = route.siteDepth ?? x + y + 0.03;
-      sprite.scale.x = (pose === 'work' ? job === 'quarrying' : (dx - dy) * (returning ? -1 : 1) < 0) ? -0.74 : 0.74;
+      sprite.scale.x = (pose === 'work' ? job === 'quarrying' : (dx - dy) * (returning ? -1 : 1) < 0) ? -0.6 : 0.6;
+      if (worker.poseKey === key) setActivity(sprite, pose === 'walk' ? 'İşe yürüyor' : pose === 'carry' ? 'Ürünü depoya taşıyor' : WORK_ACTIVITY[job]);
     }
   }
 
