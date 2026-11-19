@@ -20,7 +20,8 @@ export const MOTORBIKE = 9;
 export const BICYCLE = 10;
 export const GARBAGE = 11;
 export const ICE_CREAM = 12;
-export const MODEL_COUNT = 13;
+export const PLOUGH = 13;
+export const MODEL_COUNT = 14;
 
 interface Frame {
   point(u: number, v: number, z?: number): Pt;
@@ -217,11 +218,22 @@ export function drawIceCreamVan(g: Graphics, dx: number, dy: number): void {
   g.circle(x, y - 2.6, 1.6).fill(0xfff9c4);
 }
 
+/** Orange gritter with a front blade, salt hopper and amber beacons. */
+export function drawSnowPlough(g: Graphics, dx: number, dy: number): void {
+  drawLorry(g, dx, dy, 0xff8f00, 0xff8f00);
+  const f = frame(g, dx, dy);
+  f.face([[0.66, -0.26, 0.5], [0.66, 0.26, 0.5], [0.62, 0.26, 5], [0.62, -0.26, 5]], 0xffc400);
+  f.face([[0.62, -0.26, 5], [0.62, 0.26, 5], [0.58, 0.26, 5.6], [0.58, -0.26, 5.6]], 0x9e9e9e);
+  for (const v of [-0.1, 0.1]) f.circle(0.4, v, 14.6, 1.1, 0xffab00);
+  for (let k = 0; k < 6; k++) f.circle(-0.62 - k * 0.04, (k % 3 - 1) * 0.08, 1, 0.5, 0xffffff);
+}
+
 /** Paints one ambient-traffic model: 0-5 car bodies, then taxi, bus, lorry and the rest. */
 export function drawTrafficVehicle(
   g: Graphics, model: number, paint: number, electric: boolean, dx: number, dy: number, culture: 'scottish' | 'turkish' | string = 'turkish',
 ): void {
-  if (model === MOTORBIKE) drawMotorbike(g, dx, dy, paint);
+  if (model === PLOUGH) drawSnowPlough(g, dx, dy);
+  else if (model === MOTORBIKE) drawMotorbike(g, dx, dy, paint);
   else if (model === BICYCLE) drawBicycle(g, dx, dy, paint);
   else if (model === GARBAGE) drawGarbageTruck(g, dx, dy);
   else if (model === ICE_CREAM) drawIceCreamVan(g, dx, dy);
@@ -235,7 +247,8 @@ export function drawTrafficVehicle(
  * Model for the n-th ambient vehicle: mostly cars, with taxis, a bus, lorries, two-wheelers and,
  * at their hours, the morning refuse round and the summer ice-cream van.
  */
-export function trafficModel(n: number, seed: number, roads: number, hour = 12, season = 'summer'): number {
+export function trafficModel(n: number, seed: number, roads: number, hour = 12, season = 'summer', snowing = false): number {
+  if (n === 0 && (snowing || season === 'winter') && hour >= 5 && hour < 11) return PLOUGH;
   if (n === 1 && hour >= 6 && hour < 9) return GARBAGE;
   if (n === 2 && season === 'summer' && hour >= 12 && hour < 19) return ICE_CREAM;
   if (roads >= 16 && n % 9 === 4) return BUS;
@@ -249,7 +262,7 @@ export function trafficModel(n: number, seed: number, roads: number, hour = 12, 
 /** Relative cruising speed of a model (cars = 1). */
 export function modelSpeed(model: number): number {
   if (model === BICYCLE) return 0.45;
-  if (model === BUS || model === LORRY || model === GARBAGE) return 0.68;
+  if (model === BUS || model === LORRY || model === GARBAGE || model === PLOUGH) return 0.62;
   if (model === MOTORBIKE) return 1.15;
   if (model === ICE_CREAM) return 0.55;
   return 1;
@@ -257,7 +270,7 @@ export function modelSpeed(model: number): number {
 
 /** Length class used for following distance: 0 small, 1 car, 2 long. */
 export const modelLength = (model: number): number =>
-  model === MOTORBIKE || model === BICYCLE ? 0 : model === BUS || model === LORRY || model === GARBAGE ? 2 : 1;
+  model === MOTORBIKE || model === BICYCLE ? 0 : model === BUS || model === LORRY || model === GARBAGE || model === PLOUGH ? 2 : 1;
 
 /**
  * Narrow-body airliner in the vehicle frame: fuselage with a window line, swept wings with

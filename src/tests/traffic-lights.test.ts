@@ -55,5 +55,8 @@ describe('street furniture', () => {
     expect(spots.some((sp) => sp.kind === 'shelter')).toBe(true);
     expect(spots.some((sp) => sp.x === 10 && sp.ny === 1)).toBe(false);
     expect(furnitureSpots(p)).toEqual(spots);
+    const lamps = spots.filter((sp) => sp.kind === 'lamp');
+    expect(lamps.length).toBeGreaterThan(5);
+    expect(lamps.every((sp) => sp.x % 3 === 0)).toBe(true);
   });
 });
