@@ -106,12 +106,14 @@ export interface TileContext {
   frontLeft: number;
   /** Height of the tile in front-right (x+1, y); -1 = map edge. */
   frontRight: number;
+  /** Streets or buildings on or below the step: draw a stone retaining wall instead of earth. */
+  urban?: boolean;
 }
 
 const LEVEL = 12;
 
-function cliffColor(terrain: TerrainId): number {
-  if (terrain === 'terrace') return 0xa9a497;
+function cliffColor(terrain: TerrainId, urban = false): number {
+  if (terrain === 'terrace' || (urban && terrain !== 'rocky' && terrain !== 'mountain' && terrain !== 'stone')) return 0xa9a497;
   if (terrain === 'rocky' || terrain === 'mountain' || terrain === 'stone') return 0x7b766b;
   return 0x8a6a45;
 }
@@ -145,28 +147,28 @@ export function drawGroundTile(
   // Sloped cliff faces & talus aprons so highlands blend organically instead of looking like flat stacked blocks
   if (fl < h) {
     const drop = (h - fl) * LEVEL;
-    const c = cliffColor(terrain);
+    const c = cliffColor(terrain, ctx.urban);
     const pts = [ox - 32, oy + 16, ox, oy + 32, ox, oy + 32 + drop, ox - 32, oy + 16 + drop];
     g.poly(pts).fill(c);
-    if ((terrain === 'mountain' || terrain === 'rocky' || terrain === 'hill') && ctx.frontLeft >= 0) {
+    if ((terrain === 'mountain' || terrain === 'rocky' || terrain === 'hill') && ctx.frontLeft >= 0 && !ctx.urban) {
       // Diagonal talus / scree buttresses softening the elevation step
       const scree = terrain === 'hill' ? shade(grass, 0.84) : shade(c, 0.92);
       g.poly([ox - 32, oy + 16, ox - 14, oy + 25, ox - 4, oy + 32 + drop, ox - 32, oy + 16 + drop]).fill(scree);
       g.poly([ox - 18, oy + 23, ox, oy + 32, ox, oy + 32 + drop, ox - 24, oy + 20 + drop]).fill(shade(c, 0.78));
     }
-    if (detail >= 1) cliffTexture(g, ox - 32, oy + 16, ox, oy + 32, drop, terrain, c);
+    if (detail >= 1) cliffTexture(g, ox - 32, oy + 16, ox, oy + 32, drop, ctx.urban ? 'terrace' : terrain, c);
   }
   if (fr < h) {
     const drop = (h - fr) * LEVEL;
-    const c = shade(cliffColor(terrain), 0.78);
+    const c = shade(cliffColor(terrain, ctx.urban), 0.78);
     const pts = [ox, oy + 32, ox + 32, oy + 16, ox + 32, oy + 16 + drop, ox, oy + 32 + drop];
     g.poly(pts).fill(c);
-    if ((terrain === 'mountain' || terrain === 'rocky' || terrain === 'hill') && ctx.frontRight >= 0) {
+    if ((terrain === 'mountain' || terrain === 'rocky' || terrain === 'hill') && ctx.frontRight >= 0 && !ctx.urban) {
       const scree = terrain === 'hill' ? shade(grass, 0.74) : shade(c, 0.88);
       g.poly([ox, oy + 32, ox + 18, oy + 23, ox + 26, oy + 19 + drop, ox, oy + 32 + drop]).fill(scree);
       g.poly([ox + 14, oy + 25, ox + 32, oy + 16, ox + 32, oy + 16 + drop, ox + 6, oy + 29 + drop]).fill(shade(c, 0.72));
     }
-    if (detail >= 1) cliffTexture(g, ox, oy + 32, ox + 32, oy + 16, drop, terrain, c);
+    if (detail >= 1) cliffTexture(g, ox, oy + 32, ox + 32, oy + 16, drop, ctx.urban ? 'terrace' : terrain, c);
   }
 
   const diamond = [ox, oy, ox + 32, oy + 16, ox, oy + 32, ox - 32, oy + 16];

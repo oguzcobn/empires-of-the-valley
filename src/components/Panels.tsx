@@ -578,7 +578,7 @@ function ArmyPanel({ game }: { game: GameState }): ReactElement {
           setTool({ kind: 'army' });
           openPanel(null);
         }}>⚔ Haritada Birlikleri Taşı (G)</button>
-        <p className="hint">Birlik Taşı aracını seçip yol karelerine tıkla. Muhafızlar kesişen yollar üzerinden hedefe yürür; savaşların sonucu şimdilik stratejik savunma puanlarıyla hesaplanır.</p>
+        <p className="hint">Birlik Taşı aracını seçip haritada gitmek istediğin kareye tıkla: tarla, orman, tepe ya da yol fark etmez. Askerler arazinin içinden en kısa yoldan yürür; suyu yalnızca köprüden geçer, binaların içinden geçmez. Savaşların sonucu şimdilik stratejik savunma puanlarıyla hesaplanır.</p>
       </section>
       <section className="unit-roster">
         <h4>Modern Birlikler</h4>

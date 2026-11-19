@@ -45,7 +45,7 @@ const ASPHALT = 0x555c62;
 const WHITE = 0xf5f3ec;
 const RED = 0xc9302c;
 const NAVY = 0x1f3f7a;
-const PEOPLE = [0xc0392b, 0x2e86c1, 0x27ae60, 0x8e44ad, 0xf39c12, 0x34495e, 0xd35400, 0x16a085];
+const PEOPLE = [0x2f3b4c, 0xa63d40, 0xe8e4da, 0x4f6f8f, 0x3d4a3a, 0xb89a6a, 0x5c4a72, 0x2e6b5a];
 const SKIN = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
 
 const pad = (ctx: DrawCtx, u0: number, v0: number, u1: number, v1: number, color: number, alpha = 1): void =>
@@ -67,17 +67,24 @@ function carPark(ctx: DrawCtx, w: number, h: number, v0: number, slots: number, 
 
 /** Seated or standing figure in tile space; `z` lifts it onto a terrace or a step. */
 function person(ctx: DrawCtx, u: number, v: number, i: number, seated = false, z = 0): void {
+  // drawn at real scale against an 11 px storey: about 9 px tall standing, 7 px seated
   const [x, y] = P(u, v, z);
   const body = PEOPLE[i % PEOPLE.length]!;
   const skin = SKIN[(i * 3) % SKIN.length]!;
-  if (!seated) {
-    ctx.g.rect(x - 1.4, y - 4, 1.2, 4).fill(0x2c3e50);
-    ctx.g.rect(x + 0.2, y - 4, 1.2, 4).fill(0x2c3e50);
+  const legs = [0x3b5578, 0x2b2f36, 0x5a5048, 0x8a7d62][i % 4]!;
+  const g = ctx.g;
+  if (seated) {
+    g.moveTo(x - 0.5, y - 3.6).lineTo(x + 1.6, y - 3.6).lineTo(x + 1.8, y - 0.6).stroke({ color: legs, width: 1, join: 'round' });
+  } else {
+    g.moveTo(x - 0.5, y - 4.7).lineTo(x - 0.7, y - 0.3).stroke({ color: legs, width: 0.9, cap: 'round' });
+    g.moveTo(x + 0.5, y - 4.7).lineTo(x + 0.7, y - 0.3).stroke({ color: shade(legs, 0.8), width: 0.9, cap: 'round' });
   }
-  const top = seated ? y - 8 : y - 10;
-  ctx.g.roundRect(x - 2, top, 4, 6, 1.4).fill(body);
-  ctx.g.circle(x, top - 2, 1.9).fill(skin);
-  ctx.g.rect(x - 1.9, top - 4, 3.8, 1.3).fill(i % 3 === 0 ? 0x3b2a1e : i % 3 === 1 ? 0x111111 : 0xa8742f);
+  const hip = seated ? y - 3.4 : y - 4.6;
+  g.poly([x - 1, hip, x + 1, hip, x + 1.25, hip - 3.2, x - 1.25, hip - 3.2]).fill(body);
+  g.moveTo(x - 1.2, hip - 2.9).lineTo(x - 1.4, hip - 0.6).stroke({ color: shade(body, 0.85), width: 0.6, cap: 'round' });
+  g.moveTo(x + 1.2, hip - 2.9).lineTo(x + 1.4, hip - 0.6).stroke({ color: body, width: 0.6, cap: 'round' });
+  g.ellipse(x, hip - 4.3, 0.75, 0.9).fill(skin);
+  g.ellipse(x, hip - 4.8, 0.8, 0.45).fill(i % 3 === 0 ? 0x3b2a1e : i % 3 === 1 ? 0x111111 : 0xa8742f);
 }
 
 /** Wall lamp or beacon that glows at night. */
@@ -1294,6 +1301,7 @@ function windTurbine(ctx: DrawCtx, style: ArchitectureStyle, pal: SeasonPalette)
       ctx.g.ellipse(x - 1.5, y - 8.5, 2.4, 1.8).fill(0x91a466);
     }
     person(ctx, 0.66, 0.84, 1);
+    box(ctx, 0.84, 0.86, 0.94, 0.94, 0, 2.4, 0xe0e0dc); // technician's tool box
   }
   lamp(ctx, P(0.77, 0.74, 5), 0xfff2c0, 0.8);
   if (hub[1] - 32 < ctx.topY) ctx.topY = hub[1] - 32;

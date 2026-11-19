@@ -192,7 +192,7 @@ export class WorkerScenes {
         }
         const variant = (b.x + b.y + i) % 2;
         const sprite = new Graphics(this.frameFor(job, 'walk', 0, variant));
-        sprite.scale.set(0.74);
+        sprite.scale.set(0.6);
         sprite.tint = this.tint;
         sprite.cullable = true;
         this.layer.addChild(sprite);

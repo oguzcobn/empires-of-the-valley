@@ -5,6 +5,7 @@ import { tileAt } from '../systems/grid';
 import { isoX, isoY, P } from './iso';
 import { getPavedLinks, junctionKind } from './roadGeometry';
 import { drawPedestrian, randomPedLook } from './pedestrians';
+import { PERSON_SCALE } from './scale';
 
 /**
  * Kerbside life along straight asphalt streets: street trees in planters and bus shelters with
@@ -81,8 +82,8 @@ function streetLamp(g: Graphics, at: [number, number]): Graphics {
   // the glow is a separate graphic so the renderer can fade it with the night
   const glow = new Graphics();
   glow.ellipse(x - 4, y - 22.4, 2, 1).fill(0xfff2c0);
-  glow.ellipse(x - 4, y - 14, 7, 10).fill({ color: 0xfff2c0, alpha: 0.12 });
-  glow.ellipse(x - 5, y + 1, 11, 4.5).fill({ color: 0xfff2c0, alpha: 0.16 });
+  glow.circle(x - 4, y - 22.2, 3.2).fill({ color: 0xffd36b, alpha: 0.22 });
+  glow.ellipse(x - 4, y + 0.5, 8, 3.4).fill({ color: 0xffe9a8, alpha: 0.13 });
   return glow;
 }
 
@@ -202,7 +203,7 @@ export class StreetFurniture {
           const a = i ? 0.1 : -0.08;
           const [x, y] = P(0.5 + Math.abs(spot.ny) * a + spot.nx * 0.33, 0.5 + Math.abs(spot.nx) * a + spot.ny * 0.33);
           person.position.set(x + ox, y + oy);
-          person.scale.set(0.72);
+          person.scale.set(PERSON_SCALE);
           holder.addChild(person);
           this.bodies.push(person);
         }

@@ -11,6 +11,7 @@ import { drawCityCar, drawFireTruck, drawServiceVehicle } from './trafficSprites
 import { drawAirliner, drawLorry } from './vehicles';
 import { clockHour } from '../core/time';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from './pedestrians';
+import { PERSON_SCALE, VEHICLE_SCALE } from './scale';
 import type { PedLook } from './pedestrians';
 
 /** Private cars of shoppers, diners and guests. */
@@ -135,6 +136,9 @@ export class CityScenes {
       blue = new Graphics(),
       fx = new Graphics();
     root.addChild(car, person, red, blue, fx);
+    car.scale.set(VEHICLE_SCALE);
+    person.scale.set(PERSON_SCALE);
+    for (const light of [red, blue]) light.scale.set(VEHICLE_SCALE);
     root.cullable = true;
     this.parent.addChild(root);
     const look = randomPedLook(seeded(id));
@@ -344,6 +348,7 @@ export class CityScenes {
       const a = this.actor(id),
         at = flightPoint(f, b, this.fraction);
       place(a, at, at.alt);
+      a.car.scale.set(1);
       // Approach altitude is relative to the runway, not changing terrain under the aircraft.
       a.root.y = isoY(at.x, at.y) - (tileAt(p, b.x, b.y)?.height ?? 0) * HEIGHT_PX - at.alt;
       a.root.zIndex = b.x + b.y + 11.1 + (at.alt > 0 ? 100 : 0);

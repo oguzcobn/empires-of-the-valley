@@ -4,6 +4,7 @@ import { HEIGHT_PX } from '../data/balance';
 import { NEIGHBORS4, tileAt } from '../systems/grid';
 import { isoX, isoY, P } from './iso';
 import { drawPedestrian, randomPedLook } from './pedestrians';
+import { PERSON_SCALE } from './scale';
 
 /**
  * Leisure on the water's edge: on summer days sunbathers under parasols on sandy shores and
@@ -142,7 +143,7 @@ export class WaterLife {
         const seed = x * 31 + y;
         drawPedestrian(kid, { ...randomPedLook(() => hash(seed, 0, 9)), kind: 'child', extra: 'none' }, 0);
         kid.position.set(px - 13 + ox, py + 5 + oy);
-        kid.scale.set(0.6);
+        kid.scale.set(PERSON_SCALE);
         c.addChild(kid);
       }
       c.zIndex = x + y + 0.5;

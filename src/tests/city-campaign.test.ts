@@ -20,7 +20,7 @@ describe('two-city long campaign', () => {
     expect(districtName(tr.cityId, tr.culture, 1)).toBe('Akçaabat');
   });
 
-  it('finds road-only militia paths and stores a manual movement order', () => {
+  it('marches militia cross-country and stores a manual movement order', () => {
     const s = newCampaign(42);
     const p = home(s);
     const all = p.tiles.map((tile, i) =>
@@ -32,9 +32,12 @@ describe('two-city long campaign', () => {
     const move = must(staffed, { type: 'moveMilitia', x: start[0], y: start[1] });
     expect(move.armyTarget).toEqual({ x: start[0], y: start[1] });
     expect(move.armyOrder).toBe('patrol');
-    const nonRoad = p.tiles.findIndex((tile) => !tile.road);
-    expect(validateCommand(move, { type: 'moveMilitia',
-      x: nonRoad % p.width, y: Math.floor(nonRoad / p.width) })).not.toBeNull();
+    // any reachable dry tile is a valid destination now, open water is not
+    const field = p.tiles.findIndex((tile) => !tile.road && !tile.buildingId && ['grass', 'forest', 'fertile', 'hill'].includes(tile.terrain));
+    expect(validateCommand(move, { type: 'moveMilitia', x: field % p.width, y: Math.floor(field / p.width) })).toBeNull();
+    const water = p.tiles.findIndex((tile) => (tile.terrain === 'water' || tile.terrain === 'lake') && !tile.road);
+    if (water >= 0) expect(validateCommand(move, { type: 'moveMilitia', x: water % p.width, y: Math.floor(water / p.width) }))
+      .toEqual({ key: 'err.armyUnreachable' });
   });
 
   it('names citizens repeatably based on city and seed', () => {
