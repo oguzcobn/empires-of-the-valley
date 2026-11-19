@@ -119,6 +119,7 @@ export interface RendererStats {
   traffic?: number;
   trafficMoving?: number;
   trafficOverlaps?: number;
+  trafficStep?: number;
   /** Beach-goers, swimmers and sailing boats. */
   waterLife?: number;
 }
@@ -176,6 +177,8 @@ interface TrafficCar {
   load: number;
   /** Real ms spent held by other traffic (not by red lights): long jams despawn the car. */
   waited: number;
+  /** Throttle 0..1: vehicles pull away gently instead of jumping to full speed. */
+  v: number;
   /** Last drawn centre and heading, the input to the right-of-way rules. */
   px: number;
   py: number;
@@ -220,6 +223,26 @@ const SPEED_FACTOR: Record<number, number> = { 0: 0, 1: 1, 2: 1.6, 4: 2.4 };
  * reported through RendererHost callbacks and turned into commands by the app layer.
  * Layers (bottom to top): ground, water fx, ground overlays, depth-sorted objects, ghost.
  */
+/**
+ * Body heading of a vehicle `t` into a segment that turns off the previous one: it swings from the
+ * old direction to the new over the first part of the segment, in steps of about 9 degrees so the
+ * sprite is only redrawn a few times per turn. Straight on and U-turns keep the new heading.
+ */
+export function turnHeading(pdx: number, pdy: number, dx: number, dy: number, t: number): [number, number] {
+  if (!dx && !dy) return [pdx || 1, pdy];
+  const turning = (pdx || pdy) && pdx * dx + pdy * dy === 0;
+  if (!turning || t >= 0.45) return [dx, dy];
+  const k = Math.max(0, t) / 0.45;
+  const blend = k * k * (3 - 2 * k);
+  const a0 = Math.atan2(pdy, pdx);
+  let d = Math.atan2(dy, dx) - a0;
+  if (d > Math.PI) d -= 2 * Math.PI;
+  if (d < -Math.PI) d += 2 * Math.PI;
+  const step = Math.PI / 20;
+  const a = a0 + Math.round((d * blend) / step) * step;
+  return [Math.cos(a), Math.sin(a)];
+}
+
 /** What a townsperson out walking is doing at this hour. */
 function walkerActivity(hour: number, child: boolean): string {
   if (hour >= 7 && hour < 9) return child ? 'Okula gidiyor' : 'İşe gidiyor';
@@ -419,6 +442,7 @@ export class ValleyRenderer {
       traffic: this.trafficCars.length,
       trafficMoving: this.trafficMoving,
       trafficOverlaps: this.trafficOverlaps,
+      trafficStep: Math.round(this.trafficStep * 1000) / 1000,
       waterLife: this.waterLife.count,
     };
   }
@@ -1720,9 +1744,17 @@ export class ValleyRenderer {
     const desired = Math.round(Math.min(14, Math.floor(linked.length / 3)) * trafficShare(clockHour(view.game.tick)));
     const desiredCarts = lanes.length ? Math.min(3, p.buildings.filter((b) => specOf(b).produces && isOperating(b)).length) : 0;
     const remove = (car: TrafficCar): void => {
-      car.c.destroy({ children: true });
+      // fade out where it stands rather than vanish in a blink
+      this.fadingCars.push(car.c);
       this.trafficCars.splice(this.trafficCars.indexOf(car), 1);
     };
+    for (const c of [...this.fadingCars]) {
+      c.alpha -= dt / 450;
+      if (c.alpha <= 0) {
+        c.destroy({ children: true });
+        this.fadingCars.splice(this.fadingCars.indexOf(c), 1);
+      }
+    }
     // Deleted or demolished roads must immediately release their vehicles.
     for (const car of [...this.trafficCars])
       if (!drivable(car.rural)(car.from[0], car.from[1]) || !drivable(car.rural)(car.to[0], car.to[1])) remove(car);
@@ -1757,24 +1789,35 @@ export class ValleyRenderer {
     for (const a of agents) if (journeys.some((j) => blocksFollowing(a, j))) held.add(a.id);
     const running = motion && view.game.speed !== 0;
     const startT = new Map(this.trafficCars.map((c) => [c.id, c.t]));
+    let step = 0;
     for (const car of [...this.trafficCars]) {
       const me = agents.find((a) => a.id === car.id)!;
       if (running) {
-        if (held.has(car.id)) car.waited += dt;
+        if (held.has(car.id)) {
+          car.waited += dt;
+          car.v = 0;
+        }
         else {
-          const next = car.t + Math.min(0.12, dt / 1000) * car.speed;
+          // pull away smoothly: the throttle opens over about half a second
+          car.v = Math.min(1, car.v + dt / 550);
+          const next = car.t + Math.min(0.12, dt / 1000) * car.speed * (0.25 + 0.75 * car.v);
           const stop = modelLength(car.variant) === 2 && !car.rural ? 0.18 : 0.3;
           const crossing = car.t <= stop + 1e-3 && next > stop;
           const red = crossing && !this.signals.mayEnter(p, car.to[0], car.to[1], car.to[0] - car.from[0], car.to[1] - car.from[1], this.time);
           const boxBlocked = crossing && !red && isJunction(car.to[0], car.to[1], car.rural) && !junctionClear(me, all, car.to[0], car.to[1]);
-          if (red || boxBlocked) car.t = Math.max(car.t, stop);
+          if (red || boxBlocked) {
+            car.t = Math.max(car.t, stop);
+            car.v = 0;
+          }
           else {
             // last guard: never drive into another body, whatever the rules above missed
             const [nx, ny] = this.lanePoint(car, Math.min(next, 1), uk);
             const moved = { ...me, x: nx, y: ny };
             const hit = all.some((o) => o.id !== me.id && bodiesOverlap(moved, o) && !bodiesOverlap(me, o));
-            if (hit) car.waited += dt;
-            else car.t = next;
+            if (hit) {
+              car.waited += dt;
+              car.v = 0;
+            } else car.t = next;
           }
           // a red light is a normal wait; only jams count towards giving up
           if (boxBlocked) car.waited += dt;
@@ -1796,6 +1839,7 @@ export class ValleyRenderer {
         car.t = 0;
       }
       this.placeVehicle(view, p, car, uk);
+      if (car.c.alpha >= 1) step = Math.max(step, Math.hypot(car.px - me.x, car.py - me.y));
       // later cars this frame see where this one is now
       me.x = car.px;
       me.y = car.py;
@@ -1808,12 +1852,16 @@ export class ValleyRenderer {
     for (let i = 0; i < agents.length; i++)
       for (let j = i + 1; j < all.length; j++) if (bodiesOverlap(agents[i]!, all[j]!)) overlaps++;
     this.trafficOverlaps = overlaps;
+    // largest move of a vehicle in one frame (tiles), ambient and journeys: a jump shows up here
+    this.trafficStep = Math.max(step, this.cityScenes.maxStep);
   }
 
   private nextVehicleId = 1;
+  private fadingCars: Container[] = [];
   /** Vehicles that moved in the last frame and body overlaps left on screen (stats, tests). */
   private trafficMoving = 0;
   private trafficOverlaps = 0;
+  private trafficStep = 0;
 
   private makeVehicle(view: RendererView, p: Province, rural: boolean, roads: number, start: [number, number], to: [number, number]): TrafficCar {
     const holder = new Container();
@@ -1830,9 +1878,10 @@ export class ValleyRenderer {
     holder.addChild(beam, body);
     holder.scale.set(VEHICLE_SCALE);
     holder.cullable = true;
+    holder.alpha = 0;
     this.objects.addChild(holder);
     const car: TrafficCar = {
-      id: this.nextVehicleId++, rural, load, waited: 0,
+      id: this.nextVehicleId++, rural, load, waited: 0, v: 0,
       px: start[0] + 0.5, py: start[1] + 0.5, hx: to[0] - start[0], hy: to[1] - start[1],
       c: holder, sprite: body, beam, paint, electric, variant, heading: '',
       from: [start[0], start[1]], to,
@@ -1854,13 +1903,17 @@ export class ValleyRenderer {
   private placeVehicle(view: RendererView, p: Province, car: TrafficCar, uk: boolean): void {
     const dx = car.to[0] - car.from[0];
     const dy = car.to[1] - car.from[1];
-    const heading = `${dx},${dy}`;
+    const prevDx0 = car.from[0] - car.prev[0];
+    const prevDy0 = car.from[1] - car.prev[1];
+    // turn the body through the corner instead of snapping it round at the junction centre
+    const [hx, hy] = turnHeading(prevDx0, prevDy0, dx, dy, car.t);
+    const heading = `${Math.round(hx * 40)},${Math.round(hy * 40)}`;
     if (car.heading !== heading && (dx !== 0 || dy !== 0)) {
       car.sprite.clear();
-      if (car.rural) drawCart(car.sprite, car.load, dx, dy);
-      else drawTrafficVehicle(car.sprite, car.variant, car.paint, car.electric, dx, dy, view.game.culture);
+      if (car.rural) drawCart(car.sprite, car.load, hx, hy);
+      else drawTrafficVehicle(car.sprite, car.variant, car.paint, car.electric, hx, hy, view.game.culture);
       car.beam.clear();
-      drawHeadlights(car.beam, dx, dy, car.rural ? 0.4 : modelLength(car.variant) === 2 ? 0.62 : modelLength(car.variant) === 0 ? 0.25 : 0.4);
+      drawHeadlights(car.beam, hx, hy, car.rural ? 0.4 : modelLength(car.variant) === 2 ? 0.62 : modelLength(car.variant) === 0 ? 0.25 : 0.4);
       car.heading = heading;
     }
     car.beam.visible = this.night > 0.3;
@@ -1878,6 +1931,7 @@ export class ValleyRenderer {
       car.hy = dy;
     }
     car.c.position.set(isoX(car.px, car.py), isoY(car.px, car.py) - lift);
+    if (car.c.alpha < 1) car.c.alpha = Math.min(1, car.c.alpha + 0.06);
     car.c.zIndex = x + y + 0.035;
   }
 

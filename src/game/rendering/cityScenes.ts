@@ -84,6 +84,27 @@ interface Actor {
   key: string;
   look: PedLook;
   shown: string;
+  /** Drawn position and body angle, eased towards the journey's so vehicles never jump. */
+  sx?: number;
+  sy?: number;
+  ang?: number;
+}
+
+/** Eases a drawn point towards its target; far moves (a new journey, a teleport) snap. */
+export function easePoint(sx: number | undefined, sy: number | undefined, tx: number, ty: number, dt: number): [number, number] {
+  if (sx === undefined || sy === undefined || Math.hypot(tx - sx, ty - sy) > 1.6) return [tx, ty];
+  const k = Math.min(1, dt / 160);
+  return [sx + (tx - sx) * k, sy + (ty - sy) * k];
+}
+
+/** Turns a body angle towards `target` at a steady rate (radians per second). */
+export function easeAngle(a: number | undefined, target: number, dt: number, rate = 7): number {
+  if (a === undefined) return target;
+  let d = target - a;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  const max = (rate * dt) / 1000;
+  return Math.abs(d) <= max ? target : a + Math.sign(d) * max;
 }
 
 /** Stable random numbers per actor id, so a shopper keeps their clothes. */
@@ -172,6 +193,8 @@ export class CityScenes {
   obstacles: { x: number; y: number; hx: number; hy: number }[] = [];
   /** Journey vehicles on the move (tile coordinates), for ambient traffic to give way to. */
   drivers: { x: number; y: number; hx: number; hy: number; len: number }[] = [];
+  /** Largest per-frame move of a journey vehicle this frame (tiles). */
+  maxStep = 0;
   constructor(private parent: Container) {}
   private actor(id: string): Actor {
     let a = this.actors.get(id);
@@ -217,6 +240,7 @@ export class CityScenes {
       a.root.zIndex = at.x + at.y + 0.08 + (alt > 0 ? 100 : 0);
     };
     const queued = queuePositions(s, p, this.fraction, this.obstacles);
+    this.maxStep = 0;
     this.drivers = [];
     for (const j of s.cityLife?.jobs ?? []) {
       if (!validCityJob(p, j)) continue;
@@ -241,6 +265,14 @@ export class CityScenes {
         at = { x: at.x - (dy / len) * 0.13 * side, y: at.y + (dx / len) * 0.13 * side };
       }
       at = queued.get(j.id) ?? at;
+      {
+        // tick boundaries and queue shifts move the target in steps: ease the drawn car onto it
+        const [ex, ey] = reduced ? [at.x, at.y] : easePoint(a.sx, a.sy, at.x, at.y, dt);
+        if (moving && a.sx !== undefined && a.sy !== undefined) this.maxStep = Math.max(this.maxStep, Math.hypot(ex - a.sx, ey - a.sy));
+        a.sx = ex;
+        a.sy = ey;
+        at = { x: ex, y: ey };
+      }
       place(a, at);
       if (moving && (dx || dy)) {
         const len = Math.hypot(dx, dy);
@@ -264,10 +296,14 @@ export class CityScenes {
       // vehicles face along the dominant axis of their segment; raw deltas would skew and shrink them
       // parked visitors stand nose-in across their bay, which is narrower than a car is long
       const visitor = j.kind === 'shopping' || j.kind === 'dining' || j.kind === 'nightlife' || j.kind === 'hotel';
-      const [hx, hy] = !moving && visitor
+      const [tx, ty] = !moving && visitor
         ? [0, -1]
         : Math.abs(dx) >= Math.abs(dy) ? [dx < 0 ? -1 : 1, 0] : [0, dy < 0 ? -1 : 1];
-      const key = `${j.kind}:${paint}:${hx},${hy}`;
+      // swing round corners; drawn in steps of 9 degrees so the sprite is rebuilt only while turning
+      a.ang = reduced ? Math.atan2(ty, tx) : easeAngle(a.ang, Math.atan2(ty, tx), dt);
+      const q = Math.round(a.ang / (Math.PI / 20)) * (Math.PI / 20);
+      const hx = Math.abs(Math.cos(q)) < 1e-9 ? 0 : Math.cos(q), hy = Math.abs(Math.sin(q)) < 1e-9 ? 0 : Math.sin(q);
+      const key = `${j.kind}:${paint}:${Math.round(hx * 40)},${Math.round(hy * 40)}`;
       if (a.key !== key) {
         a.car.clear();
         if (j.kind === 'fire') {
