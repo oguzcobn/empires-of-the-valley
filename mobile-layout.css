@@ -1,0 +1,129 @@
+/* A shared compact layout for portrait phones and short landscape viewports. */
+@media (max-width: 600px), (orientation: landscape) and (max-height: 600px) {
+  .game-screen {
+    height: 100dvh;
+    --top-edge: max(.3rem, env(safe-area-inset-top));
+    --left-edge: max(.35rem, env(safe-area-inset-left));
+    --right-edge: max(.35rem, env(safe-area-inset-right));
+    --bottom-edge: max(.3rem, env(safe-area-inset-bottom));
+    --hud-bottom: calc(var(--top-edge) + max(40px, 2.65rem) + max(36px, 2.45rem) + .6rem);
+    --tools-top: calc(var(--bottom-edge) + max(44px, 2.75rem) + 1.65rem);
+  }
+
+  .game-screen .valley-canvas { position: absolute; }
+
+  .game-screen .top-hud {
+    top: var(--top-edge);
+    left: var(--left-edge);
+    right: var(--right-edge);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: max(40px, 2.65rem) max(36px, 2.45rem);
+    gap: .25rem;
+  }
+  .game-screen .hud-menu { grid-area: 1 / 1; }
+  .game-screen .hud-time { grid-area: 1 / 2; }
+  .game-screen .hud-resources { grid-area: 2 / 1 / 3 / -1; }
+  .game-screen .hud-time,
+  .game-screen .hud-resources {
+    width: 100%;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scrollbar-width: thin;
+  }
+  .game-screen .hud-time > *,
+  .game-screen .hud-resources > * { flex: none; }
+
+  .game-screen .left-column,
+  .game-screen .right-column {
+    top: var(--hud-bottom);
+    bottom: var(--tools-top);
+    width: min(16rem, 26%);
+    max-height: none;
+    min-width: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    pointer-events: auto;
+  }
+  .game-screen .left-column { left: var(--left-edge); }
+  .game-screen .right-column { right: var(--right-edge); }
+  .game-screen .left-column > *,
+  .game-screen .right-column > * {
+    flex: none;
+    overflow: visible;
+  }
+  .game-screen :is(.quest, .catalog, .inspector) { max-height: none; }
+  .game-screen .left-column:empty,
+  .game-screen .right-column:empty { display: none; }
+
+  /* Only the button row scrolls. Its sibling menu can extend above the toolbar. */
+  .game-screen .toolbar {
+    left: 50%;
+    right: auto;
+    bottom: var(--bottom-edge);
+    max-width: calc(100% - 2 * max(var(--left-edge), var(--right-edge)));
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+  }
+  .game-screen .toolbar .tool-group {
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+  .game-screen .toolbar .btn { flex: none; min-height: 44px; }
+  .game-screen .game-menu-popover {
+    width: min(34rem, calc(100vw - 2 * max(var(--left-edge), var(--right-edge))));
+    max-height: min(27rem, calc(100dvh - var(--tools-top) - var(--top-edge)));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+  .game-screen .game-menu-field select { min-width: 0; }
+  .game-screen .info-strip { display: none; }
+  .game-screen .road-plan-controls,
+  .game-screen .mobile-placement-pad { bottom: var(--tools-top); }
+  .game-screen .mobile-place-hint { top: var(--hud-bottom); }
+  .game-screen .mobile-landscape-prompt {
+    max-height: calc(100dvh - var(--top-edge) - var(--bottom-edge));
+    overflow-y: auto;
+  }
+
+  .modal-backdrop {
+    padding: max(.5rem, env(safe-area-inset-top)) max(.5rem, env(safe-area-inset-right))
+      max(.5rem, env(safe-area-inset-bottom)) max(.5rem, env(safe-area-inset-left));
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  }
+  .modal { max-height: 100%; }
+  .modal-head { flex-shrink: 0; }
+  .modal-body { min-height: 0; overscroll-behavior: contain; touch-action: pan-y; }
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .game-screen .left-column,
+  .game-screen .right-column {
+    left: var(--left-edge);
+    right: var(--right-edge);
+    width: auto;
+    max-height: 23dvh;
+  }
+  .game-screen .left-column { bottom: auto; }
+  .game-screen .right-column { top: auto; }
+  .game-screen .game-menu-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (pointer: coarse) and (max-width: 600px), (pointer: coarse) and (max-height: 600px) {
+  .game-screen:is(.tool-build, .tool-road, .tool-roadPlan, .tool-hunt, .tool-demolish, .tool-pave, .tool-terrace, .tool-army):not(.build-catalog-open) .left-column,
+  .game-screen:is(.tool-build, .tool-road, .tool-roadPlan, .tool-hunt, .tool-demolish, .tool-pave, .tool-terrace, .tool-army):not(.build-catalog-open) .right-column {
+    visibility: hidden;
+  }
+}

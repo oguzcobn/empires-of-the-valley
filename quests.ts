@@ -1,0 +1,83 @@
+import { u } from '../core/fixed';
+import type { Quest, QuestId } from '../core/types';
+
+/** Chapter 1 — "İlk Ateş". Texts live in src/i18n (quest.<id>.title / .desc / .hint). */
+export const QUESTS: readonly Quest[] = [
+  {
+    id: 'q01',
+    chapter: 1,
+    prerequisites: [],
+    objectives: [{ type: 'buildingCount', buildingId: 'lumber_camp', count: 1 }],
+    rewards: [{ type: 'addResource', resourceId: 'gold', amount: u(15) }],
+  },
+  {
+    id: 'q02',
+    chapter: 1,
+    prerequisites: ['q01'],
+    objectives: [
+      { type: 'staffedBuilding', buildingId: 'lumber_camp', workers: 2 },
+      { type: 'resourceGathered', resourceId: 'wood', amount: u(50) },
+    ],
+    rewards: [{ type: 'addResource', resourceId: 'food', amount: u(10) }],
+  },
+  {
+    id: 'q03',
+    chapter: 1,
+    prerequisites: ['q02'],
+    objectives: [{ type: 'buildingCount', buildingId: 'farm', count: 1 }],
+    rewards: [{ type: 'addResource', resourceId: 'wood', amount: u(10) }],
+  },
+  {
+    id: 'q04',
+    chapter: 1,
+    prerequisites: ['q03'],
+    objectives: [{ type: 'foodBalanceStreak', days: 7 }],
+    rewards: [{ type: 'addResource', resourceId: 'gold', amount: u(20) }],
+  },
+  {
+    id: 'q05',
+    chapter: 1,
+    prerequisites: ['q04'],
+    objectives: [
+      { type: 'buildingCount', buildingId: 'hut', count: 5 },
+      { type: 'population', count: 20 },
+    ],
+    rewards: [{ type: 'addResource', resourceId: 'stone', amount: u(15) }],
+  },
+  {
+    id: 'q06',
+    chapter: 1,
+    prerequisites: ['q05'],
+    objectives: [
+      { type: 'buildingCount', buildingId: 'school', count: 1 },
+      { type: 'staffedBuilding', buildingId: 'school', workers: 1 },
+    ],
+    rewards: [{ type: 'addResource', resourceId: 'research', amount: u(20) }],
+  },
+  {
+    id: 'q07',
+    chapter: 1,
+    prerequisites: ['q06'],
+    objectives: [{ type: 'techResearched', techId: 'basic_agriculture' }],
+    rewards: [{ type: 'revealProvince', provinceId: 'cinar_ormani' }],
+  },
+  {
+    id: 'q08',
+    chapter: 1,
+    prerequisites: ['q07'],
+    objectives: [{ type: 'prosperityStreak', happiness: 75, days: 10 }],
+    rewards: [{ type: 'completeChapter', chapter: 1 }],
+  },
+  // Chapter 2 — Vadinin Efendisi.
+  { id: 'q09', chapter: 2, prerequisites: ['q08'], objectives: [{ type: 'buildingCount', buildingId: 'market', count: 1 }], rewards: [{ type: 'addResource', resourceId: 'gold', amount: u(40) }] },
+  { id: 'q10', chapter: 2, prerequisites: ['q09'], objectives: [{ type: 'buildingCount', buildingId: 'watchtower', count: 1 }], rewards: [{ type: 'addResource', resourceId: 'tools', amount: u(15) }] },
+  { id: 'q11', chapter: 2, prerequisites: ['q10'], objectives: [{ type: 'buildingCount', buildingId: 'quarry', count: 1 }, { type: 'population', count: 30 }], rewards: [{ type: 'addResource', resourceId: 'stone', amount: u(30) }] },
+  { id: 'q12', chapter: 2, prerequisites: ['q11'], objectives: [{ type: 'prosperityStreak', happiness: 75, days: 7 }], rewards: [{ type: 'revealProvince', provinceId: 'akcay_gecidi' }, { type: 'completeChapter', chapter: 2 }] },
+  // Chapter 3 — Bölgesel Güç: expand the city while maintaining a capable guard.
+  { id: 'q13', chapter: 3, prerequisites: ['q12'], objectives: [{ type: 'districtCount', count: 1 }], rewards: [{ type: 'addResource', resourceId: 'gold', amount: u(35) }] },
+  { id: 'q14', chapter: 3, prerequisites: ['q13'], objectives: [{ type: 'militiaCount', count: 10 }], rewards: [{ type: 'addResource', resourceId: 'tools', amount: u(15) }] },
+  { id: 'q15', chapter: 3, prerequisites: ['q14'], objectives: [{ type: 'districtCount', count: 3 }], rewards: [{ type: 'addResource', resourceId: 'food', amount: u(50) }] },
+  { id: 'q16', chapter: 3, prerequisites: ['q15'], objectives: [{ type: 'population', count: 40 }, { type: 'prosperityStreak', happiness: 75, days: 10 }], rewards: [{ type: 'completeChapter', chapter: 3 }] },
+];
+
+export const QUEST_BY_ID = Object.fromEntries(QUESTS.map((q) => [q.id, q])) as Record<QuestId, Quest>;
