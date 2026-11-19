@@ -36,6 +36,7 @@ import { trafficShare, walkerShare, windowLight } from './dayRhythm';
 import { TrafficLights } from './trafficLights';
 import { StreetFurniture } from './streetFurniture';
 import { Fireworks } from './fireworks';
+import { WaterLife } from './waterLife';
 import type { PedLook } from './pedestrians';
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import type { GridPoint } from './armyPath';
@@ -99,6 +100,8 @@ export interface RendererStats {
   particles: number;
   /** Moving street vehicles (ambient traffic), for the soundscape. */
   traffic?: number;
+  /** Beach-goers, swimmers and sailing boats. */
+  waterLife?: number;
 }
 
 interface BuildingView {
@@ -197,6 +200,7 @@ export class ValleyRenderer {
   private signals = new TrafficLights(this.objects);
   private furniture = new StreetFurniture(this.objects);
   private fireworks = new Fireworks(this.objects);
+  private waterLife = new WaterLife(this.objects);
   private ghost = new Graphics();
   private fx = new Container();
   private drops: { g: Graphics; x: number; y: number; v: number; d: number }[] = [];
@@ -285,6 +289,7 @@ export class ValleyRenderer {
       this.signals.destroy();
       this.furniture.destroy();
       this.fireworks.destroy();
+      this.waterLife.destroy();
       for (const a of this.atlas.values()) a.tex.destroy(true);
       this.atlas.clear();
       // Never pass `true` as the first argument: it releases Pixi's global resources and breaks the
@@ -304,6 +309,7 @@ export class ValleyRenderer {
       walkers: this.walkers.length + this.workScenes.count + this.birds.length,
       particles: this.particles.length,
       traffic: this.trafficCars.length,
+      waterLife: this.waterLife.count,
     };
   }
 
@@ -580,6 +586,7 @@ export class ValleyRenderer {
     this.cityScenes.update(view.game, p, dt, !motion);
     this.updateMilitia(view, p, dt);
     this.updateBoats(view, p, dt, motion);
+    this.waterLife.update(p, p.tiles, cal.season, clockHour(view.game.tick), this.dropKind === 'rain', dt, motion && view.game.speed > 0);
     this.updateBirds(p, dt, motion);
     this.updateParticles(dt);
     this.drawOverlays(view, p, pal);
@@ -1028,6 +1035,7 @@ export class ValleyRenderer {
     for (const w of this.matchFans) w.c.tint = tint;
     for (const car of this.trafficCars) car.sprite.tint = tint;
     this.furniture.setTint(tint);
+    this.waterLife.setTint(tint);
     for (const guard of this.militiaSprites) guard.tint = tint;
     for (const b of this.boats) b.c.tint = tint;
     for (const bird of this.birds) bird.c.tint = tint;
