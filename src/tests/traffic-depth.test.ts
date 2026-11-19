@@ -68,3 +68,24 @@ describe('traffic rules', () => {
       expect(signalAt(t, true) === 'green' && signalAt(t, false) === 'green').toBe(false);
   });
 });
+
+describe('smooth driving', () => {
+  it('swings a turning body from the old heading to the new one', async () => {
+    const { turnHeading } = await import('../game/rendering/ValleyRenderer');
+    expect(turnHeading(1, 0, 0, 1, 0)).toEqual([1, 0]);
+    const [mx, my] = turnHeading(1, 0, 0, 1, 0.225);
+    expect(mx).toBeGreaterThan(0.5);
+    expect(my).toBeGreaterThan(0.5);
+    expect(turnHeading(1, 0, 0, 1, 0.5)).toEqual([0, 1]);
+    expect(turnHeading(1, 0, 1, 0, 0.1)).toEqual([1, 0]);
+  });
+
+  it('eases a journey car onto its target instead of jumping, but snaps long moves', async () => {
+    const { easePoint, easeAngle } = await import('../game/rendering/cityScenes');
+    const [x] = easePoint(2, 2, 2.4, 2, 16);
+    expect(x).toBeGreaterThan(2);
+    expect(x).toBeLessThan(2.1);
+    expect(easePoint(2, 2, 6, 2, 16)).toEqual([6, 2]);
+    expect(easeAngle(0, Math.PI / 2, 100)).toBeCloseTo(0.7);
+  });
+});
