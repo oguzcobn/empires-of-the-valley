@@ -68,8 +68,6 @@ export const trArch = {
   'graphics.autoLowered': 'Kare hızı düşük ({fps} FPS). Grafik kalitesi otomatik olarak {q} seviyesine indirildi.',
   'graphics.dayNight': 'Gün ve gece döngüsü (gece pencereler yanar)',
   'graphics.weather': 'Hava durumu efektleri (yağmur, kar)',
-  'graphics.view3d': '3D görünüm (beta): gerçek gölgeler, tilt-shift derinlik, kıvrımlı yollar',
-  'graphics.view3dHint': 'Kapalıyken klasik 2D görünüm kullanılır. Oyun kaydı ve kurallar iki görünümde de aynıdır.',
   'panel.workshop': 'Mimari Atölye',
   'workshop.intro':
     'Bir yapının görünümünü tasarla: kültür, kat, çatı, malzeme ve süslemeler. Malzemeler maliyeti ve dayanıklılığı gerçekten değiştirir. Tasarımlar bu cihazda saklanır.',
