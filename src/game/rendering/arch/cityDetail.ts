@@ -795,7 +795,7 @@ function bank(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Architectur
     roofMaterial: scottish ? 'slate' : 'lead', windows: 'arched', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
   };
   pad(ctx, 0.04, 0.04, 1.96, 1.96, 0xc8c3b6, 0.9);
-  pad(ctx, 0.1, 1.3, 1.9, 1.92, 0xd8d2c4);
+  carPark(ctx, 2, 2, 1.5, 3, WHITE);
   const { zTop } = kit.mass(ctx, hall, 0.16, 0.14, 1.84, 1.05, { roof: hall.roof, door: 'L', doorT: 1.0, windows: 'arched', spacing: 0.3, chimneys: false, balcony: false });
   // classical portico: steps, six columns, entablature with the name, pediment
   for (let k = 0; k < 3; k++) box(ctx, 0.36 - k * 0.04, 1.05, 1.64 + k * 0.04, 1.34 + k * 0.05, k * 1.2, (k + 1) * 1.2, shade(stone, 1 - k * 0.04));
@@ -814,14 +814,13 @@ function bank(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Architectur
   const R = faceR(0.14, 1.05, 1.84);
   quad(ctx, R, 0.6, 0.8, 3, 9, 0x2b3a4a);
   glowPane(ctx, [fp(R, 0.63, 6), fp(R, 0.77, 6), fp(R, 0.77, 8.3), fp(R, 0.63, 8.3)], 0x6fd3ff);
-  for (const u of [0.3, 1.7]) {
-    line(ctx, P(u, 1.6, 0), P(u, 1.6, 12), 0x3b3b3b, 1);
-    lamp(ctx, P(u, 1.6, 12.6), 0xffe08a, 1.2);
+  for (const u of [0.2, 1.8]) {
+    line(ctx, P(u, 1.42, 0), P(u, 1.42, 12), 0x3b3b3b, 1);
+    lamp(ctx, P(u, 1.42, 12.6), 0xffe08a, 1.2);
   }
   drawFlagPole(ctx, P(1.0, 0.5, zTop + (scottish ? 8 : 1)), scottish ? 0x1d4ed8 : 0xc8102e, 10);
-  kit.smallTree(ctx, 0.2, 1.75, 0.7, pal, false);
-  kit.smallTree(ctx, 1.8, 1.75, 0.7, pal, false);
-  person(ctx, 1.25, 1.55, 6);
+  kit.smallTree(ctx, 1.9, 0.2, 0.7, pal, false);
+  person(ctx, 1.25, 1.42, 6);
 }
 
 function mall(ctx: DrawCtx, kit: CityKit, style: ArchitectureStyle, pal: SeasonPalette): void {
@@ -1069,7 +1068,8 @@ function university(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Archi
   const lawn = pal.snow ? 0xe9eef2 : 0x76a84f;
   pad(ctx, 0.04, 0.04, 2.96, 2.96, lawn);
   // campus paths and a fountain on the green
-  pad(ctx, 1.36, 1.3, 1.64, 2.96, 0xd8cdb4);
+  pad(ctx, 1.36, 1.3, 1.64, 2.5, 0xd8cdb4);
+  carPark(ctx, 3, 3, 2.48, 3, WHITE);
   pad(ctx, 0.1, 2.1, 2.9, 2.34, 0xd8cdb4);
   const [fx, fy] = P(1.5, 2.22, 0);
   ctx.g.ellipse(fx, fy, 10, 5).fill(0xbdb6a6);
@@ -1094,10 +1094,10 @@ function university(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Archi
   const lt = kit.mass(ctx, lib, 2.2, 0.3, 2.85, 1.3, { roof: 'flat', door: 'L', doorT: 2.52, windows: 'arched', spacing: 0.3, chimneys: false, balcony: false });
   drawDome(ctx, 2.52, 0.8, lt.zTop + 1, 0.26, scottish ? 0x5b7a6a : 0x7a8a9a);
   // students: on the lawn, walking with backpacks, reading on benches
-  for (const [u, v, i, seated] of [[0.4, 1.7, 0, true], [0.55, 1.75, 3, true], [2.4, 1.65, 5, true], [1.2, 2.5, 1, false], [1.8, 1.9, 6, false], [2.6, 2.6, 2, false], [0.6, 2.6, 7, false]] as const)
+  for (const [u, v, i, seated] of [[0.4, 1.7, 0, true], [0.55, 1.75, 3, true], [2.4, 1.65, 5, true], [1.15, 2.0, 1, false], [1.8, 1.9, 6, false], [2.55, 2.05, 2, false], [0.6, 2.1, 7, false]] as const)
     person(ctx, u, v, i, seated);
-  for (const [u, v, s] of [[0.25, 2.7, 1.2], [2.75, 2.75, 1.1], [0.2, 1.55, 0.9], [2.8, 1.6, 0.9]] as const) kit.smallTree(ctx, u, v, s, pal, false);
-  for (const [u, v] of [[1.3, 2.9], [1.7, 2.9]] as const) {
+  for (const [u, v, s] of [[0.2, 2.2, 1.1], [2.8, 2.2, 1.0], [0.2, 1.55, 0.9], [2.8, 1.6, 0.9]] as const) kit.smallTree(ctx, u, v, s, pal, false);
+  for (const [u, v] of [[1.3, 2.42], [1.7, 2.42]] as const) {
     line(ctx, P(u, v, 0), P(u, v, 12), 0x2f3a40, 0.9);
     lamp(ctx, P(u, v, 12.5), 0xfff2c0, 1.1);
   }
@@ -1112,6 +1112,7 @@ function museum(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Architect
     roofMaterial: scottish ? 'slate' : 'lead', windows: 'arched', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
   };
   pad(ctx, 0.04, 0.04, 1.96, 1.96, 0xd6d0c2, 0.95);
+  carPark(ctx, 2, 2, 1.45, 3, WHITE);
   const { zTop } = kit.mass(ctx, hall, 0.14, 0.14, 1.86, 1.0, { roof: hall.roof, door: 'L', doorT: 1.0, windows: 'arched', spacing: 0.32, chimneys: false, balcony: false });
   // grand steps, four columns, pediment and the name on the frieze
   for (let k = 0; k < 4; k++) box(ctx, 0.5 - k * 0.04, 1.0, 1.5 + k * 0.04, 1.22 + k * 0.05, k, k + 1, shade(stone, 1 - k * 0.03));
@@ -1129,23 +1130,24 @@ function museum(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Architect
     quad(ctx, R, t, t + 0.18, 6, zTop - 3, c);
     glowPane(ctx, [fp(R, t + 0.03, 9), fp(R, t + 0.15, 9), fp(R, t + 0.15, 11), fp(R, t + 0.03, 11)], 0xffe08a, 0.7);
   }
-  box(ctx, 1.48, 1.5, 1.68, 1.7, 0, 5, 0xbdb6a6);
-  const [sx, sy] = P(1.58, 1.6, 5);
+  box(ctx, 1.62, 1.08, 1.8, 1.26, 0, 5, 0xbdb6a6);
+  const [sx, sy] = P(1.71, 1.17, 5);
   ctx.g.roundRect(sx - 1.6, sy - 9, 3.2, 9, 1.2).fill(0x6d8b74);
   ctx.g.circle(sx, sy - 10.5, 1.8).fill(0x6d8b74);
-  for (let i = 0; i < 4; i++) person(ctx, 0.5 + i * 0.12, 1.5 + (i % 2) * 0.05, i + 3);
-  kit.smallTree(ctx, 0.2, 1.7, 0.8, pal, false);
+  for (let i = 0; i < 4; i++) person(ctx, 0.62 + i * 0.12, 1.36 + (i % 2) * 0.03, i + 3, false, 1.5);
+  kit.smallTree(ctx, 0.2, 1.2, 0.7, pal, false);
   for (const u of [0.45, 1.55]) lamp(ctx, P(u, 1.26, 9), 0xffe08a, 1.1);
 }
 
 function bazaar(ctx: DrawCtx, style: ArchitectureStyle): void {
   const scottish = style === 'scottish';
   pad(ctx, 0.04, 0.04, 1.96, 1.96, scottish ? 0xa9a294 : 0xcbbd9c, 1);
+  carPark(ctx, 2, 2, 1.5, 3, WHITE);
   const canvases = scottish ? [0x1e3a8a, 0xf5f5f5, 0x2e7d32, 0xb71c1c, 0x1e3a8a, 0xf5f5f5] : [0xd32f2f, 0x1976d2, 0xfbc02d, 0x388e3c, 0xf57c00, 0x7b1fa2];
   const goods = [[0xd23a32, 0xe8b23a, 0x6fae4a], [0xf08a24, 0x9ccc65, 0xffeb3b], [0x8a5a36, 0xe0d2b4, 0xc94f8e], [0x2e7d32, 0x66bb6a, 0xd84315], [0x5d4037, 0xffcc80, 0xef5350], [0x7e57c2, 0x26a69a, 0xffa726]];
   let k = 0;
   // two rows of stalls back to front so the near row overlaps the far one
-  for (const v of [0.25, 1.05]) for (const u of [0.18, 0.78, 1.38]) {
+  for (const v of [0.18, 0.92]) for (const u of [0.18, 0.78, 1.38]) {
     const c = canvases[k % 6]!;
     const g = goods[k % 6]!;
     box(ctx, u, v, u + 0.44, v + 0.28, 0, 4.5, 0x8a6a4a);
@@ -1177,8 +1179,8 @@ function bazaar(ctx: DrawCtx, style: ArchitectureStyle): void {
     }
   }
   // shoppers with bags along the aisles
-  for (let i = 0; i < 6; i++) person(ctx, 0.3 + i * 0.27, 0.8 + (i % 2) * 0.08, i + 2);
-  for (let i = 0; i < 4; i++) person(ctx, 0.4 + i * 0.36, 1.65 + (i % 2) * 0.07, i + 5);
+  for (let i = 0; i < 6; i++) person(ctx, 0.3 + i * 0.27, 0.72 + (i % 2) * 0.06, i + 2);
+  for (let i = 0; i < 4; i++) person(ctx, 0.4 + i * 0.36, 1.36 + (i % 2) * 0.04, i + 5);
   for (const [u, v] of [[0.08, 0.08], [1.92, 1.92]] as const) {
     line(ctx, P(u, v, 0), P(u, v, 13), 0x2f3a40, 0.9);
     lamp(ctx, P(u, v, 13.5), 0xfff2c0, 1.1);
@@ -1193,6 +1195,7 @@ function hamam(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Architectu
     roofMaterial: 'lead', windows: scottish ? 'arched' : 'small', door: 'arched', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
   };
   pad(ctx, 0.04, 0.04, 1.96, 1.96, 0xcdc2a8, 0.9);
+  carPark(ctx, 2, 2, 1.45, 3, WHITE);
   const { zTop } = kit.mass(ctx, bath, 0.14, 0.14, 1.86, 1.3, { floors: 2, roof: 'flat', door: 'L', doorT: 1.0, windows: bath.windows, spacing: 0.32, chimneys: false, balcony: false });
   const L = faceL(0.14, 1.86, 1.3);
   if (scottish) {
@@ -1218,9 +1221,8 @@ function hamam(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Architectu
   }
   signBoard(ctx, L, 1.0, 14.5, 'HAMAM', scottish ? 0x1e3a8a : 0x6b3e1f, 0xf6e7b0, 1.2);
   for (const u of [0.7, 1.3]) lamp(ctx, fp(L, u, 9), 0xffb74d, 1);
-  person(ctx, 1.25, 1.45, 4);
-  kit.smallTree(ctx, 0.25, 1.6, 0.8, pal, false);
-  kit.smallTree(ctx, 1.75, 1.6, 0.8, pal, false);
+  person(ctx, 1.25, 1.38, 4);
+  kit.smallTree(ctx, 1.9, 0.2, 0.7, pal, false);
 }
 
 /** Draws a detailed city building; returns false for ids handled elsewhere. */
