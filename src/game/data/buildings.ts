@@ -1,5 +1,5 @@
 import { u } from '../core/fixed';
-import type { BuildingDefinition, BuildingId, BuildingInstance, LandmarkId, LevelSpec, TerrainId } from '../core/types';
+import type { BuildingDefinition, Cost, BuildingId, BuildingInstance, LandmarkId, LevelSpec, TerrainId } from '../core/types';
 import { LANDMARKS } from './landmarks';
 
 // Construction-only day length: shorten waiting without changing production, seasons or saves.
@@ -620,7 +620,53 @@ const CORE: Record<Exclude<BuildingId, LandmarkId>, BuildingDefinition> = {
   },
 };
 
-export const BUILDINGS: Record<BuildingId, BuildingDefinition> = { ...CORE, ...LANDMARKS };
+/** Every ordinary building can be raised to this level; landmarks keep their staged build. */
+export const MAX_LEVEL = 5;
+
+/** Population the town square needs for each of its levels 3..5. */
+const TOWN_POPULATION: Record<number, number> = { 3: 40, 4: 80, 5: 140 };
+
+const scale = (n: number, k: number): number => Math.round(n * k);
+const scaleCost = (c: Cost, k: number): Cost =>
+  Object.fromEntries(Object.entries(c).map(([id, n]) => [id, scale((n as number | undefined) ?? 0, k)])) as Cost;
+
+/**
+ * Levels beyond the ones written out above, up to MAX_LEVEL. Each step costs about 1.6 times the
+ * previous one (with a little gold from level 3 on), takes a bit longer to build and gives about
+ * a quarter more of everything the building does. Level n of a building needs a town square of
+ * level n; the town square itself needs a bigger population.
+ */
+function extendLevels(def: BuildingDefinition): BuildingDefinition {
+  const levels = [...def.levels];
+  while (levels.length < MAX_LEVEL) {
+    const n = levels.length + 1;
+    const prev = levels[levels.length - 1]!;
+    const base = Object.keys(prev.cost).length ? prev.cost : { wood: u(60), stone: u(50), gold: u(20) };
+    const cost = scaleCost(base, 1.6);
+    if (n >= 3 && !cost.gold) cost.gold = u(10 * (n - 2));
+    levels.push({
+      cost,
+      buildTicks: Math.max(2 * DAY, scale(prev.buildTicks, 1.2)),
+      workerSlots: prev.workerSlots ? prev.workerSlots + 1 : 0,
+      housing: prev.housing ? Math.ceil(prev.housing * 1.3) : 0,
+      storage: scaleCost(prev.storage, 1.3),
+      ...(prev.produces ? { produces: { ...prev.produces, perDay: scale(prev.produces.perDay, 1.25) } } : {}),
+      goldIncome: scale(prev.goldIncome, 1.3),
+      taxIncome: scale(prev.taxIncome, 1.3),
+      upkeepGold: scale(prev.upkeepGold, 1.2),
+      requires: def.id === 'town_center'
+        ? { population: TOWN_POPULATION[n] ?? 40 * (n - 2) }
+        : { ...(prev.requires?.techId ? { techId: prev.requires.techId } : {}), townCenterLevel: n },
+    });
+  }
+  return { ...def, levels };
+}
+
+const RAISED = Object.fromEntries(
+  Object.entries(CORE).map(([id, def]) => [id, extendLevels(def)]),
+) as typeof CORE;
+
+export const BUILDINGS: Record<BuildingId, BuildingDefinition> = { ...RAISED, ...LANDMARKS };
 
 
 export const BUILDING_IDS = Object.keys(BUILDINGS) as BuildingId[];

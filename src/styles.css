@@ -2381,3 +2381,7 @@ main.game-screen .quest.card > .reward { color: #e8c77f !important; }
 @media (max-height: 520px) {
   .camera-rotate { right: auto; left: .6rem; bottom: .6rem; }
 }
+
+.upgrade-needs { list-style: none; margin: .3rem 0 .4rem; padding: 0; font-size: .82rem; display: grid; gap: .15rem; }
+.upgrade-needs .ok { color: #2e7d32; }
+.upgrade-needs .bad { color: #c62828; font-weight: 600; }

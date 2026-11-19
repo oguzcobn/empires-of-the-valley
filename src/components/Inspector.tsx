@@ -13,6 +13,7 @@ import {
   idleWorkers,
   isBuilt,
   techOutputPermille,
+  totalPopulation,
 } from '../game/systems/economy';
 import { neighborhoodServices } from '../game/systems/crime';
 import { buildingById } from '../game/systems/grid';
@@ -317,6 +318,32 @@ const FLIGHT_PHASE_LABELS: Record<'landing' | 'taxiIn' | 'terminal' | 'taxiOut' 
   takeoff: 'Kalkış & Tırmanış',
 };
 
+/** What the next level needs, each with a tick or a cross and the current value. */
+function UpgradeNeeds({ game, b }: { game: GameState; b: BuildingInstance }): ReactElement | null {
+  const next = defOf(b).levels[b.level];
+  const req = next?.requires;
+  if (!req) return null;
+  const p = homeProvince(game);
+  const tc = p.buildings.find((x) => x.definitionId === 'town_center');
+  const items: { ok: boolean; text: string }[] = [];
+  if (req.population) {
+    const pop = totalPopulation(p);
+    items.push({ ok: pop >= req.population, text: `Nüfus en az ${req.population} (şu an ${pop})` });
+  }
+  if (req.townCenterLevel)
+    items.push({ ok: (tc?.level ?? 0) >= req.townCenterLevel, text: `Köy Meydanı ${req.townCenterLevel}. seviye (şu an ${tc?.level ?? 0})` });
+  if (req.techId)
+    items.push({ ok: game.researchedTechIds.includes(req.techId), text: `Araştırma: ${t(`tech.${req.techId}.name`)}` });
+  items.push({ ok: b.connected, text: 'Yol bağlantısı' });
+  return (
+    <ul className="upgrade-needs" aria-label="Yükseltme koşulları">
+      {items.map((item) => (
+        <li key={item.text} className={item.ok ? 'ok' : 'bad'}>{item.ok ? '✓' : '✗'} {item.text}</li>
+      ))}
+    </ul>
+  );
+}
+
 export function Inspector({ game }: { game: GameState }): ReactElement | null {
   const selectedId = useApp((s) => s.selectedBuildingId);
   const dispatch = useApp((s) => s.dispatch);
@@ -360,6 +387,39 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         );
       })()}
       <StatusLine b={b} />
+
+      {isBuilt(b) && b.state === 'active' && (
+        <section className="section">
+          <h4>{t('inspector.upgrade')}</h4>
+          {next ? (
+            <>
+              <Row label={t('inspector.upgradeCost')}>
+                <CostList cost={nextCost} stocks={p.stocks} />
+              </Row>
+              <UpgradeNeeds game={game} b={b} />
+              <p className="hint">{b.level === 1
+                ? t(`building.${b.definitionId}.upgrade`)
+                : `${b.level + 1}. seviye: kapasite, üretim ve gelir yaklaşık dörtte bir artar; bina büyür ve ${b.level + 1 >= 4 ? 'modern bir görünüme kavuşur' : 'gelişir'}.`}</p>
+              <button
+                className="btn primary block"
+                disabled={!!upgradeError}
+                onClick={() => dispatch({ type: 'upgradeBuilding', instanceId: b.id })}
+                data-testid="upgrade"
+              >
+                {t('inspector.upgradeTo', { n: b.level + 1 })}
+              </button>
+              {upgradeError && (
+                <p className="hint warn">
+                  {tm(requirementError(game, next) ?? missingFor(p, nextCost) ?? upgradeError)}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="hint">{t('inspector.maxLevel')}</p>
+          )}
+        </section>
+      )}
+
 
       {b.state === 'construction' && def.landmark && (
         <LandmarkConstruction game={game} b={b} idle={idle} />
@@ -553,35 +613,6 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         );
       })()}
       {b.definitionId === 'shipyard' && isBuilt(b) && <ShipyardSection game={game} />}
-
-      {isBuilt(b) && (
-        <section className="section">
-          <h4>{t('inspector.upgrade')}</h4>
-          {next ? (
-            <>
-              <Row label={t('inspector.upgradeCost')}>
-                <CostList cost={nextCost} stocks={p.stocks} />
-              </Row>
-              <p className="hint">{t(`building.${b.definitionId}.upgrade`)}</p>
-              <button
-                className="btn primary block"
-                disabled={!!upgradeError}
-                onClick={() => dispatch({ type: 'upgradeBuilding', instanceId: b.id })}
-                data-testid="upgrade"
-              >
-                {t('inspector.upgradeTo', { n: b.level + 1 })}
-              </button>
-              {upgradeError && (
-                <p className="hint warn">
-                  {tm(requirementError(game, next) ?? missingFor(p, nextCost) ?? upgradeError)}
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="hint">{t('inspector.maxLevel')}</p>
-          )}
-        </section>
-      )}
 
       {def.demolishable && b.state === 'active' && (
         <section className="section">
