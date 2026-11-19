@@ -52,3 +52,17 @@ describe('five building levels', () => {
     expect(r.ok === false && r.error.key).toBe('err.maxLevel');
   });
 });
+
+describe('era unlocks', () => {
+  it('unlocks later-era buildings with the town square level, as the message says', async () => {
+    const { validatePlacement } = await import('../game/systems/commands');
+    let s = newCampaign();
+    const villa = (st: typeof s) => validatePlacement(st, 'villa', 0, 0);
+    expect(villa(s)?.key).toBe('err.needTownCenter');
+    s = tweak(s, (d) => {
+      const tc = d.provinces[d.homeProvinceId]!.buildings.find((b) => b.definitionId === 'town_center')!;
+      tc.level = 3;
+    });
+    expect(villa(s)?.key).not.toBe('err.needTownCenter');
+  });
+});
