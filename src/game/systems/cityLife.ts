@@ -45,6 +45,12 @@ export const emptyCityLife = (): CityLifeState => ({
   revenue: 0,
   operatingCosts: 0,
 });
+/**
+ * Extra 2x2+ venues residents drive to and walk into as "shopping" visits: the visit pays like a
+ * shop and the parking bays are painted on their forecourts.
+ */
+export const VISIT_VENUES = ['gas_station', 'mall', 'museum', 'hamam', 'gym', 'bazaar', 'bank', 'university'] as const;
+
 export const driveable = (t?: Tile): boolean =>
   !!t?.road && (t.roadType === 'bridge' || (t.roadType === 'dirt' && !!t.paved));
 const dirs = [
@@ -149,7 +155,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
   const venues = p.buildings.filter(
     (b) =>
       isOperating(b) &&
-      ['hospital', 'police_station', 'fire_station', 'factory', 'market', 'restaurant', 'club', 'hotel', 'airport', 'gas_station', 'mall'].includes(
+      ['hospital', 'police_station', 'fire_station', 'factory', 'market', 'restaurant', 'club', 'hotel', 'airport', ...VISIT_VENUES].includes(
         b.definitionId,
       ),
   );
@@ -305,8 +311,7 @@ export function cityLifeTick(s: GameState, p: Province): void {
     const sourceAccess = service ? access(source, route[0]!, 0).reverse() : [];
     const destinationAccess = [
       'market',
-      'gas_station',
-      'mall',
+      ...VISIT_VENUES,
       'restaurant',
       'club',
       'hotel',

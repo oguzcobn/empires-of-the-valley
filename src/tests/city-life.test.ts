@@ -59,6 +59,16 @@ function step(s: GameState, n = 1): void {
 }
 
 describe('saved city life', () => {
+  it('sends residents on visits to museums, hamams, gyms, bazaars, banks and the university', () => {
+    for (const [id, w] of [['museum', 2], ['hamam', 2], ['gym', 2], ['bazaar', 2], ['bank', 2], ['university', 3]] as const) {
+      const s = fixture();
+      add(s, 'hut', 2, 5);
+      add(s, id, 8, 6 - w);
+      step(s, 8);
+      expect(s.cityLife?.jobs.some((j) => j.kind === 'shopping' && j.target.startsWith(id)), id).toBe(true);
+    }
+  });
+
   it('reserves parking and completes shopping through every stage', () => {
     const s = fixture();
     add(s, 'hut', 2, 5);
