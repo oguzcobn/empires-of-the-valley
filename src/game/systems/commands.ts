@@ -185,8 +185,9 @@ export function validatePlacement(
 ): MessageRef | null {
   const def = BUILDINGS[buildingId];
   if (!def?.buildable) return { key: 'err.notBuildable' };
-  if (def.era > (s.age ?? 1)) return { key: 'err.needTownCenter', params: { level: def.era } };
   const p = homeProvince(s);
+  // later-era buildings unlock with the town square's level (or an earlier advance of the city age)
+  if (def.era > Math.max(s.age ?? 1, townCenter(p)?.level ?? 1)) return { key: 'err.needTownCenter', params: { level: def.era } };
   if (def.landmark && p.buildings.some((b) => b.definitionId === buildingId)) return { key: 'err.landmarkExists' };
   return (
     styleError(buildingId, style, look) ??
