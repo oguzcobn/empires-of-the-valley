@@ -38,6 +38,7 @@ export const DETAILED_CITY: ReadonlySet<BuildingId> = new Set<BuildingId>([
   'apartment', 'park', 'gas_station', 'pharmacy', 'bakery', 'bank', 'mall',
   'villa', 'tea_garden', 'post_office', 'gym', 'kindergarten',
   'university', 'museum', 'bazaar', 'hamam',
+  'library', 'wind_turbine', 'solar_farm', 'bus_depot',
 ]);
 
 const ASPHALT = 0x555c62;
@@ -1225,6 +1226,154 @@ function hamam(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: Architectu
   kit.smallTree(ctx, 1.9, 0.2, 0.7, pal, false);
 }
 
+function library(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  const hall: BuildingLook = {
+    ...look, floors: 2, wall: scottish ? 'sandstone' : 'plaster', facade: scottish ? 'honey' : 'cream', roof: scottish ? 'gable' : 'hip',
+    roofMaterial: scottish ? 'slate' : 'clay', windows: 'arched', door: 'arched', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none',
+  };
+  pad(ctx, 0.04, 0.04, 0.96, 0.96, 0xd6d0c2, 0.9);
+  kit.mass(ctx, hall, 0.1, 0.1, 0.9, 0.74, { roof: hall.roof, door: 'L', doorT: 0.5, windows: 'arched', spacing: 0.26, chimneys: false, balcony: false, axis: 'u' });
+  const L = faceL(0.1, 0.9, 0.74);
+  // bookshelves glimpsed through the ground-floor windows
+  for (const t of [0.24, 0.76]) {
+    quad(ctx, L, t - 0.08, t + 0.08, 2, 8, 0x5d4037);
+    for (let k = 0; k < 3; k++) quad(ctx, L, t - 0.07, t + 0.07, 2.6 + k * 1.9, 3.8 + k * 1.9, [0xc62828, 0x1565c0, 0x2e7d32][k]!);
+    ctx.lights.push([fp(L, t - 0.08, 2), fp(L, t + 0.08, 2), fp(L, t + 0.08, 8), fp(L, t - 0.08, 8)]);
+  }
+  signBoard(ctx, L, 0.5, 10.8, 'KÜTÜPHANE', 0x2e4a3a, 0xf6e7b0, 0.75);
+  // reader on a bench with a book
+  box(ctx, 0.66, 0.82, 0.9, 0.88, 2.2, 2.8, 0x8a5a36);
+  person(ctx, 0.78, 0.86, 6, true);
+  kit.smallTree(ctx, 0.2, 0.85, 0.6, pal, false);
+}
+
+function windTurbine(ctx: DrawCtx, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  pad(ctx, 0.04, 0.04, 0.96, 0.96, pal.snow ? 0xe9eef2 : scottish ? 0x7a9a6a : 0x8aa56f);
+  box(ctx, 0.36, 0.36, 0.64, 0.64, 0, 1.6, 0xb8b8b0);
+  const base = P(0.5, 0.5, 1.6);
+  const H = 92;
+  // tapering white tower, nacelle and the hub the renderer spins
+  ctx.g.poly([base[0] - 2.6, base[1], base[0] + 2.6, base[1], base[0] + 1.2, base[1] - H, base[0] - 1.2, base[1] - H]).fill(0xf2f4f5);
+  ctx.g.poly([base[0], base[1], base[0] + 2.6, base[1], base[0] + 1.2, base[1] - H, base[0], base[1] - H]).fill(0xd9dee1);
+  ctx.g.roundRect(base[0] - 2.5, base[1] - H - 3.5, 8, 4, 1.5).fill(0xe8ecee);
+  const hub: Pt = [base[0] - 2.4, base[1] - H - 1.5];
+  (ctx.spinners ??= []).push({ at: hub, r: 30 });
+  const warn: Pt[] = [[base[0] + 2.5, base[1] - H - 4.5], [base[0] + 4, base[1] - H - 4.5], [base[0] + 4, base[1] - H - 3.2], [base[0] + 2.5, base[1] - H - 3.2]];
+  glowPane(ctx, warn, 0xff3b3b);
+  // service door and a small control cabinet
+  ctx.g.rect(base[0] - 1, base[1] - 5, 2, 4).fill(0x9aa3aa);
+  box(ctx, 0.7, 0.62, 0.84, 0.74, 0, 4, 0xcfd3d6);
+  glowPane(ctx, [P(0.72, 0.74, 2), P(0.8, 0.74, 2), P(0.8, 0.74, 3), P(0.72, 0.74, 3)], 0x7cff7c);
+  // tower sections and mid-height aviation lights
+  for (let k = 1; k < 4; k++) {
+    const z = base[1] - (H * k) / 4;
+    const half = 2.6 - (1.4 * k) / 4;
+    line(ctx, [base[0] - half, z], [base[0] + half, z], 0xc9cfd3, 0.6);
+  }
+  for (const dx of [-1.8, 1.8]) glowPane(ctx, [[base[0] + dx - 0.6, base[1] - H / 2 - 0.6], [base[0] + dx + 0.6, base[1] - H / 2 - 0.6], [base[0] + dx + 0.6, base[1] - H / 2 + 0.6], [base[0] + dx - 0.6, base[1] - H / 2 + 0.6]], 0xff6b6b);
+  // gravel access track and the landscape around the turbine
+  pad(ctx, 0.42, 0.64, 0.58, 0.96, 0xc9bfa6);
+  if (scottish) {
+    // dry-stone dyke and hill sheep grazing round the base
+    for (let k = 0; k < 6; k++) box(ctx, 0.06 + k * 0.15, 0.06, 0.19 + k * 0.15, 0.12, 0, 2.6, k % 2 ? 0x8d8371 : 0x9a907c);
+    for (const [u, v] of [[0.2, 0.3], [0.78, 0.25], [0.25, 0.8], [0.82, 0.86]] as const) {
+      const [x, y] = P(u, v, 2);
+      ctx.g.ellipse(x, y, 3.2, 2).fill(0xf2f0ea);
+      ctx.g.circle(x + 2.8, y - 0.8, 1.2).fill(0x2b2b2b);
+      for (const k of [-1.6, 1.4]) ctx.g.rect(x + k, y + 1, 0.6, 1.6).fill(0x2b2b2b);
+    }
+  } else {
+    // stone terrace wall, olive trees and a technician on his rounds
+    for (let k = 0; k < 6; k++) box(ctx, 0.06, 0.06 + k * 0.15, 0.12, 0.19 + k * 0.15, 0, 2.2, k % 2 ? 0xc9b48e : 0xb8a37d);
+    for (const [u, v] of [[0.18, 0.25], [0.8, 0.22], [0.2, 0.82]] as const) {
+      const [x, y] = P(u, v);
+      ctx.g.rect(x - 0.7, y - 5, 1.4, 5).fill(0x6b5a48);
+      ctx.g.ellipse(x, y - 7.5, 4, 3).fill(0x7d8f55);
+      ctx.g.ellipse(x - 1.5, y - 8.5, 2.4, 1.8).fill(0x91a466);
+    }
+    person(ctx, 0.66, 0.84, 1);
+  }
+  lamp(ctx, P(0.77, 0.74, 5), 0xfff2c0, 0.8);
+  if (hub[1] - 32 < ctx.topY) ctx.topY = hub[1] - 32;
+}
+
+function solarFarm(ctx: DrawCtx, style: ArchitectureStyle, pal: SeasonPalette): void {
+  const scottish = style === 'scottish';
+  pad(ctx, 0.04, 0.04, 1.96, 1.96, pal.snow ? 0xe9eef2 : scottish ? 0x7a9a6a : 0x9cb06f);
+  // fence
+  for (const [a, b] of [[P(0.05, 0.05), P(1.95, 0.05)], [P(1.95, 0.05), P(1.95, 1.95)], [P(0.05, 1.95), P(1.95, 1.95)], [P(0.05, 0.05), P(0.05, 1.95)]] as const)
+    line(ctx, [a[0], a[1] - 3.5], [b[0], b[1] - 3.5], 0x8e9599, 0.6);
+  // rows of tilted panels (back rows first)
+  for (let r = 0; r < 4; r++) {
+    const v = 0.22 + r * 0.38;
+    for (let c = 0; c < 3; c++) {
+      const u0 = 0.18 + c * 0.42, u1 = u0 + 0.36;
+      for (const u of [u0 + 0.04, u1 - 0.04]) line(ctx, P(u, v + 0.2, 0), P(u, v + 0.2, 4), 0x7d858b, 0.8);
+      poly(ctx, [P(u0, v, 7), P(u1, v, 7), P(u1, v + 0.24, 3), P(u0, v + 0.24, 3)], pal.snow ? 0xdfe6ea : 0x1f3b63);
+      for (let k = 1; k < 4; k++) line(ctx, P(u0 + (k * 0.36) / 4, v, 7), P(u0 + (k * 0.36) / 4, v + 0.24, 3), 0x4b78a8, 0.4);
+      line(ctx, P(u0, v + 0.12, 5), P(u1, v + 0.12, 5), 0x4b78a8, 0.4);
+    }
+  }
+  // inverter hut with a lit status light, and the meter post
+  box(ctx, 1.62, 1.6, 1.88, 1.86, 0, 8, 0xe0e0dc);
+  box(ctx, 1.6, 1.58, 1.9, 1.88, 8, 9.2, 0x9e9e9e);
+  glowPane(ctx, [P(1.66, 1.86, 5), P(1.72, 1.86, 5), P(1.72, 1.86, 6.2), P(1.66, 1.86, 6.2)], 0x7cff7c);
+  lamp(ctx, P(1.75, 1.95, 9), 0xfff2c0, 1);
+  signBoard(ctx, faceL(1.62, 1.88, 1.86), 1.75, 6.6, 'GES', 0xffcc00, 0x1a1a1a, 0.6);
+  // security lights on the fence corners
+  for (const [u, v] of [[0.06, 0.06], [1.94, 0.06], [0.06, 1.94]] as const) {
+    line(ctx, P(u, v, 0), P(u, v, 9), 0x59636a, 0.8);
+    lamp(ctx, P(u, v, 9.5), 0xfff2c0, 0.8);
+  }
+  if (scottish) {
+    // sheep keep the grass down between the rows
+    for (const [u, v] of [[0.6, 0.55], [1.3, 1.3], [0.4, 1.7]] as const) {
+      const [x, y] = P(u, v, 1);
+      ctx.g.ellipse(x, y, 3, 1.9).fill(0xf2f0ea);
+      ctx.g.circle(x + 2.6, y - 0.7, 1.1).fill(0x2b2b2b);
+    }
+  } else {
+    // technician cleaning a panel
+    person(ctx, 1.05, 1.42, 2);
+  }
+}
+
+function busDepot(ctx: DrawCtx, kit: CityKit, look: BuildingLook, style: ArchitectureStyle): void {
+  const scottish = style === 'scottish';
+  const livery = scottish ? 0x7a1f2b : 0x1d6fb8;
+  const shed: BuildingLook = { ...look, floors: 2, wall: scottish ? 'brick' : 'plaster', facade: scottish ? 'terracotta' : 'white', roof: 'flat', roofMaterial: 'lead', windows: 'small', door: 'double', tower: 'none', balcony: 'none', chimney: 'none', decor: 'none' };
+  pad(ctx, 0.04, 0.04, 1.96, 1.96, 0x7d8388, 1);
+  // open maintenance shed at the back with two bays
+  const { zTop } = kit.mass(ctx, shed, 0.12, 0.12, 1.88, 0.8, { roof: 'flat', door: null, windows: 'small', spacing: 0.4, chimneys: false, balcony: false });
+  const L = faceL(0.12, 1.88, 0.8);
+  for (const t of [0.55, 1.45]) {
+    quad(ctx, L, t - 0.32, t + 0.32, 0, 15, 0x2b2f33);
+    for (let z = 3; z < 15; z += 3) line(ctx, fp(L, t - 0.32, z), fp(L, t + 0.32, z), 0x3d4448, 0.5);
+    lamp(ctx, fp(L, t, 16.5), 0xffe08a, 0.9);
+  }
+  quad(ctx, L, 0.12, 1.88, zTop - 4, zTop - 1, livery);
+  signBoard(ctx, L, 1.0, zTop - 3.2, 'OTOBÜS GARAJI', livery, WHITE, 0.85);
+  // parked buses in painted bays (drawn in tile space so they sit on the apron)
+  for (const v of [1.12, 1.6]) {
+    pad(ctx, 0.2, v - 0.18, 1.8, v + 0.18, 0x5b6268);
+    line(ctx, P(0.2, v - 0.2), P(1.8, v - 0.2), 0xf2c230, 0.8);
+    const u0 = 0.28, u1 = 1.62, w = 0.15;
+    box(ctx, u0, v - w, u1, v + w, 1.6, 16, 0xf1f3f2);
+    const side = faceL(u0, u1, v + w);
+    quad(ctx, side, u0, u1, 1.6, 6, livery);
+    quad(ctx, side, u0 + 0.06, u1 - 0.18, 8, 14, 0x2d4a5e);
+    for (let t = u0 + 0.22; t < u1 - 0.2; t += 0.2) line(ctx, fp(side, t, 8), fp(side, t, 14), 0xe6e9e8, 0.8);
+    for (const t of [u0 + 0.2, u1 - 0.22]) {
+      const [x, y] = fp(side, t, 1.6);
+      ctx.g.circle(x, y, 2.4).fill(0x19212b);
+    }
+    quad(ctx, faceR(v - w, v + w, u1), v - w * 0.8, v + w * 0.8, 7, 15, 0x6a95ad);
+  }
+  person(ctx, 1.85, 1.35, 3);
+}
+
 /** Draws a detailed city building; returns false for ids handled elsewhere. */
 export function drawDetailedCity(
   ctx: DrawCtx, kit: CityKit, id: BuildingId, look: BuildingLook, style: ArchitectureStyle, pal: SeasonPalette, level = 1,
@@ -1246,6 +1395,10 @@ export function drawDetailedCity(
     case 'museum': museum(ctx, kit, look, style, pal); return true;
     case 'bazaar': bazaar(ctx, style); return true;
     case 'hamam': hamam(ctx, kit, look, style, pal); return true;
+    case 'library': library(ctx, kit, look, style, pal); return true;
+    case 'wind_turbine': windTurbine(ctx, style, pal); return true;
+    case 'solar_farm': solarFarm(ctx, style, pal); return true;
+    case 'bus_depot': busDepot(ctx, kit, look, style); return true;
     case 'hospital': hospital(ctx, kit, look, style, pal); return true;
     case 'police_station': policeStation(ctx, kit, look, style); return true;
     case 'fire_station': fireStation(ctx, kit, look, style); return true;

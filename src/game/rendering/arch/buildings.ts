@@ -61,6 +61,8 @@ export interface SpriteInfo {
   flags: { at: Pt; color: number }[];
   /** Height in px above the footprint's top (back) vertex: -min(y). Used for picking and badges. */
   height: number;
+  /** Rotors spun by the renderer. */
+  spinners?: { at: Pt; r: number }[];
 }
 
 export interface MassOpts {
@@ -908,7 +910,7 @@ export function drawStyledBuilding(
   const look = renderLook(b);
   if (DETAILED_CITY.has(b.definitionId)) {
     drawDetailedCity(ctx, CITY_KIT, b.definitionId, look, b.style, pal, b.level);
-    return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
+    return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY, spinners: ctx.spinners };
   }
   if (drawCityBuilding(ctx, b.definitionId, b.style, b.level)) return { lights: ctx.lights, smoke: ctx.smoke, flags: ctx.flags, height: -ctx.topY };
   switch (b.definitionId) {
@@ -968,6 +970,7 @@ export function drawStyledBuilding(
     case 'apartment': case 'park': case 'gas_station': case 'pharmacy': case 'bakery': case 'bank': case 'mall': break;
     case 'villa': case 'tea_garden': case 'post_office': case 'gym': case 'kindergarten': break;
     case 'university': case 'museum': case 'bazaar': case 'hamam': break;
+    case 'library': case 'wind_turbine': case 'solar_farm': case 'bus_depot': break;
     default:
       drawLandmark(ctx, b.definitionId, pal);
   }

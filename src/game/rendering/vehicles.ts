@@ -247,11 +247,13 @@ export function drawTrafficVehicle(
  * Model for the n-th ambient vehicle: mostly cars, with taxis, a bus, lorries, two-wheelers and,
  * at their hours, the morning refuse round and the summer ice-cream van.
  */
-export function trafficModel(n: number, seed: number, roads: number, hour = 12, season = 'summer', snowing = false): number {
+export function trafficModel(n: number, seed: number, roads: number, hour = 12, season = 'summer', snowing = false, depot = false): number {
   if (n === 0 && (snowing || season === 'winter') && hour >= 5 && hour < 11) return PLOUGH;
   if (n === 1 && hour >= 6 && hour < 9) return GARBAGE;
   if (n === 2 && season === 'summer' && hour >= 12 && hour < 19) return ICE_CREAM;
   if (roads >= 16 && n % 9 === 4) return BUS;
+  // a staffed bus depot puts a second and third line on the streets
+  if (depot && roads >= 12 && (n % 9 === 8 || n % 9 === 0) && n > 0 && hour >= 6 && hour < 23) return BUS;
   if (n % 7 === 5) return LORRY;
   if (n % 5 === 2) return TAXI;
   if (n % 6 === 3) return MOTORBIKE;
