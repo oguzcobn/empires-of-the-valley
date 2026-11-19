@@ -19,7 +19,7 @@ const hash = (x: number, y: number, k: number): number => {
 };
 
 export interface FurnitureSpot {
-  kind: 'tree' | 'shelter';
+  kind: 'tree' | 'shelter' | 'lamp';
   x: number;
   y: number;
   /** Verge side in tile space: unit vector from the road centre towards the verge. */
@@ -45,6 +45,11 @@ export function furnitureSpots(p: Province): FurnitureSpot[] {
         const n = tileAt(p, x + nx, y + ny);
         if (!n || n.road || n.buildingId || n.terrain === 'water' || n.terrain === 'lake' || n.height !== t.height) continue;
         const r = hash(x, y, nx * 3 + ny);
+        // a lamp on every third tile of the street, on one verge only
+        if ((alongX ? x : y) % 3 === 0 && (nx > 0 || ny > 0)) {
+          spots.push({ kind: 'lamp', x, y, nx, ny });
+          continue;
+        }
         if (sinceShelter > 9 && r < 0.18) {
           spots.push({ kind: 'shelter', x, y, nx, ny });
           sinceShelter = 0;
@@ -65,6 +70,32 @@ function tree(g: Graphics, at: [number, number], s: number, autumn: boolean, sno
   g.circle(x, y - 13 * s, 5 * s).fill(leaf);
   g.circle(x - 2.4 * s, y - 11 * s, 3.4 * s).fill(snow ? 0xdfe6ea : autumn ? 0xc9741e : 0x3f7a33);
   g.circle(x + 2.2 * s, y - 15 * s, 3 * s).fill(snow ? 0xf4f7f9 : autumn ? 0xe8a23e : 0x5c9c48);
+}
+
+function streetLamp(g: Graphics, at: [number, number]): Graphics {
+  const [x, y] = at;
+  g.ellipse(x + 1, y, 2.2, 1).fill({ color: 0x0e1b24, alpha: 0.25 });
+  g.moveTo(x, y).lineTo(x, y - 22).stroke({ color: 0x3d464c, width: 1.2 });
+  g.moveTo(x, y - 22).lineTo(x - 4, y - 23.5).stroke({ color: 0x3d464c, width: 1 });
+  g.roundRect(x - 6, y - 24.5, 4, 2, 0.8).fill(0x2f363b);
+  // the glow is a separate graphic so the renderer can fade it with the night
+  const glow = new Graphics();
+  glow.ellipse(x - 4, y - 22.4, 2, 1).fill(0xfff2c0);
+  glow.ellipse(x - 4, y - 14, 7, 10).fill({ color: 0xfff2c0, alpha: 0.12 });
+  glow.ellipse(x - 5, y + 1, 11, 4.5).fill({ color: 0xfff2c0, alpha: 0.16 });
+  return glow;
+}
+
+/** Winter fairy lights wound round a street tree (lit at night). */
+function treeLights(at: [number, number], s: number, seed: number): Graphics {
+  const g = new Graphics();
+  const [x, y] = at;
+  const colors = [0xff5252, 0xffd740, 0x69f0ae, 0x40c4ff, 0xffffff];
+  for (let k = 0; k < 9; k++) {
+    const a = k * 1.7 + seed;
+    g.circle(x + Math.cos(a) * 4.2 * s, y - 13 * s + Math.sin(a * 1.3) * 3.6 * s, 0.9).fill(colors[k % colors.length]!);
+  }
+  return g;
 }
 
 function shelter(g: Graphics, ox: number, oy: number, nx: number, ny: number, culture: string): void {
@@ -95,6 +126,10 @@ function shelter(g: Graphics, ox: number, oy: number, nx: number, ny: number, cu
 export class StreetFurniture {
   /** Each piece goes straight into the depth-sorted object layer, so buildings overlap it correctly. */
   private pieces: Container[] = [];
+  /** Lamp glows and festive lights, faded in with the night. */
+  private glows: Graphics[] = [];
+  /** Day-lit bodies (trees, poles, shelters, people) darkened by the night tint. */
+  private bodies: Graphics[] = [];
   private sig = '';
   private tiles: Province['tiles'] | null = null;
 
@@ -107,6 +142,21 @@ export class StreetFurniture {
   destroy(): void {
     for (const piece of this.pieces) piece.destroy({ children: true });
     this.pieces = [];
+    this.glows = [];
+    this.bodies = [];
+  }
+
+  setTint(tint: number): void {
+    for (const body of this.bodies) body.tint = tint;
+  }
+
+  /** Street lamps and fairy lights follow the darkness. */
+  setNight(night: number): void {
+    const alpha = Math.max(0, Math.min(1, (night - 0.25) * 2));
+    for (const glow of this.glows) {
+      glow.visible = alpha > 0.01;
+      glow.alpha = alpha;
+    }
   }
 
   /** Rebuilds the furniture after roads, buildings or the season changed. */
@@ -121,13 +171,27 @@ export class StreetFurniture {
       const holder = new Container();
       const g = new Graphics();
       holder.addChild(g);
+      this.bodies.push(g);
       const ox = isoX(spot.x, spot.y), oy = isoY(spot.x, spot.y) - t.height * HEIGHT_PX;
-      if (spot.kind === 'tree') {
+      if (spot.kind === 'lamp') {
+        const u = 0.5 + spot.nx * 0.42, v = 0.5 + spot.ny * 0.42;
+        const [x, y] = P(u, v);
+        const glow = streetLamp(g, [x + ox, y + oy]);
+        holder.addChild(glow);
+        this.glows.push(glow);
+        holder.zIndex = spot.x + u + spot.y + v + 0.01;
+      } else if (spot.kind === 'tree') {
         const along = hash(spot.x, spot.y, 9) * 0.5 - 0.25;
         const u = 0.5 + Math.abs(spot.ny) * along + spot.nx * 0.44;
         const v = 0.5 + Math.abs(spot.nx) * along + spot.ny * 0.44;
         const [x, y] = P(u, v);
-        tree(g, [x + ox, y + oy], 0.8 + hash(spot.x, spot.y, 4) * 0.3, season === 'autumn', season === 'winter');
+        const size = 0.8 + hash(spot.x, spot.y, 4) * 0.3;
+        tree(g, [x + ox, y + oy], size, season === 'autumn', season === 'winter');
+        if (season === 'winter') {
+          const lights = treeLights([x + ox, y + oy], size, spot.x + spot.y);
+          holder.addChild(lights);
+          this.glows.push(lights);
+        }
         holder.zIndex = spot.x + u + spot.y + v + 0.01;
       } else {
         shelter(g, ox, oy, spot.nx, spot.ny, culture);
@@ -140,6 +204,7 @@ export class StreetFurniture {
           person.position.set(x + ox, y + oy);
           person.scale.set(0.72);
           holder.addChild(person);
+          this.bodies.push(person);
         }
         holder.zIndex = spot.x + spot.y + 1 + 0.01;
       }

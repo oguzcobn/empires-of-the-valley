@@ -126,6 +126,8 @@ interface Walker {
   body?: Graphics;
   look?: PedLook;
   shown?: string;
+  /** Standing at a kerb for the lights. */
+  waiting?: boolean;
   from: [number, number];
   to: [number, number];
   prev: [number, number];
@@ -550,6 +552,7 @@ export class ValleyRenderer {
         this.signals.sync(p);
       }
       this.furniture.sync(p, cal.season, view.game.culture);
+      this.tintKey = -1;
       this.syncProps(p, pal, cal.season);
       if (seasonChanged) this.pruneAtlas(cal.season);
       this.lastTiles = p.tiles;
@@ -566,6 +569,7 @@ export class ValleyRenderer {
     this.frontier.update(view.game, p, workerStep, view.tool.kind === 'hunt');
     this.updateWalkers(view, p, dt, motion);
     this.signals.update(this.time, this.night);
+    this.furniture.setNight(this.night);
     this.updateFireworks(view, p, motion ? dt : 0);
     this.updateTraffic(view, p, dt, motion);
     this.cityScenes.update(view.game, p, dt, !motion);
@@ -996,6 +1000,7 @@ export class ValleyRenderer {
     for (const w of this.walkers) w.c.tint = tint;
     for (const w of this.matchFans) w.c.tint = tint;
     for (const car of this.trafficCars) car.sprite.tint = tint;
+    this.furniture.setTint(tint);
     for (const guard of this.militiaSprites) guard.tint = tint;
     for (const b of this.boats) b.c.tint = tint;
     for (const bird of this.birds) bird.c.tint = tint;
@@ -1304,7 +1309,13 @@ export class ValleyRenderer {
         w.to = [r[0], r[1]];
         w.t = 1;
       }
-      w.t += step * w.speed;
+      // pedestrians wait at the kerb while the junction ahead shows red for their direction
+      const nextT = w.t + step * w.speed;
+      const kerb = 0.32;
+      const waiting = !w.cart && w.t <= kerb + 1e-3 && nextT > kerb &&
+        !this.signals.mayEnter(p, w.to[0], w.to[1], w.to[0] - w.from[0], w.to[1] - w.from[1], this.time);
+      w.t = waiting ? Math.max(w.t, kerb) : nextT;
+      w.waiting = waiting;
       if (w.t >= 1) {
         const options = (
           [
@@ -1340,7 +1351,7 @@ export class ValleyRenderer {
       if (w.cart) w.c.scale.x = dx - dy < 0 ? -1 : 1;
       if (w.body && w.look) {
         // stride frame follows real walking speed; standing figures hold frame 0
-        const frame = step > 0 ? Math.floor(this.time / (95 / Math.max(0.5, w.speed)) + w.phase * 3) % WALK_FRAMES : 0;
+        const frame = step > 0 && !w.waiting ? Math.floor(this.time / (95 / Math.max(0.5, w.speed)) + w.phase * 3) % WALK_FRAMES : 0;
         const key = `${frame}|${dx},${dy}`;
         if (key !== w.shown) {
           w.shown = key;
@@ -1480,7 +1491,7 @@ export class ValleyRenderer {
       const paint = paints[this.trafficCars.length % paints.length]!;
       const electric = this.trafficCars.length % 3 === 0;
       const cal = calendar(view.game.tick);
-      const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length, clockHour(view.game.tick), cal.season);
+      const variant = trafficModel(this.trafficCars.length, start[0] * 5 + start[1] * 7, linked.length, clockHour(view.game.tick), cal.season, this.dropKind === 'snow');
       const dx = to[0] - start[0], dy = to[1] - start[1];
       drawTrafficVehicle(body, variant, paint, electric, dx, dy, view.game.culture);
       const beam = new Graphics();

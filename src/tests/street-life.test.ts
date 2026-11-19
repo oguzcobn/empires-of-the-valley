@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Graphics } from 'pixi.js';
-import { BICYCLE, BUS, GARBAGE, ICE_CREAM, LORRY, MODEL_COUNT, MOTORBIKE, TAXI, drawAirliner, drawHeadlights, drawTrafficVehicle, modelSpeed, trafficModel } from '../game/rendering/vehicles';
+import { BICYCLE, BUS, GARBAGE, ICE_CREAM, PLOUGH, LORRY, MODEL_COUNT, MOTORBIKE, TAXI, drawAirliner, drawHeadlights, drawTrafficVehicle, modelSpeed, trafficModel } from '../game/rendering/vehicles';
 import { WALK_FRAMES, drawPedestrian, randomPedLook } from '../game/rendering/pedestrians';
 import { isOpen, trafficShare, walkerShare, windowLight } from '../game/rendering/dayRhythm';
 
@@ -67,6 +67,8 @@ describe('street vehicles', () => {
     expect(afternoon).toContain(ICE_CREAM);
     expect(Array.from({ length: 12 }, (_, n) => trafficModel(n, 1, 30, 15, 'winter'))).not.toContain(ICE_CREAM);
     expect(afternoon).toContain(MOTORBIKE);
+    expect(Array.from({ length: 6 }, (_, n) => trafficModel(n, 1, 30, 7, 'winter', true))).toContain(PLOUGH);
+    expect(morning).not.toContain(PLOUGH);
     expect(modelSpeed(BICYCLE)).toBeLessThan(modelSpeed(0));
     expect(modelSpeed(MOTORBIKE)).toBeGreaterThan(modelSpeed(0));
   });
