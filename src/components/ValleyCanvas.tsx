@@ -213,7 +213,10 @@ export function ValleyCanvas(): ReactElement {
         window.clearTimeout(destroyTimer);
         if (previous) previous.destroy();
       }
-      if (renderer) {
+      // A camera rotation rebuilds the renderer: keep this one on screen (and its camera) until
+      // the new one is ready, which then destroys it as `previous`.
+      const rotating = useApp.getState().rotation !== rotation;
+      if (renderer && !rotating) {
         renderer.destroy();
         if (current === renderer) current = null;
       }

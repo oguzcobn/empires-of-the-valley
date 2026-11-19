@@ -2465,3 +2465,12 @@ html, body, #root, .game-screen {
   height: 100%;
   max-height: 100dvh;
 }
+/* Short landscape phones: keep the placement pad compact so it never pushes its actions off
+   screen (36px still clears the WCAG 2.5.8 minimum target size). */
+@media (pointer: coarse) and (max-height: 520px) {
+  .mobile-placement-arrows button,
+  .mobile-placement-pad .mobile-place-actions button {
+    min-width: 36px;
+    min-height: 36px;
+  }
+}

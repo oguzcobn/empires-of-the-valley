@@ -42,6 +42,8 @@ export const DEMOLISH_REFUND_PERMILLE = 500;
 export const GROWTH_INTERVAL_DAYS = 3;
 export const GROWTH_INTERVAL_UNHAPPY_DAYS = 6;
 export const GROWTH_MIN_HAPPINESS = 50;
+/** Extra days between newcomers while more than half of the adults have no job. */
+export const JOBLESS_GROWTH_DELAY_DAYS = 2;
 export const GROWTH_FOOD_RESERVE_DAYS = 3;
 export const MATURATION_INTERVAL_DAYS = 24;
 export const STARVATION_GRACE_DAYS = 3;

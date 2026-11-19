@@ -277,15 +277,20 @@ export class FrontierScenes {
     }
   }
 
+  /** Removes every figure and vehicle this scene added to the shared layers. */
   destroy(): void {
-    for (const g of this.animals) g.destroy();
-    for (const g of this.hunters) g.destroy();
-    this.animals.length = 0;
+    for (const g of this.animals.values()) g.destroy();
+    for (const g of [...this.hunters, ...this.trains]) g.destroy();
+    for (const group of Object.values(this.riders)) for (const g of group) g.destroy();
+    this.plane?.destroy();
+    this.animals.clear();
     this.hunters.length = 0;
-    this.lines.destroy();
-    this.train.destroy();
-    this.plane.destroy();
+    this.trains.length = 0;
+    this.riders = {};
+    this.plane = undefined;
+    this.ground.clear();
     this.lastProvince = undefined;
+    this.lastLines = undefined;
     this.railRoute = undefined;
     this.airRoute = undefined;
   }

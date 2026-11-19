@@ -221,10 +221,17 @@ export function surroundValley(seed: number, core: readonly Tile[]): Tile[] {
  */
 export function applyCityGeography(tiles: Tile[], style: ArchitectureStyle): Tile[] {
   const out = tiles.map((t) => ({ ...t }));
+  // Kyoto and Prague only plant woods on open low ground: raised land, crags, stone and water stay so
+  // every landmark site (Sümela ledge, the castle crag) and the start resources survive.
+  const soft = style !== 'turkish' && style !== 'scottish';
+  const KEEP: ReadonlySet<TerrainId> = new Set<TerrainId>(['hill', 'mountain', 'stone', 'water', 'lake', 'sand']);
   const set = (x: number, y: number, terrain: TerrainId, height = 0): void => {
     if (x < 0 || y < 0 || x >= MAP_SIZE || y >= MAP_SIZE) return;
+    if (soft && (KEEP.has(tiles[y * MAP_SIZE + x]!.terrain) || tiles[y * MAP_SIZE + x]!.height > 0)) return;
     const original = out[y * MAP_SIZE + x]!;
-    out[y * MAP_SIZE + x] = tile(terrain, original.variant, height);
+    // soft styles keep the generated heights: landmark sites depend on the slopes around them
+    out[y * MAP_SIZE + x] = soft ? tile(terrain === 'hill' || terrain === 'mountain' ? 'forest' : terrain, original.variant, original.height)
+      : tile(terrain, original.variant, height);
   };
 
   if (style === 'turkish' || style === 'scottish') {

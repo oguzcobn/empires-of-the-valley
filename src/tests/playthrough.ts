@@ -25,6 +25,9 @@ export function playChapterOne(
     ['granary', 0],
     ['school', 1],
     ['hut', 0],
+    // the town grows every few days: give the newcomers work so idleness doesn't sour the mood
+    ['lumber_camp', 2],
+    ['farm', 3],
   ];
   let next = 0;
   for (let day = 0; day < maxDays && !s.completedChapters.includes(1); day++) {
@@ -49,6 +52,14 @@ export function playChapterOne(
         if (give > 0) s = must(s, { type: 'assignWorkers', instanceId: b.id, workers: b.workers + give });
       }
     }
+    // once the plan is staffed, put remaining idle hands to work like a real player would
+    // (a town with most adults idle loses happiness)
+    if (next >= order.length)
+      for (const b of home(s).buildings) {
+        const slots = BUILDINGS[b.definitionId].levels[b.level - 1]!.workerSlots;
+        const give = Math.min(slots - b.workers, idleWorkers(home(s)));
+        if (b.state === 'active' && give > 0) s = must(s, { type: 'assignWorkers', instanceId: b.id, workers: b.workers + give });
+      }
     if (
       !s.researchedTechIds.includes('basic_agriculture') &&
       !s.researchQueue.includes('basic_agriculture')

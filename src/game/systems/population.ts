@@ -6,6 +6,7 @@ import {
   GROWTH_INTERVAL_DAYS,
   GROWTH_INTERVAL_UNHAPPY_DAYS,
   GROWTH_MIN_HAPPINESS,
+  JOBLESS_GROWTH_DELAY_DAYS,
   MATURATION_INTERVAL_DAYS,
   MIN_POPULATION,
   STARVATION_GRACE_DAYS,
@@ -92,7 +93,11 @@ export function growthBlocker(p: Province, day: number): GrowthBlocker {
   if (p.population.starvationDays > 0 || p.population.shortfallToday > 0) return 'starvation';
   if (p.stocks.food < pop * FOOD_PER_CITIZEN_PER_DAY * GROWTH_FOOD_RESERVE_DAYS) return 'food';
   if (p.happiness < GROWTH_MIN_HAPPINESS) return 'happiness';
-  const interval = p.happiness >= 60 ? GROWTH_INTERVAL_DAYS : GROWTH_INTERVAL_UNHAPPY_DAYS;
+  // newcomers arrive quickly while there is work; with most adults idle the town grows at the
+  // old, slower pace so unemployment cannot snowball
+  const adults = p.population.adults;
+  const jobless = adults > 0 && idleWorkers(p) / adults > 0.5;
+  const interval = (p.happiness >= 60 ? GROWTH_INTERVAL_DAYS : GROWTH_INTERVAL_UNHAPPY_DAYS) + (jobless ? JOBLESS_GROWTH_DELAY_DAYS : 0);
   if (day - p.population.lastGrowthDay < interval) return 'interval';
   return null;
 }
