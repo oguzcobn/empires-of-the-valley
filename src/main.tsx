@@ -13,9 +13,10 @@ import './mobile-layout.css';
 
 createRoot(document.getElementById('root')!).render(<App />);
 
-// Debug/automation hook, enabled only with ?debug=1 or in dev. Used by the Playwright smoke test
-// to fast-forward the same pure simulation the game loop runs. It adds no gameplay features.
-if (import.meta.env.DEV) {
+// Debug/automation hook, enabled in dev and in test builds (VITE_E2E=1, used by the pull request
+// checks); the published game never exposes it. Playwright uses it to fast-forward the same pure
+// simulation the game loop runs. It adds no gameplay features.
+if (import.meta.env.DEV || import.meta.env.VITE_E2E === '1') {
   (window as unknown as Record<string, unknown>).__EOV__ = {
     store: useApp,
     defs: BUILDINGS,

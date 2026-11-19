@@ -10,7 +10,7 @@ describe('faster construction pacing', () => {
 
   it('keeps upgrades and established building identifiers intact', () => {
     expect(BUILDINGS.hut.id).toBe('hut');
-    expect(BUILDINGS.hut.levels).toHaveLength(3);
+    expect(BUILDINGS.hut.levels).toHaveLength(5);
     expect(BUILDINGS.hut.levels[2]!.buildTicks).toBe(24);
     expect(BUILDINGS.town_center.levels[0]!.buildTicks).toBe(0);
   });
