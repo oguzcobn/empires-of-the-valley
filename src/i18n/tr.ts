@@ -95,6 +95,7 @@ export const tr = {
   'category.all': 'Tümü',
   'category.housing': 'Konut',
   'category.production': 'Üretim',
+  'category.economy': 'Ekonomi',
   'category.storage': 'Depolama',
   'category.education': 'Eğitim',
 
