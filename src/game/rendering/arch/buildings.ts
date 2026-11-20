@@ -928,8 +928,25 @@ function houseDesign(look: BuildingLook, seed: number, worn: boolean): BuildingL
  */
 
 /** Nine city-expansion buildings with distinct visible footprints and silhouettes. */
-function expandedCityBuilding(ctx: DrawCtx, id: BuildingId, look: BuildingLook): void {
+function expandedCityBuilding(ctx: DrawCtx, id: BuildingId, look: BuildingLook, style: ArchitectureStyle): void {
   const [w, h] = BUILDINGS[id].footprint;
+  // The lighting and the roofline are tied to city culture, not just tinted.
+  const light = [P(0.15, h - 0.08, 8), P(Math.min(w - 0.15, 0.58), h - 0.08, 8),
+    P(Math.min(w - 0.15, 0.58), h - 0.08, 15), P(0.15, h - 0.08, 15)] as Pt[];
+  ctx.lights.push(light);
+  if (style === 'scottish') {
+    box(ctx, 0.08, 0.1, 0.35, 0.34, 3, 21, 0x92949b);
+    drawRoof(ctx, { u0: 0.08, v0: 0.1, u1: 0.35, v1: 0.34, z: 21 }, 'gable', 'slate', 0x4b5668);
+  } else if (style === 'turkish') {
+    box(ctx, 0.08, 0.08, 0.40, 0.40, 3, 9, 0xd0b59a);
+    drawDome(ctx, 0.24, 0.24, 9, 0.16, 0xb3563c);
+  } else if (style === 'japanese') {
+    box(ctx, 0.1, 0.1, 0.46, 0.46, 2, 12, 0xe1d4b9);
+    drawRoof(ctx, { u0: 0.05, v0: 0.05, u1: 0.51, v1: 0.51, z: 12 }, 'hip', 'slate', 0x59413c);
+  } else {
+    box(ctx, 0.1, 0.1, 0.34, 0.34, 3, 25, 0xc3bba9);
+    drawRoof(ctx, { u0: 0.06, v0: 0.06, u1: 0.38, v1: 0.38, z: 25 }, 'pyramid', 'slate', 0x46506c);
+  }
   const stone = 0xcfc8ba;
   if (id === 'port') {
     box(ctx, 0.05, 0.06, w - 0.05, h - 0.06, 0, 2, 0x78858b);
@@ -1095,7 +1112,7 @@ function drawStyledInner(
     case 'library': case 'wind_turbine': case 'solar_farm': case 'bus_depot': break;
     case 'skyscraper': case 'port': case 'clothing_store': case 'tech_store': case 'coffee_shop':
     case 'grand_mall': case 'barber_shop': case 'government_hall': case 'high_school':
-      expandedCityBuilding(ctx, b.definitionId, look);
+      expandedCityBuilding(ctx, b.definitionId, look, b.style);
       break;
     default:
       drawLandmark(ctx, b.definitionId, pal);
