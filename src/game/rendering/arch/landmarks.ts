@@ -1,4 +1,5 @@
 import type { LandmarkId } from '../../core/types';
+import { LANDMARKS } from '../../data/landmarks';
 import { P, shade } from '../iso';
 import type { Pt } from '../iso';
 import type { SeasonPalette } from '../palette';
@@ -477,6 +478,76 @@ function stadium(ctx: DrawCtx, pal: SeasonPalette): void {
   }
 }
 
+
+/** Parametric, seeded silhouettes for the 40 additional city monuments.
+ * Each landmark has a stable individual silhouette across saves and renders,
+ * while the established seven landmark drawings remain untouched.
+ */
+function drawCityLandmark(ctx: DrawCtx, id: LandmarkId): void {
+  const definition = LANDMARKS[id];
+  const [w, h] = definition.footprint;
+  const culture = definition.landmark?.culture;
+  const seed = [...id].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const accent = seed % 3;
+  const stone = culture === 'japanese' ? 0xe0d4bb
+    : culture === 'medieval_european' ? 0xc2b5a2
+    : culture === 'scottish' ? 0xb0aaa1 : 0xd7c8ac;
+  const roof = culture === 'japanese' ? 0x4b3433
+    : culture === 'medieval_european' ? 0x424858
+    : culture === 'scottish' ? 0x424b5c : 0x9a5b43;
+  const gold = 0xe3be68;
+  box(ctx, 0.08, 0.08, w - 0.08, h - 0.08, 0, 3, shade(stone, 0.83));
+  const cx = w / 2, cy = h / 2;
+
+  if (culture === 'japanese') {
+    // Deep projecting pagoda eaves, red torii gates and lower Zen halls.
+    if (id === 'fushimi_inari') {
+      for (let j = 0; j < 5; j++) {
+        const u = 0.34 + j * (w - 0.7) / 5;
+        box(ctx, u, 0.24, u + 0.09, h - 0.24, 3, 15, 0xb33e2a);
+        box(ctx, u + 0.28, 0.24, u + 0.37, h - 0.24, 3, 15, 0xb33e2a);
+        box(ctx, u - 0.06, 0.12, u + 0.43, h - 0.12, 14, 16, 0xe25331);
+      }
+    } else {
+      const tiers = id.includes('pagoda') ? 5 : id.includes('garden') ? 1 : 2 + accent;
+      for (let k = 0; k < tiers; k++) {
+        const inset = 0.26 + k * 0.13;
+        const z = 4 + k * 12;
+        box(ctx, inset, inset, w - inset, h - inset, z, z + 9, id === 'kinkakuji' ? gold : shade(stone, k % 2 ? 0.82 : 1));
+        drawRoof(ctx, { u0: inset - 0.13, v0: inset - 0.13, u1: w - inset + 0.13, v1: h - inset + 0.13, z: z + 9 }, 'hip', 'slate', roof, { axis: 'u', pitch: 12 });
+      }
+    }
+  } else if (culture === 'medieval_european') {
+    // Czech gothic double towers, city gate clocks and hipped palace roofs.
+    box(ctx, 0.3, 0.3, w - 0.3, h - 0.3, 3, 22 + accent * 2, stone);
+    drawRoof(ctx, { u0: 0.2, v0: 0.2, u1: w - 0.2, v1: h - 0.2, z: 22 + accent * 2 }, 'gable', 'slate', roof, { axis: 'u' });
+    const towers = /cathedral|church|basilica|castle|tyn/.test(id) ? 2 : 1;
+    for (let i = 0; i < towers; i++) {
+      const u = towers === 1 ? cx : i === 0 ? 0.48 : w - 0.48;
+      const t = cylinder(ctx, u, h - 0.5, 4, 32 + accent * 4, 0.19, stone);
+      cone(ctx, t.top, t.rx, t.ry, 13 + accent * 2, roof);
+    }
+  } else if (culture === 'scottish') {
+    // Sandstone civic monuments, turrets and Scottish slate roofs.
+    box(ctx, 0.28, 0.28, w - 0.28, h - 0.28, 3, 22 + accent * 4, stone);
+    drawRoof(ctx, { u0: 0.24, v0: 0.24, u1: w - 0.24, v1: h - 0.24, z: 22 + accent * 4 }, 'hip', 'slate', roof, { axis: 'v' });
+    if (/clock|monument|tower|castle/.test(id)) {
+      const t = cylinder(ctx, cx, cy, 18, 40 + accent * 5, 0.24, shade(stone, 0.9));
+      cone(ctx, t.top, t.rx, t.ry, 12, roof);
+    }
+  } else {
+    // Trabzon: historic Black Sea stonework, monasteries, konaks and Ottoman domes.
+    box(ctx, 0.26, 0.26, w - 0.26, h - 0.26, 3, 18 + accent * 4, stone);
+    if (/camii|hatun|fatih|ayasofya/.test(id) || /gulbahar|ortahisar/.test(id)) {
+      drawDome(ctx, cx, cy, 20 + accent * 4, Math.min(w, h) * 0.2);
+      const minaret = cylinder(ctx, w - 0.35, h - 0.35, 3, 41, 0.08, stone);
+      cone(ctx, minaret.top, minaret.rx, minaret.ry, 9, roof);
+    } else {
+      drawRoof(ctx, { u0: 0.20, v0: 0.20, u1: w - 0.20, v1: h - 0.20, z: 18 + accent * 4 }, 'hip', 'clay', roof, { axis: 'u' });
+    }
+  }
+}
+
 export function drawLandmark(ctx: DrawCtx, id: LandmarkId, pal: SeasonPalette): void {
   switch (id) {
     case 'edinburgh_castle':
@@ -493,5 +564,7 @@ export function drawLandmark(ctx: DrawCtx, id: LandmarkId, pal: SeasonPalette): 
       return selimiye(ctx);
     case 'trabzon_stadium':
       return stadium(ctx, pal);
+    default:
+      return drawCityLandmark(ctx, id);
   }
 }
