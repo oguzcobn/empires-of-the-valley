@@ -926,6 +926,73 @@ function houseDesign(look: BuildingLook, seed: number, worn: boolean): BuildingL
  * Draws a building into `g` (local tile space, origin at the footprint's top vertex) and returns
  * the anchors the renderer animates. Pure function of its inputs: same data, same picture.
  */
+
+/** Nine city-expansion buildings with distinct visible footprints and silhouettes. */
+function expandedCityBuilding(ctx: DrawCtx, id: BuildingId, look: BuildingLook): void {
+  const [w, h] = BUILDINGS[id].footprint;
+  const stone = 0xcfc8ba;
+  if (id === 'port') {
+    box(ctx, 0.05, 0.06, w - 0.05, h - 0.06, 0, 2, 0x78858b);
+    for (let k = 0; k < 6; k++) {
+      const u = 0.18 + (k % 3) * 0.85, v = 0.2 + Math.floor(k / 3) * 0.63;
+      box(ctx, u, v, u + 0.7, v + 0.40, 2, 13, [0xb34537, 0x3b6e8e, 0xc49a35][k % 3]!);
+    }
+    for (const u of [0.6, 2.1]) {
+      line(ctx, P(u, 0.28, 2), P(u, 0.28, 57), 0xe2b747, 2.5);
+      line(ctx, P(u, 0.28, 57), P(u + 0.65, 0.28, 57), 0xe2b747, 2);
+      line(ctx, P(u + 0.45, 0.28, 57), P(u + 0.45, 0.28, 25), 0x3f4850, 0.8);
+    }
+    return;
+  }
+  if (id === 'skyscraper') {
+    box(ctx, 0.16, 0.15, w - 0.16, h - 0.15, 0, 112, 0x6c8596);
+    for (let z = 9; z < 111; z += 11)
+      for (const u of [0.32, 0.69, 1.06, 1.43]) {
+        const a = P(u, h - 0.14, z), b = P(u + 0.22, h - 0.14, z + 7);
+        poly(ctx, [[a[0], a[1]], [b[0], a[1] - 5], [b[0], b[1]], [a[0], a[1] + 2]], 0xb6d9e8, 0.85);
+      }
+    box(ctx, 0.55, 0.55, w - 0.55, h - 0.55, 112, 116, 0x3c505e);
+    return;
+  }
+  if (id === 'grand_mall') {
+    box(ctx, 0.16, 0.16, w - 0.16, h - 0.16, 0, 36, 0xc6ccce);
+    drawDome(ctx, w / 2, h / 2, 38, 0.68, 0x96becd);
+    for (let i = 0; i < 6; i++) {
+      const u = 0.36 + i * 0.42;
+      box(ctx, u, h - 0.19, u + 0.25, h - 0.12, 4, 25, i % 2 ? 0x5a9bab : 0xb5dce5);
+    }
+    return;
+  }
+  if (id === 'government_hall') {
+    box(ctx, 0.2, 0.2, w - 0.2, h - 0.2, 0, 27, 0xd6d2c9);
+    drawDome(ctx, w / 2, h / 2, 30, 0.44, 0x596a7d);
+    for (let i = 0; i < 6; i++) {
+      const u = 0.45 + i * (w - 0.9) / 5;
+      box(ctx, u - 0.04, h - 0.20, u + 0.04, h - 0.11, 1, 26, 0xf4f0e7);
+    }
+    return;
+  }
+  if (id === 'high_school') {
+    box(ctx, 0.2, 0.2, w - 0.2, h - 0.2, 0, 25, 0xd7b9a4);
+    drawRoof(ctx, { u0: 0.16, v0: 0.16, u1: w - 0.16, v1: h - 0.16, z: 25 }, 'gable', 'slate', 0x565c65, { axis: 'u' });
+    drawClock(ctx, P(w / 2, h - 0.2, 27), 4.0);
+    return;
+  }
+  const floors = id === 'clothing_store' || id === 'tech_store' ? 2 : 1;
+  mass(ctx, look, 0.08, 0.14, w - 0.08, h - 0.1, { floors: floors === 2 ? 2 : 1, spacing: 0.23, door: 'L' });
+  const shopColor = id === 'tech_store' ? 0x75bde0 : id === 'barber_shop' ? 0xc7434a : id === 'coffee_shop' ? 0x8d5c3d : 0xe0ab74;
+  // Colored storefront makes every shop distinct, without changing geometry or save data.
+  box(ctx, 0.1, h - 0.16, w - 0.1, h - 0.08, 10, 13, shopColor);
+  if (id === 'coffee_shop') {
+    for (const u of [0.22, 0.72]) {
+      const a = P(u, h + 0.1, 0);
+      ctx.g.ellipse(a[0], a[1] - 4, 7, 2.6).fill(0xc3a077);
+      line(ctx, [a[0], a[1] - 4], [a[0], a[1] + 2], 0x654b3e, 1.3);
+    }
+  }
+  void stone;
+}
+
 export function drawStyledBuilding(
   g: Graphics,
   b: StyledRef,
@@ -1026,6 +1093,10 @@ function drawStyledInner(
     case 'villa': case 'tea_garden': case 'post_office': case 'gym': case 'kindergarten': break;
     case 'university': case 'museum': case 'bazaar': case 'hamam': break;
     case 'library': case 'wind_turbine': case 'solar_farm': case 'bus_depot': break;
+    case 'skyscraper': case 'port': case 'clothing_store': case 'tech_store': case 'coffee_shop':
+    case 'grand_mall': case 'barber_shop': case 'government_hall': case 'high_school':
+      expandedCityBuilding(ctx, b.definitionId, look);
+      break;
     default:
       drawLandmark(ctx, b.definitionId, pal);
   }
