@@ -13,7 +13,47 @@ export type LandmarkId =
   | 'sumela_monastery'
   | 'galata_tower'
   | 'selimiye_mosque'
-  | 'trabzon_stadium';
+  | 'trabzon_stadium'
+  | 'trabzon_ayasofya'
+  | 'ataturk_kosku'
+  | 'trabzon_kalesi'
+  | 'gulbahar_hatun'
+  | 'bedesten_trabzon'
+  | 'kizlar_manastiri'
+  | 'vazelon_manastiri'
+  | 'kostaki_konagi'
+  | 'ortahisar_fatih'
+  | 'alacahan_trabzon'
+  | 'holyrood_palace'
+  | 'st_giles_cathedral'
+  | 'national_monument_calton'
+  | 'nelson_monument'
+  | 'craigmillar_castle'
+  | 'balmoral_clock'
+  | 'national_gallery_scotland'
+  | 'dugald_stewart'
+  | 'forth_bridge_tower'
+  | 'dean_village_mill'
+  | 'kinkakuji'
+  | 'kiyomizu_dera'
+  | 'fushimi_inari'
+  | 'ginkakuji'
+  | 'toji_pagoda'
+  | 'nijo_castle'
+  | 'yasaka_pagoda'
+  | 'heian_shrine'
+  | 'byodoin_phoenix'
+  | 'ryoanji_garden'
+  | 'prague_castle'
+  | 'st_vitus_cathedral'
+  | 'charles_bridge_tower'
+  | 'astronomical_clock'
+  | 'tyn_church'
+  | 'powder_tower'
+  | 'dancing_house'
+  | 'petrin_tower'
+  | 'vysehrad_basilica'
+  | 'national_theatre_prague';
 
 export type BuildingId =
   | 'town_center'
@@ -64,6 +104,15 @@ export type BuildingId =
   | 'wind_turbine'
   | 'solar_farm'
   | 'bus_depot'
+  | 'skyscraper'
+  | 'port'
+  | 'clothing_store'
+  | 'tech_store'
+  | 'coffee_shop'
+  | 'grand_mall'
+  | 'barber_shop'
+  | 'government_hall'
+  | 'high_school'
   | LandmarkId;
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';
@@ -224,7 +273,7 @@ export interface LevelSpec {
 }
 
 export type BuildingCategory =
-  'housing' | 'production' | 'storage' | 'education' | 'governance' | 'civic' | 'landmark';
+  'housing' | 'production' | 'economy' | 'storage' | 'education' | 'governance' | 'civic' | 'landmark';
 
 /** Special terrain rule of a landmark, checked for real by placement (see systems/placement.ts). */
 export type SiteRule =
