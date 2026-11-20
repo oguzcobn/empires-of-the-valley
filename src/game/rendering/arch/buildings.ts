@@ -975,7 +975,7 @@ function expandedCityBuilding(ctx: DrawCtx, id: BuildingId, look: BuildingLook):
   if (id === 'high_school') {
     box(ctx, 0.2, 0.2, w - 0.2, h - 0.2, 0, 25, 0xd7b9a4);
     drawRoof(ctx, { u0: 0.16, v0: 0.16, u1: w - 0.16, v1: h - 0.16, z: 25 }, 'gable', 'slate', 0x565c65, { axis: 'u' });
-    drawClock(ctx, P(w / 2, h - 0.2, 27), 4.0);
+    drawClock(ctx, faceL(0.2, w - 0.2, h - 0.2), w / 2, 27, 4.0);
     return;
   }
   const floors = id === 'clothing_store' || id === 'tech_store' ? 2 : 1;
