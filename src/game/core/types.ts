@@ -104,6 +104,15 @@ export type BuildingId =
   | 'wind_turbine'
   | 'solar_farm'
   | 'bus_depot'
+  | 'skyscraper'
+  | 'port'
+  | 'clothing_store'
+  | 'tech_store'
+  | 'coffee_shop'
+  | 'grand_mall'
+  | 'barber_shop'
+  | 'government_hall'
+  | 'high_school'
   | LandmarkId;
 
 export type VesselKind = 'fishing' | 'cargo' | 'yacht';
@@ -264,7 +273,7 @@ export interface LevelSpec {
 }
 
 export type BuildingCategory =
-  'housing' | 'production' | 'storage' | 'education' | 'governance' | 'civic' | 'landmark';
+  'housing' | 'production' | 'economy' | 'storage' | 'education' | 'governance' | 'civic' | 'landmark';
 
 /** Special terrain rule of a landmark, checked for real by placement (see systems/placement.ts). */
 export type SiteRule =
