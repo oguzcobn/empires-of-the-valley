@@ -676,11 +676,11 @@ export function drawRoof(
 }
 
 /** A lead dome with drum and finial (alem), centred on (cu, cv) at height z. */
-export function drawDome(ctx: DrawCtx, cu: number, cv: number, z: number, r: number, color = ROOF_HEX.lead): void {
+export function drawDome(ctx: DrawCtx, cu: number, cv: number, z: number, r: number, color = ROOF_HEX.lead, height?: number): void {
   const c = P(cu, cv, z + 2.5);
   const rx = r * 45;
   const ry = r * 22.6;
-  const hz = rx * 0.92;
+  const hz = height ?? rx * 0.92;
   // drum
   const base = P(cu, cv, z);
   ctx.g.ellipse(base[0], base[1], rx * 1.02, ry * 1.02).fill(shade(0xd8c79e, 0.85));

@@ -1,5 +1,6 @@
 import type { LandmarkId } from '../../core/types';
 import { LANDMARKS } from '../../data/landmarks';
+import { MATERIALS, MONUMENT_MODELS } from '../../data/monumentModels';
 import { P, shade } from '../iso';
 import type { Pt } from '../iso';
 import type { SeasonPalette } from '../palette';
@@ -479,71 +480,97 @@ function stadium(ctx: DrawCtx, pal: SeasonPalette): void {
 }
 
 
-/** Parametric, seeded silhouettes for the 40 additional city monuments.
- * Each landmark has a stable individual silhouette across saves and renders,
- * while the established seven landmark drawings remain untouched.
- */
+/** Project the same architectural parts used in the 3D viewer into the city's tile space. */
 function drawCityLandmark(ctx: DrawCtx, id: LandmarkId): void {
-  const definition = LANDMARKS[id];
-  const [w, h] = definition.footprint;
-  const culture = definition.landmark?.culture;
-  const seed = [...id].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7);
-  const accent = seed % 3;
-  const stone = culture === 'japanese' ? 0xe0d4bb
-    : culture === 'medieval_european' ? 0xc2b5a2
-    : culture === 'scottish' ? 0xb0aaa1 : 0xd7c8ac;
-  const roof = culture === 'japanese' ? 0x4b3433
-    : culture === 'medieval_european' ? 0x424858
-    : culture === 'scottish' ? 0x424b5c : 0x9a5b43;
-  const gold = 0xe3be68;
-  box(ctx, 0.08, 0.08, w - 0.08, h - 0.08, 0, 3, shade(stone, 0.83));
-  const cx = w / 2, cy = h / 2;
+  const parts = MONUMENT_MODELS[id];
+  if (!parts) return;
+  const [w, d] = LANDMARKS[id].footprint;
+  const extent = (axis: 1 | 2, size: 3 | 4) => Math.max(...parts.map((p) => Math.abs(p[axis]) + p[size] / 2));
+  const scale = Math.min((w / 2 - .08) / extent(1, 3), (d / 2 - .08) / extent(2, 4));
+  const scaleY = scale * 42;
+  const ordered = [...parts].sort((a, b) => (a[1] + a[2] + a[5]) - (b[1] + b[2] + b[5]));
+  box(ctx, .025, .025, w - .025, d - .025, 0, 2, 0x817c6b);
 
-  if (culture === 'japanese') {
-    // Deep projecting pagoda eaves, red torii gates and lower Zen halls.
-    if (id === 'fushimi_inari') {
-      for (let j = 0; j < 5; j++) {
-        const u = 0.34 + j * (w - 0.7) / 5;
-        box(ctx, u, 0.24, u + 0.09, h - 0.24, 3, 15, 0xb33e2a);
-        box(ctx, u + 0.28, 0.24, u + 0.37, h - 0.24, 3, 15, 0xb33e2a);
-        box(ctx, u - 0.06, 0.12, u + 0.43, h - 0.12, 14, 16, 0xe25331);
+  for (const [shape, x, z, width, depth, base, height, mat, bays] of ordered) {
+    const u = w / 2 + x * scale, v = d / 2 + z * scale;
+    const u0 = u - width * scale / 2, u1 = u + width * scale / 2;
+    const v0 = v - depth * scale / 2, v1 = v + depth * scale / 2;
+    const y = 2 + base * scaleY, top = y + height * scaleY;
+    const color = MATERIALS[mat].color;
+    if (shape === 'hip' || shape === 'gable' || shape === 'eave') {
+      const ring = (along: number, across: number, elev: number) => {
+        const du = (u1 - u0) * (width >= depth ? along : across) / 2;
+        const dv = (v1 - v0) * (width >= depth ? across : along) / 2;
+        return [P(u - du, v - dv, elev), P(u + du, v - dv, elev),
+          P(u + du, v + dv, elev), P(u - du, v + dv, elev)];
+      };
+      const eaves = ring(1, 1, y);
+      const ridge = ring(shape === 'gable' ? 1 : shape === 'eave' ? .58 : .48, 0, top);
+      const rings = shape === 'eave' ? [eaves, ring(.83, .77, y + (top - y) * .18), ridge] : [eaves, ridge];
+      const sides = [0, 3, 1, 2];
+      for (const side of sides) {
+        const next = (side + 1) % 4;
+        for (let i = 1; i < rings.length; i++) {
+          const face = [rings[i - 1]![side]!, rings[i - 1]![next]!, rings[i]![next]!, rings[i]![side]!];
+          poly(ctx, face, shade(color, side === 2 ? 1.13 : .83));
+          if (ctx.snow) poly(ctx, face, 0xf4f7fa, .55);
+        }
       }
-    } else {
-      const tiers = id.includes('pagoda') ? 5 : id.includes('garden') ? 1 : 2 + accent;
-      for (let k = 0; k < tiers; k++) {
-        const inset = 0.26 + k * 0.13;
-        const z = 4 + k * 12;
-        box(ctx, inset, inset, w - inset, h - inset, z, z + 9, id === 'kinkakuji' ? gold : shade(stone, k % 2 ? 0.82 : 1));
-        drawRoof(ctx, { u0: inset - 0.13, v0: inset - 0.13, u1: w - inset + 0.13, v1: h - inset + 0.13, z: z + 9 }, 'hip', 'slate', roof, { axis: 'u', pitch: 12 });
+      ctx.topY = Math.min(ctx.topY, ...ridge.map(point => point[1]));
+      continue;
+    }
+    if (shape === 'cylinder' || shape === 'column' || shape === 'dome' || shape === 'glassTower' || shape === 'spire') {
+      const radius = (width + depth) * scale / 4;
+      if (shape === 'dome') drawDome(ctx, u, v, y, radius, color, top - y);
+      else if (shape === 'spire') {
+        cone(ctx, P(u, v, y), radius * 45, radius * 22.6, top - y, color);
+      } else cylinder(ctx, u, v, y, top, radius, color);
+      continue;
+    }
+    const front = faceL(u0, u1, v1);
+    const side = faceR(v0, v1, u1);
+    if (shape === 'clock') {
+      const c = P(u, v1, (y + top) / 2);
+      const radius = Math.max(1.3, (top - y) / 2);
+      ctx.g.ellipse(c[0], c[1], radius * .84, radius).fill(0x3a3831);
+      ctx.g.ellipse(c[0], c[1], radius * .67, radius * .82).fill(color);
+      line(ctx, c, [c[0] + radius * .43, c[1] - radius * .25], 0x282921, 1);
+      continue;
+    }
+    if (shape === 'truss' || shape === 'arcade') {
+      const count = bays ?? 3;
+      for (const face of [front, side]) {
+        const n = face === front ? count : Math.max(1, Math.round(depth / width * count));
+        const step = (face.b - face.a) / n;
+        for (let k = 0; k < n; k++) {
+          const left = face.a + k * step, right = left + step;
+          const tint = shade(color, face.light);
+          if (shape === 'truss') {
+            line(ctx, fp(face, left, y), fp(face, right, top), tint, 1.8);
+            line(ctx, fp(face, right, y), fp(face, left, top), tint, 1.8);
+          } else {
+            quad(ctx, face, left, left + step * .19, y, top, tint);
+            quad(ctx, face, left + step * .83, right, y, top, tint);
+          }
+          quad(ctx, face, left, right, top - Math.min(3, (top - y) * .22), top, tint);
+        }
       }
+      ctx.topY = Math.min(ctx.topY, P(u0, v0, top)[1]);
+      continue;
     }
-  } else if (culture === 'medieval_european') {
-    // Czech gothic double towers, city gate clocks and hipped palace roofs.
-    box(ctx, 0.3, 0.3, w - 0.3, h - 0.3, 3, 22 + accent * 2, stone);
-    drawRoof(ctx, { u0: 0.2, v0: 0.2, u1: w - 0.2, v1: h - 0.2, z: 22 + accent * 2 }, 'gable', 'slate', roof, { axis: 'u' });
-    const towers = /cathedral|church|basilica|castle|tyn/.test(id) ? 2 : 1;
-    for (let i = 0; i < towers; i++) {
-      const u = towers === 1 ? cx : i === 0 ? 0.48 : w - 0.48;
-      const t = cylinder(ctx, u, h - 0.5, 4, 32 + accent * 4, 0.19, stone);
-      cone(ctx, t.top, t.rx, t.ry, 13 + accent * 2, roof);
+    box(ctx, u0, v0, u1, v1, y, top, color);
+    if (mat === 'rubble' || mat === 'sandstone' || mat === 'limestone') {
+      if (ctx.detail >= 1) for (const face of [front, side])
+        for (let row = y + 2.8; row < top - 1; row += 3.8)
+          line(ctx, fp(face, face.a, row), fp(face, face.b, row), shade(color, .62), .6, .38);
     }
-  } else if (culture === 'scottish') {
-    // Sandstone civic monuments, turrets and Scottish slate roofs.
-    box(ctx, 0.28, 0.28, w - 0.28, h - 0.28, 3, 22 + accent * 4, stone);
-    drawRoof(ctx, { u0: 0.24, v0: 0.24, u1: w - 0.24, v1: h - 0.24, z: 22 + accent * 4 }, 'hip', 'slate', roof, { axis: 'v' });
-    if (/clock|monument|tower|castle/.test(id)) {
-      const t = cylinder(ctx, cx, cy, 18, 40 + accent * 5, 0.24, shade(stone, 0.9));
-      cone(ctx, t.top, t.rx, t.ry, 12, roof);
-    }
-  } else {
-    // Trabzon: historic Black Sea stonework, monasteries, konaks and Ottoman domes.
-    box(ctx, 0.26, 0.26, w - 0.26, h - 0.26, 3, 18 + accent * 4, stone);
-    if (/camii|hatun|fatih|ayasofya/.test(id) || /gulbahar|ortahisar/.test(id)) {
-      drawDome(ctx, cx, cy, 20 + accent * 4, Math.min(w, h) * 0.2);
-      const minaret = cylinder(ctx, w - 0.35, h - 0.35, 3, 41, 0.08, stone);
-      cone(ctx, minaret.top, minaret.rx, minaret.ry, 9, roof);
-    } else {
-      drawRoof(ctx, { u0: 0.20, v0: 0.20, u1: w - 0.20, v1: h - 0.20, z: 18 + accent * 4 }, 'hip', 'clay', roof, { axis: 'u' });
+    if (bays && top - y > 7) {
+      for (const face of [front, side]) {
+        const n = Math.max(1, Math.min(face === front ? bays : Math.ceil(bays * depth / width), Math.floor((face.b - face.a) / .14)));
+        for (let row = y + 1; row < top - 6; row += 8)
+          for (let k = 0; k < n; k++)
+            drawWindow(ctx, face, face.a + (face.b - face.a) * (k + .5) / n, row, 'small', shade(color, 1.17));
+      }
     }
   }
 }

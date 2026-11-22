@@ -17,6 +17,7 @@ import { shipwrightHours, tourismReport } from '../game/systems/tourism';
 import { fmtAmount, fmtRate, t, tm } from '../i18n';
 import type { TKey } from '../i18n';
 import { Bar, CostList, Row } from './common';
+import { MonumentViewer } from './MonumentViewer';
 
 function Sprite({ entry, alt }: { entry: AtlasEntry; alt: string }): ReactElement {
   const [url, setUrl] = useState<string | null>(null);
@@ -41,6 +42,7 @@ const field = (e: AtlasEntry, f: 'period' | 'location' | 'materials' | 'history'
   t((e.landmark ? `atlas.${e.landmark}.${f}` : `atlas.v.${e.id}.${f}`) as TKey);
 
 export function AtlasPanel({ game }: { game: GameState | null }): ReactElement {
+  const [showModels, setShowModels] = useState(false);
   const [culture, setCulture] = useState<'scottish' | 'turkish'>('scottish');
   const [open, setOpen] = useState<string>(ATLAS.find((e) => e.culture === 'scottish')!.id);
   const entries = ATLAS.filter((e) => e.culture === culture);
@@ -49,6 +51,10 @@ export function AtlasPanel({ game }: { game: GameState | null }): ReactElement {
   return (
     <div className="atlas" data-testid="atlas">
       <p className="hint">{t('atlas.intro')}</p>
+      <button type="button" className="btn" aria-expanded={showModels} onClick={() => setShowModels(value => !value)}>
+        {showModels ? '3B görünümü kapat' : '40 anıtı 3B incele'}
+      </button>
+      {showModels && <MonumentViewer />}
       <div className="segmented" role="tablist">
         {(['scottish', 'turkish'] as const).map((c) => (
           <button
