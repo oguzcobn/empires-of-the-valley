@@ -24,6 +24,11 @@ export function drawLevelDressing(ctx: DrawCtx, w: number, h: number, level: num
   const kerb = scottish ? 0xa8a49a : 0xd2c4a6;
   poly(ctx, [P(0.02, h - edge, 0.3), P(w - edge, h - edge, 0.3), P(w - edge, h - 0.005, 0.3), P(0.02, h - 0.005, 0.3)], kerb, 0.75);
   poly(ctx, [P(w - edge, 0.02, 0.3), P(w - 0.005, 0.02, 0.3), P(w - 0.005, h - edge, 0.3), P(w - edge, h - edge, 0.3)], kerb, 0.75);
+  // Reference-guided material pass: thin, directional kerb highlights clarify the
+  // front edges at normal isometric zoom without changing any footprint or hitbox.
+  const kerbHighlight = scottish ? 0xd8d2c5 : 0xf1e2c1;
+  poly(ctx, [P(0.04, h - edge, 0.35), P(w - edge - 0.02, h - edge, 0.35), P(w - edge - 0.02, h - edge + 0.012, 0.35), P(0.04, h - edge + 0.012, 0.35)], kerbHighlight, 0.48);
+  poly(ctx, [P(w - edge, 0.04, 0.35), P(w - edge + 0.012, 0.04, 0.35), P(w - edge + 0.012, h - edge - 0.02, 0.35), P(w - edge, h - edge - 0.02, 0.35)], kerbHighlight, 0.35);
   const lampAt = (u: number, v: number): void => (modern ? ledLight(ctx, u, v) : lantern(ctx, u, v, scottish));
   // street lights at the left end of the front-left edge and the back end of the front-right edge
   lampAt(0.12, h - 0.04);
