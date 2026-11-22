@@ -198,7 +198,7 @@
   .game-screen .mobile-placement-arrows,
   .game-screen .mobile-placement-arrows > div { flex-direction: row; gap: .25rem; }
   .game-screen .mobile-placement-arrows button,
-  .game-screen .mobile-placement-pad .mobile-place-actions button { min-height: 44px; min-width: 44px; }
+  .game-screen .mobile-placement-pad .mobile-place-actions button { min-height: 44px; min-width: 44px; touch-action: none; }
   .game-screen .road-plan-controls { width: min(30rem, calc(100% - 1rem)); max-width: none; }
 }
 

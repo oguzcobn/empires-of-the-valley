@@ -56,6 +56,7 @@ export function ValleyCanvas(): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [placement, setPlacement] = useState<{x:number;y:number}|null>(null);
   const placementRef = useRef(placement);
+  const confirmTouch = useRef<{ id: number; x: number; y: number } | null>(null);
   useEffect(() => { placementRef.current = placement; }, [placement]);
   const tool = useApp((s) => s.tool);
   const placing = tool.kind === 'build';
@@ -288,11 +289,12 @@ export function ValleyCanvas(): ReactElement {
   };
 
   const confirmPlacement = () => {
-    if (!placement || tool.kind !== 'build' || placementError) return;
+    if (!placement || placementRef.current !== placement || tool.kind !== 'build' || placementError) return;
     const s = useApp.getState();
     if (!s.game) return;
     const ok = s.dispatch({type:'placeBuilding',buildingId:tool.buildingId,x:placement.x,y:placement.y,style:tool.style,look:tool.look ?? null});
     if (ok) {
+      placementRef.current = null;
       setPlacement(null);
       if (tool.buildingId !== 'hut') {
         const placed = homeProvince(useApp.getState().game!).buildings.at(-1);
@@ -315,7 +317,22 @@ export function ValleyCanvas(): ReactElement {
         <div className="mobile-place-actions">
           <button type="button" onClick={() => { setPlacement(null); useApp.getState().setTool({ kind: 'select' }); }}>İptal</button>
           {placementError ? <button type="button" onClick={findNearbyPlacement}>Yakında yer bul</button>
-            : <button type="button" onClick={confirmPlacement}>✓ Buraya inşa et</button>}
+            : <button type="button"
+              onPointerDown={event => {
+                if (event.pointerType === 'touch')
+                  confirmTouch.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+              }}
+              onPointerCancel={() => { confirmTouch.current = null; }}
+              onPointerUp={event => {
+                const start = confirmTouch.current;
+                confirmTouch.current = null;
+                if (!start || start.id !== event.pointerId || Math.hypot(start.x - event.clientX, start.y - event.clientY) >= 9) return;
+                if (event.currentTarget.contains(document.elementFromPoint(event.clientX, event.clientY))) confirmPlacement();
+              }}
+              onClick={event => {
+                const native = event.nativeEvent;
+                if (event.detail === 0 || !('pointerType' in native) || native.pointerType !== 'touch') confirmPlacement();
+              }}>✓ Buraya inşa et</button>}
         </div>
       </div>}
       {tool.kind === 'demolish' && (

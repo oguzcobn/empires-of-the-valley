@@ -197,7 +197,7 @@ export function GameScreen({ game }: { game: GameState }): ReactElement {
       <TopHud game={game} />
       <div className="mobile-drawer-tabs" aria-label="Şehir görünümü">
         <button className="btn" type="button" aria-expanded={!buildOpen && drawer === 'city'} onClick={() => { closeDrawer(); setDrawer(drawer === 'city' ? null : 'city'); }}>Şehir</button>
-        <button className="btn" type="button" aria-expanded={!buildOpen && (drawer === 'radar' || inspecting)} onClick={() => { closeDrawer(); setDrawer(drawer === 'radar' || inspecting ? null : 'radar'); }}>Radar</button>
+        <button className="btn" type="button" aria-expanded={!buildOpen && drawer === 'radar'} onClick={() => { closeDrawer(); setDrawer(drawer === 'radar' ? null : 'radar'); }}>Radar</button>
       </div>
       <div className={`left-column${buildOpen || (drawer === 'city' && !inspecting) ? ' drawer-open' : ''}`}>
         <button className="btn mobile-drawer-close" type="button" onClick={() => { useApp.getState().toggleBuild(false); closeDrawer(); }}>Kapat</button>
