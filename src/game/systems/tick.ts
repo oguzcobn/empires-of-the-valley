@@ -13,6 +13,7 @@ import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { dailyFoodNeed, dailyOutput, dailyTaxIncome, dailyToolWear, dailyTownIncome, emptyResourceMap, homeProvince, isBuilt, storageCaps, techScalar, isOperating, totalPopulation } from './economy';
 import { logEvent } from './events';
+import { citySurpriseTick } from './citySurprises';
 import { refreshConnectivity, tilesInRange } from './grid';
 import { populationDayEnd } from './population';
 import { decayPerDay } from './architecture';
@@ -261,6 +262,7 @@ export function tickMut(s: GameState): void {
   s.tick += 1;
   cityLifeTick(s, p);
   resolveHunt(s, p);
+  citySurpriseTick(s, p);
   if (s.tick % TICKS_PER_DAY === 0) dayEnd(s, p);
   evaluateQuests(s);
 }

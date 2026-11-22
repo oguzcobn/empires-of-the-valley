@@ -39,6 +39,7 @@ import { drawSoldier, kitFor } from './soldiers';
 import { StreetFurniture } from './streetFurniture';
 import { Fireworks } from './fireworks';
 import { WaterLife } from './waterLife';
+import { CitySurpriseScenes } from './citySurpriseScenes';
 import type { PedLook } from './pedestrians';
 import { pedestrianSidewalkOffset, smoothVehicleTurnOffset } from './trafficMath';
 import { blocksFollowing, bodiesOverlap, heldByFollowing, junctionClear } from './trafficRules';
@@ -266,6 +267,7 @@ export class ValleyRenderer {
   private trafficCacheTiles: Province['tiles'] | null = null;
   private cachedLinkedRoads: [number, number][] = [];
   private cachedLaneRoads: [number, number][] = [];
+  private citySurprises = new CitySurpriseScenes(this.objects, this.airLayer);
   private cityScenes = new CityScenes(this.objects);
   private workScenes = new WorkerScenes(this.objects);
   private frontier = new FrontierScenes(this.transportGround, this.objects);
@@ -421,6 +423,7 @@ export class ValleyRenderer {
     if (this.ready) {
       this.app.ticker.remove(this.frame);
       this.cityScenes.destroy();
+      this.citySurprises.destroy();
       this.workScenes.destroy();
       this.frontier.destroy();
       this.signals.destroy();
@@ -803,6 +806,7 @@ export class ValleyRenderer {
     this.updateTraffic(view, p, dt, motion);
     this.cityScenes.update(view.game, p, dt, !motion);
     this.updateMilitia(view, p, dt);
+    this.citySurprises.update(view.game, p, dt, !motion, this.night);
     this.updateBoats(view, p, dt, motion);
     this.waterLife.update(p, p.tiles, cal.season, clockHour(view.game.tick), this.dropKind === 'rain', dt, motion && view.game.speed > 0);
     this.updateBirds(p, dt, motion);
@@ -1434,7 +1438,7 @@ export class ValleyRenderer {
    * Abstract tactical patrols are kept separate from the economy clock.
    */
   private updateMilitia(view: RendererView, p: Province, dt: number): void {
-    const count = Math.min(8, Math.ceil((view.game.militia ?? 0) / 5));
+    const count = view.game.surprise?.kind === 'pirates' ? 0 : Math.min(8, Math.ceil((view.game.militia ?? 0) / 5));
     while (this.militiaSprites.length > count) {
       this.militiaSprites.pop()!.destroy({ children: true });
     }

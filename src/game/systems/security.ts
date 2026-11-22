@@ -1,4 +1,5 @@
 import type { GameState, Province } from '../core/types';
+import { MILITIA_CAP, UNIT_IDS, specialistCount } from '../data/units';
 import { logEvent } from './events';
 import { isBuilt, isOperating, storageCaps } from './economy';
 
@@ -16,7 +17,7 @@ export function securityDayEnd(s: GameState, p: Province): void {
     .reduce((sum, b) => sum + b.workers, 0);
   const recruits = Math.max(0, Math.min(
     instructors,
-    100 - (s.militia ?? 0),
+    MILITIA_CAP - (s.militia ?? 0),
     Math.floor(p.stocks.gold / 2000),
     Math.floor(p.stocks.food / 1000),
   ));
@@ -62,4 +63,21 @@ export function securityDayEnd(s: GameState, p: Province): void {
     p.today.consumed.gold += loss;
     logEvent(s, 'warning', 'event.raidDamage', { gold: loss / 1000 });
   }
+}
+
+
+/** Apply casualties while keeping specialist assignments within the surviving force. */
+export function loseMilitia(s: GameState, casualties: number): number {
+  const defenders = s.militia ?? 0;
+  const losses = Math.min(defenders, casualties);
+  if (!losses) return 0;
+  s.militia = defenders - losses;
+  let excess = specialistCount(s.specialists) - s.militia;
+  for (const unit of UNIT_IDS) {
+    const count = s.specialists?.[unit] ?? 0;
+    const removed = Math.min(Math.max(excess, 0), count);
+    if (removed) s.specialists![unit] = count - removed;
+    excess -= removed;
+  }
+  return losses;
 }

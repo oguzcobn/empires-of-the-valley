@@ -2481,3 +2481,26 @@ html, body, #root, .game-screen {
 .monument-selectors select { width: 100%; min-height: 44px; }
 .monument-stage { height: clamp(190px, 46dvh, 500px); overflow: hidden; border-radius: .45rem; background: #879599; }
 .monument-stage canvas { display: block; width: 100%; height: 100%; }
+
+.game-screen .surprise-marker {
+  position: absolute;
+  z-index: 8;
+  top: calc(var(--hud-bottom, 4rem) + .35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .3rem;
+  max-width: min(90vw, 24rem);
+  min-height: 44px;
+  color: #fff4db;
+  background: #352b24;
+  border-color: #ab8554;
+  touch-action: manipulation;
+}
+.game-screen .surprise-marker small { color: #f1c083; }
+@media (pointer: coarse), (max-width: 600px) {
+  .game-screen .surprise-marker { top: calc(var(--hud-bottom, 4.7rem) + 49px); }
+  .game-screen:not(.tool-select) .surprise-marker { display: none; }
+}

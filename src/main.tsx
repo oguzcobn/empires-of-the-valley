@@ -7,6 +7,8 @@ import { BUILDINGS } from './game/data/buildings';
 import { homeProvince } from './game/systems/economy';
 import { findSite } from './game/systems/placement';
 import { applyTicks } from './game/systems/tick';
+import { startCitySurprise } from './game/systems/citySurprises';
+import type { SurpriseKind } from './game/core/types';
 import { levelCost } from './game/systems/architecture';
 import './styles.css';
 import './mobile-layout.css';
@@ -23,6 +25,14 @@ if (import.meta.env.DEV || import.meta.env.VITE_E2E === '1') {
     advance(ticks: number): void {
       const game = useApp.getState().game;
       if (game) useApp.setState({ game: applyTicks(game, ticks) });
+    },
+    triggerSurprise(kind: SurpriseKind): boolean {
+      const current = useApp.getState().game;
+      if (!current) return false;
+      const game = structuredClone(current);
+      if (!startCitySurprise(game, homeProvince(game), kind)) return false;
+      useApp.setState({ game });
+      return true;
     },
     plan(buildingId: keyof typeof BUILDINGS): unknown {
       const game = useApp.getState().game;

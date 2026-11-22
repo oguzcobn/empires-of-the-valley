@@ -1,4 +1,4 @@
-import { specialistCount } from '../data/units';
+import { MILITIA_CAP, specialistCount } from '../data/units';
 import { z } from 'zod';
 import type { GameState } from '../core/types';
 import { BUILDING_IDS } from '../data/buildings';
@@ -142,7 +142,7 @@ export const gameStateSchema = z
     cityId: z.enum(['trabzon', 'edinburgh', 'kyoto', 'prague']).optional(),
     claimedDistricts: z.array(shortText).max(24).optional(),
     treaties: z.record(z.enum(['trade', 'non_aggression', 'alliance'])).optional(),
-    militia: nat.max(200).optional(),
+    militia: nat.max(MILITIA_CAP).optional(),
     specialists: z.object({ infantry: nat.max(100).optional(), scout: nat.max(100).optional(), medic: nat.max(100).optional(), signals: nat.max(100).optional(), engineer: nat.max(100).optional() }).strict().optional(),
     armyOrder: z.enum(['defend', 'patrol']).optional(),
     armyTarget: z.object({ x: nat, y: nat }).strict().optional(),
@@ -157,6 +157,17 @@ export const gameStateSchema = z
     eventLog: z.array(gameEvent).max(500),
     nextEventId: nat,
     nextBuildingId: nat,
+    surprise: z.object({
+      kind: z.enum(['ufo', 'pirates']), startedAt: nat,
+      approach: z.array(z.tuple([nat.max(95), nat.max(95)])).min(1).max(9216),
+      walk: z.array(z.tuple([nat.max(95), nat.max(95)])).min(1).max(9216),
+      defense: z.array(z.tuple([nat.max(95), nat.max(95)])).max(9216),
+      defenders: nat.max(MILITIA_CAP).optional(),
+      outcome: z.enum(['repelled', 'breached']).optional(),
+      damage: z.array(z.tuple([nat.max(95), nat.max(95)])).max(2).optional(),
+    }).strict().optional(),
+    nextSurpriseTick: nat.optional(),
+    nextSurpriseKind: z.enum(['ufo', 'pirates']).optional(),
     cityLife: z.object({
       nextId: nat, completedTrips: nat, completedFlights: nat, passengers: nat, revenue: nat, operatingCosts: nat,
       jobs: z.array(z.object({

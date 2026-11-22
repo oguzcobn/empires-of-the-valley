@@ -20,6 +20,14 @@ export function validateInvariants(s: GameState): string[] {
   if (!Number.isInteger(s.tick) || s.tick < 0) errors.push('tick invalid');
   if (!Number.isInteger(s.rngState) || s.rngState < 0 || s.rngState > 0xffffffff)
     errors.push('rng state invalid');
+  if (s.surprise) {
+    const event = s.surprise;
+    const points = [...event.approach, ...event.walk, ...event.defense, ...(event.damage ?? [])];
+    if (event.startedAt > s.tick || points.some(([x, y]) => !inBounds(p, x, y)))
+      errors.push('city surprise route invalid');
+    if (event.kind === 'ufo' && (event.outcome || event.defenders !== undefined || event.damage?.length))
+      errors.push('UFO surprise combat state invalid');
+  }
   if (p.tiles.length !== p.width * p.height) errors.push('tile count mismatch');
   if (!isPlayableStyle(s.culture)) errors.push('city culture not playable');
 

@@ -169,6 +169,15 @@ export function rotateGame(s: GameState, r: Rotation): GameState {
     ...s,
     provinces: { ...s.provinces, [s.homeProvinceId]: rotateProvince(home, r) },
     ...(s.armyTarget ? { armyTarget: (() => { const [x, y] = rotTile(s.armyTarget.x, s.armyTarget.y, home.width, home.height, r); return { x, y }; })() } : {}),
+    ...(s.surprise ? {
+      surprise: {
+        ...s.surprise,
+        approach: s.surprise.approach.map(([x, y]) => rotTile(x, y, home.width, home.height, r)),
+        walk: s.surprise.walk.map(([x, y]) => rotTile(x, y, home.width, home.height, r)),
+        defense: s.surprise.defense.map(([x, y]) => rotTile(x, y, home.width, home.height, r)),
+        damage: s.surprise.damage?.map(([x, y]) => rotTile(x, y, home.width, home.height, r)),
+      },
+    } : {}),
     ...(s.cityLife
       ? {
           cityLife: {
