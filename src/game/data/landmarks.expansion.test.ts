@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { BUILDINGS } from './buildings';
 import { CITIES } from './cities';
 import { LANDMARK_IDS, LANDMARKS } from './landmarks';
+import { MONUMENT_MODELS } from './monumentModels';
+import { createMonument } from '../rendering/three/monumentGeometry';
+import { Box3 } from 'three';
 
 const addedLandmarks = {
   turkish: ['trabzon_ayasofya', 'ataturk_kosku', 'trabzon_kalesi', 'gulbahar_hatun', 'bedesten_trabzon', 'kizlar_manastiri', 'vazelon_manastiri', 'kostaki_konagi', 'ortahisar_fatih', 'alacahan_trabzon'],
@@ -24,6 +27,19 @@ describe('forty city landmarks', () => {
       }
     }
     expect(LANDMARK_IDS).toHaveLength(47);
+  });
+
+  it('builds distinct finite 3D models for the 40 additions', () => {
+    const ids = Object.values(addedLandmarks).flat();
+    expect(Object.keys(MONUMENT_MODELS)).toHaveLength(ids.length);
+    expect(new Set(ids.map(id => JSON.stringify(MONUMENT_MODELS[id]))).size).toBe(ids.length);
+    for (const id of ids) {
+      const model = createMonument(id);
+      const bounds = new Box3().setFromObject(model);
+      expect(model.children.length, id).toBeGreaterThan(2);
+      expect([...bounds.min, ...bounds.max].every(Number.isFinite), id).toBe(true);
+      expect(bounds.max.y - bounds.min.y, id).toBeGreaterThan(.5);
+    }
   });
 
   it('preserves the seven existing monument IDs and save identifiers', () => {
