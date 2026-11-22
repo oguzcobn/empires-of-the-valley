@@ -21,15 +21,22 @@ for (const viewport of [
       await expectScrollable(page.locator('.modal-body'));
       await page.getByTestId('seed-input').fill('42');
       await page.getByTestId('start-game').tap();
-      const prompt = page.getByTestId('mobile-landscape-prompt');
-      if (viewport.height > viewport.width) {
-        await prompt.getByRole('button', { name: 'Dikey Devam Et' }).tap();
-      }
       await page.getByTestId('intro-start').tap();
       const canvas = page.locator('.valley-canvas canvas');
       await expect(canvas).toBeVisible();
       expect(await canvas.boundingBox()).toEqual({ x: 0, y: 0, ...viewport });
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
+
+      const client = await page.context().newCDPSession(page);
+      const x = Math.round(viewport.width / 2);
+      const y = Math.round(viewport.height / 2);
+      const origin = [{ x: x - 30, y, id: 1 }, { x: x + 30, y, id: 2 }];
+      await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: origin });
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchMove', touchPoints: [{ x: x - 65, y, id: 1 }, { x: x + 65, y, id: 2 }],
+      });
+      await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(page.getByTestId('inspector')).toBeHidden();
 
       const menuTrigger = page.locator('.game-menu-trigger');
       await menuTrigger.tap();
@@ -78,6 +85,15 @@ for (const viewport of [
         await campButton.tap();
       }
       await tapTile(plan.x, plan.y);
+      const pad = page.locator('.mobile-placement-pad');
+      await expect(pad).toBeInViewport({ ratio: 1 });
+      const hint = page.locator('.mobile-place-hint');
+      const location = await hint.textContent();
+      await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+      await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 50, y }] });
+      await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(hint).toHaveText(location!);
+      await expect(page.getByTestId('inspector')).toBeHidden();
       await page.getByRole('button', { name: 'Buraya inşa et' }).tap();
       await expect(page.getByTestId('inspector')).toContainText('Oduncu Kampı');
       await page.screenshot({ path: test.info().outputPath("construction.png") });

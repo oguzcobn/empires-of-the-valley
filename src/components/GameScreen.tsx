@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { PersonCard } from './PersonCard';
 import type { MouseEvent as ReactMouseEvent, ReactElement } from 'react';
 import { useApp } from '../app/store';
@@ -23,7 +23,6 @@ import { QuestTracker } from './QuestTracker';
 import { Toolbar } from './Toolbar';
 import { CityNews } from './CityNews';
 import { TopHud } from './TopHud';
-import { MobileLandscapePrompt } from './MobileLandscapePrompt';
 import { ValleyCanvas, getRenderer } from './ValleyCanvas';
 
 /** Clickable overview map for quickly moving the camera around the valley. */
@@ -179,6 +178,16 @@ function useShortcuts(): void {
 export function GameScreen({ game }: { game: GameState }): ReactElement {
   const buildOpen = useApp((s) => s.buildOpen);
   const tool = useApp((s) => s.tool);
+  const selected = useApp((s) => s.selectedBuildingId);
+  const person = useApp((s) => s.person);
+  const [drawer, setDrawer] = useState<'city' | 'radar' | null>(null);
+  const inspecting = Boolean(selected || person);
+  const closeDrawer = () => {
+    setDrawer(null);
+    const state = useApp.getState();
+    state.select(null);
+    state.selectPerson(null);
+  };
   useShortcuts();
   const season = calendar(game.tick).season;
   return (
@@ -186,14 +195,19 @@ export function GameScreen({ game }: { game: GameState }): ReactElement {
       style={{ '--sky-night': nightFactor(clockHour(game.tick)) } as React.CSSProperties}>
       <ValleyCanvas />
       <TopHud game={game} />
-      <MobileLandscapePrompt />
-      <div className="left-column">
+      <div className="mobile-drawer-tabs" aria-label="Şehir görünümü">
+        <button className="btn" type="button" aria-expanded={!buildOpen && drawer === 'city'} onClick={() => { closeDrawer(); setDrawer(drawer === 'city' ? null : 'city'); }}>Şehir</button>
+        <button className="btn" type="button" aria-expanded={!buildOpen && drawer === 'radar'} onClick={() => { closeDrawer(); setDrawer(drawer === 'radar' ? null : 'radar'); }}>Radar</button>
+      </div>
+      <div className={`left-column${buildOpen || (drawer === 'city' && !inspecting) ? ' drawer-open' : ''}`}>
+        <button className="btn mobile-drawer-close" type="button" onClick={() => { useApp.getState().toggleBuild(false); closeDrawer(); }}>Kapat</button>
         {buildOpen ? <BuildCatalog game={game} /> : <>
           <CityNews game={game} />
           <QuestTracker game={game} />
         </>}
       </div>
-      <div className="right-column">
+      <div className={`right-column${!buildOpen && (drawer === 'radar' || inspecting) ? ' drawer-open' : ''}${inspecting && drawer !== 'radar' ? ' inspecting' : ''}`}>
+        <button className="btn mobile-drawer-close" type="button" onClick={closeDrawer}>Kapat</button>
         <PersonCard game={game} />
         <Inspector game={game} />
         <AlertsList game={game} />

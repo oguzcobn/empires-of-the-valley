@@ -46,7 +46,7 @@ import { buildingDepths } from './depthSort';
 import { markPerson, pickPerson, setActivity } from './people';
 import type { PersonPick } from './people';
 import { citizenAt } from '../data/citizens';
-import { footprintOf, footprintTilesOf, isSwapped, rotTile, rotateAnimals, rotateGame, rotPoint, unrotPoint, unrotRect, unrotTile } from './rotation';
+import { footprintOf, footprintTilesOf, isSwapped, rotTile, rotateAnimals, rotateGame, rotPoint, rotRect, unrotPoint, unrotRect, unrotTile } from './rotation';
 import type { Rotation } from './rotation';
 import { wildlife } from '../systems/frontier';
 import type { TrafficAgent } from './trafficRules';
@@ -80,6 +80,7 @@ export interface RendererView {
   weather: boolean;
   /** True when the quality setting is Auto (the FPS watchdog may lower it). */
   autoQuality: boolean;
+  placement?: { x: number; y: number } | null;
 }
 
 export interface RendererOptions {
@@ -96,7 +97,7 @@ export interface RendererOptions {
 
 export interface RendererHost {
   getView(): RendererView | null;
-  onTileClick(x: number, y: number, buildingId: string | null): void;
+  onTileClick(x: number, y: number, buildingId: string | null, touch: boolean): void;
   /** A person on the map was tapped (select tool only). */
   onPersonClick?(person: PersonPick): void;
   onRoadPaint(x: number, y: number): void;
@@ -315,7 +316,7 @@ export class ValleyRenderer {
   private depthKey = '';
   private ghostSig = '';
   private pointers = new Map<number, { x: number; y: number }>();
-  private drag: { lastX: number; lastY: number; total: number; button: number; paint: boolean } | null = null;
+  private drag: { lastX: number; lastY: number; moved: boolean; button: number; paint: boolean } | null = null;
   private pinch: { dist: number } | null = null;
   private lastPaint = '';
   private destroyed = false;
@@ -331,7 +332,7 @@ export class ValleyRenderer {
     const hit = this.rotatedFor;
     if (hit && hit.view.game === v.game && hit.view.roadPlan === v.roadPlan && hit.view.tool === v.tool &&
       hit.view.selectedBuildingId === v.selectedBuildingId && hit.view.detail === v.detail && hit.view.reducedMotion === v.reducedMotion)
-      return hit.out;
+      return hit.out.placement === v.placement ? hit.out : { ...hit.out, placement: v.placement };
     const home = homeProvince(v.game);
     const t = <Q extends { x: number; y: number }>(q: Q): Q => {
       const [x, y] = rotTile(q.x, q.y, home.width, home.height, this.rot);
@@ -629,15 +630,15 @@ export class ValleyRenderer {
     on('pointerdown', (e) => {
       canvas.setPointerCapture(e.pointerId);
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (this.pointers.size === 2) {
+      if (this.pointers.size >= 2) {
         const [a, b] = [...this.pointers.values()];
         this.pinch = { dist: Math.hypot(a!.x - b!.x, a!.y - b!.y) };
         this.drag = null;
         return;
       }
       const view = this.view();
-      const isPaint = (view?.tool.kind === 'road' || view?.tool.kind === 'pave') && e.button === 0;
-      this.drag = { lastX: e.clientX, lastY: e.clientY, total: 0, button: e.button, paint: isPaint };
+      const isPaint = (view?.tool.kind === 'road' || view?.tool.kind === 'pave') && e.button === 0 && e.pointerType === 'mouse';
+      this.drag = { lastX: e.clientX, lastY: e.clientY, moved: false, button: e.button, paint: isPaint };
       this.lastPaint = '';
       if (isPaint) paint(e);
     });
@@ -656,8 +657,8 @@ export class ValleyRenderer {
         const rect = canvas.getBoundingClientRect();
         this.zoomBy(
           dist / Math.max(1, this.pinch.dist),
-          (a!.x + b!.x) / 2 - rect.left,
-          (a!.y + b!.y) / 2 - rect.top,
+          (a!.x + b!.x - e.clientX + prev.x) / 2 - rect.left,
+          (a!.y + b!.y - e.clientY + prev.y) / 2 - rect.top,
         );
         this.pinch.dist = dist;
         this.panBy((e.clientX - prev.x) / 2, (e.clientY - prev.y) / 2);
@@ -666,11 +667,13 @@ export class ValleyRenderer {
       if (!this.drag) return;
       const dx = e.clientX - this.drag.lastX;
       const dy = e.clientY - this.drag.lastY;
+      const threshold = e.pointerType === 'mouse' ? 5 : 9;
+      if (!this.drag.paint && !this.drag.moved && Math.hypot(dx, dy) < threshold) return;
+      this.drag.moved = true;
       this.drag.lastX = e.clientX;
       this.drag.lastY = e.clientY;
-      this.drag.total += Math.abs(dx) + Math.abs(dy);
       if (this.drag.paint) paint(e);
-      else if (this.drag.total > 5) this.panBy(dx, dy);
+      else this.panBy(dx, dy);
     });
     const up = (e: PointerEvent): void => {
       const drag = this.drag;
@@ -678,8 +681,8 @@ export class ValleyRenderer {
       this.pointers.delete(e.pointerId);
       if (this.pointers.size < 2) this.pinch = null;
       this.drag = null;
-      if (!drag || !wasSingle || e.type === 'pointercancel') return;
-      if (drag.paint || drag.total > 5) return;
+      if (!drag || !wasSingle || e.type !== 'pointerup') return;
+      if (drag.paint || drag.moved || Math.hypot(e.clientX - drag.lastX, e.clientY - drag.lastY) >= (e.pointerType === 'mouse' ? 5 : 9)) return;
       if (drag.button === 2) {
         this.cb.onCancel();
         return;
@@ -687,6 +690,10 @@ export class ValleyRenderer {
       if (drag.button !== 0) return;
       const view = this.view();
       if (!view) return;
+      if (view.tool.kind === 'road' || view.tool.kind === 'pave') {
+        paint(e);
+        return;
+      }
       if (view.tool.kind === 'select' && this.cb.onPersonClick) {
         const rect = canvas.getBoundingClientRect();
         const person = pickPerson(e.clientX - rect.left, e.clientY - rect.top, e.pointerType === 'mouse' ? 5 : 9);
@@ -703,10 +710,11 @@ export class ValleyRenderer {
       const buildingId = pickTall ? this.pickBuilding(p, fx, fy) : (tileAt(p, x, y)?.buildingId ?? null);
       if (e.pointerType !== 'mouse') this.setHover(tileAt(p, x, y) ? { x, y } : null);
       const out = this.outTile(x, y);
-      this.cb.onTileClick(out.x, out.y, buildingId);
+      this.cb.onTileClick(out.x, out.y, buildingId, e.pointerType !== 'mouse');
     };
     on('pointerup', up);
     on('pointercancel', up);
+    on('lostpointercapture', up);
     on('pointerleave', () => {
       if (!this.drag) this.setHover(null);
     });
@@ -2025,7 +2033,12 @@ export class ValleyRenderer {
     const g = this.under;
     g.clear();
     const { tool } = view;
-    const hover = this.hover;
+    let hover = this.hover;
+    if (tool.kind === 'build' && view.placement) {
+      const [width, height] = this.trueSize();
+      const footprint = BUILDINGS[tool.buildingId].footprint;
+      hover = rotRect(view.placement.x, view.placement.y, ...footprint, width, height, this.rot);
+    }
     let ghostSig = '';
 
     const selected = view.selectedBuildingId ? buildingById(p, view.selectedBuildingId) : undefined;

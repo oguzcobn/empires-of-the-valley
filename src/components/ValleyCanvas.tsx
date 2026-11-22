@@ -55,6 +55,9 @@ export function ValleyCanvas(): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [placement, setPlacement] = useState<{x:number;y:number}|null>(null);
+  const placementRef = useRef(placement);
+  const confirmTouch = useRef<{ id: number; x: number; y: number } | null>(null);
+  useEffect(() => { placementRef.current = placement; }, [placement]);
   const tool = useApp((s) => s.tool);
   const placing = tool.kind === 'build';
   const game = useApp((s) => s.game);
@@ -95,6 +98,7 @@ export function ValleyCanvas(): ReactElement {
           ? {
               game: s.game,
               tool: s.tool,
+              placement: placementRef.current,
               roadPlan: roadPlanRef.current,
               selectedBuildingId: s.selectedBuildingId,
               reducedMotion: s.settings.reducedMotion,
@@ -132,7 +136,7 @@ export function ValleyCanvas(): ReactElement {
           s.dispatch({ type: 'placeRoad', x, y });
         }
       },
-      onTileClick(x, y, buildingId) {
+      onTileClick(x, y, buildingId, touch) {
         const s = useApp.getState();
         if (!s.game) return;
         const tool = s.tool;
@@ -142,7 +146,8 @@ export function ValleyCanvas(): ReactElement {
           if (tool.start) s.setTool({ ...tool, end: point });
           else s.setTool({ ...tool, start: point });
         } else if (tool.kind === 'build') {
-          if (window.matchMedia('(pointer: coarse)').matches) {
+          if (touch) {
+            if (!tileAt(homeProvince(s.game), x, y)) return;
             setPlacement({ x, y });
             return;
           }
@@ -258,12 +263,12 @@ export function ValleyCanvas(): ReactElement {
     ? validatePlacement(game, tool.buildingId, placement.x, placement.y, tool.style, tool.look ?? null)
     : null;
   const nudgePlacement = (dx: number, dy: number) => {
-    if (!placement || !game) return;
+    if (!placement || !game || tool.kind !== 'build') return;
     const p = homeProvince(game);
     const x = Math.max(0, Math.min(p.width - 1, placement.x + dx));
     const y = Math.max(0, Math.min(p.height - 1, placement.y + dy));
     setPlacement({ x, y });
-    useApp.getState().setHover({ x, y });
+    current?.centerOnTile(x + 0.5, y + 0.5);
   };
 
   const findNearbyPlacement = () => {
@@ -275,7 +280,7 @@ export function ValleyCanvas(): ReactElement {
           const spot = { x: placement.x + dx, y: placement.y + sign * dy };
           if (validatePlacement(game, tool.buildingId, spot.x, spot.y, tool.style, tool.look)) continue;
           setPlacement(spot);
-          useApp.getState().setHover(spot);
+          current?.centerOnTile(spot.x + 0.5, spot.y + 0.5);
           return;
         }
       }
@@ -284,11 +289,12 @@ export function ValleyCanvas(): ReactElement {
   };
 
   const confirmPlacement = () => {
-    if (!placement || tool.kind !== 'build' || placementError) return;
+    if (!placement || placementRef.current !== placement || tool.kind !== 'build' || placementError) return;
     const s = useApp.getState();
     if (!s.game) return;
     const ok = s.dispatch({type:'placeBuilding',buildingId:tool.buildingId,x:placement.x,y:placement.y,style:tool.style,look:tool.look ?? null});
     if (ok) {
+      placementRef.current = null;
       setPlacement(null);
       if (tool.buildingId !== 'hut') {
         const placed = homeProvince(useApp.getState().game!).buildings.at(-1);
@@ -301,7 +307,7 @@ export function ValleyCanvas(): ReactElement {
 
   return (
     <div className="valley-canvas" ref={hostRef}>
-      {placing && <div className="mobile-place-hint" aria-live="polite">{placement ? `Konum: ${placement.x + 1}, ${placement.y + 1} · Haritaya dokunarak değiştir` : 'Haritada bir yere dokun · Önizle · Onayla'}</div>}
+      {placing && <div className="mobile-place-hint" aria-live="polite">{placement ? `Konum: ${placement.x + 1}, ${placement.y + 1} · Haritaya dokunarak değiştir` : 'Haritada bir kareye dokun, ardından konumu onayla.'}</div>}
       {placing && placement && <div className="mobile-placement-pad" aria-label="Bina konumunu hassas ayarla">
         <div className="mobile-placement-message" role="status">{placementError ? `⚠ ${t(placementError.key, placementError.params)}` : '✓ Bu konuma inşa edilebilir'}</div>
         <div className="mobile-placement-arrows">
@@ -309,9 +315,24 @@ export function ValleyCanvas(): ReactElement {
           <div><button type="button" aria-label="Bir kare sola" onClick={() => nudgePlacement(-1,0)}>←</button><button type="button" aria-label="Bir kare aşağı" onClick={() => nudgePlacement(0,1)}>↓</button><button type="button" aria-label="Bir kare sağa" onClick={() => nudgePlacement(1,0)}>→</button></div>
         </div>
         <div className="mobile-place-actions">
-          <button type="button" onClick={() => { setPlacement(null); useApp.getState().setHover(null); }}>İptal</button>
+          <button type="button" onClick={() => { setPlacement(null); useApp.getState().setTool({ kind: 'select' }); }}>İptal</button>
           {placementError ? <button type="button" onClick={findNearbyPlacement}>Yakında yer bul</button>
-            : <button type="button" onClick={confirmPlacement}>✓ Buraya inşa et</button>}
+            : <button type="button"
+              onPointerDown={event => {
+                if (event.pointerType === 'touch')
+                  confirmTouch.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+              }}
+              onPointerCancel={() => { confirmTouch.current = null; }}
+              onPointerUp={event => {
+                const start = confirmTouch.current;
+                confirmTouch.current = null;
+                if (!start || start.id !== event.pointerId || Math.hypot(start.x - event.clientX, start.y - event.clientY) >= 9) return;
+                if (event.currentTarget.contains(document.elementFromPoint(event.clientX, event.clientY))) confirmPlacement();
+              }}
+              onClick={event => {
+                const native = event.nativeEvent;
+                if (event.detail === 0 || !('pointerType' in native) || native.pointerType !== 'touch') confirmPlacement();
+              }}>✓ Buraya inşa et</button>}
         </div>
       </div>}
       {tool.kind === 'demolish' && (
@@ -367,7 +388,9 @@ export function ValleyCanvas(): ReactElement {
           </div>
         </div>
       )}
-      <div className="camera-rotate" role="group" aria-label="Kamerayı döndür">
+      <div className="camera-rotate" role="group" aria-label="Harita kamerası">
+        <button className="touch-zoom" type="button" onClick={() => current?.zoomBy(1 / 1.25)} aria-label={t('camera.zoomOut')}>−</button>
+        <button className="touch-zoom" type="button" onClick={() => current?.zoomBy(1.25)} aria-label={t('camera.zoomIn')}>+</button>
         <button type="button" onClick={() => useApp.getState().rotateCamera(-1)} title="Kamerayı sola döndür (Q)" aria-label="Kamerayı sola döndür"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M5 5H2V2M2.5 5A6 6 0 1 1 3 11.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
         <span aria-live="polite">{ROTATION_LABEL[rotation]}</span>
         <button type="button" onClick={() => useApp.getState().rotateCamera(1)} title="Kamerayı sağa döndür (E)" aria-label="Kamerayı sağa döndür"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M11 5h3V2m-.5 3A6 6 0 1 0 13 11.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
