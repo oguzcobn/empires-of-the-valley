@@ -5,8 +5,8 @@
 - [x] Establish a PixiJS-native, non-destructive visual integration plan.
 - [ ] Select and licence initial visual reference(s).
 - [ ] Capture baseline screenshots at controlled game state.
-- [ ] Implement first polished village vertical slice behind a safe fallback.
+- [x] Apply a small, non-destructive kerb-material highlight pass to existing level dressing.\n- [ ] Complete first polished village vertical slice and visual comparison.
 - [ ] Run lint, unit tests, production build and browser playthrough.
 - [ ] Capture before/after evidence and performance measurements.
 
-Current scope: documentation and development contracts only. Existing gameplay, assets, saves and deployment remain untouched. No claim of a working visual upgrade or successful test run is made.
+Current scope: foundation documentation plus a small render-only change in `src/game/rendering/arch/levelDressing.ts`. Gameplay, saves and deployment remain untouched. No screenshot comparison, browser playthrough or successful test run is claimed.
