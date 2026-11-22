@@ -195,7 +195,13 @@ function SurpriseMarker({ game }: { game: GameState }): ReactElement | null {
       : event.outcome === 'breached' ? 'Korsanlar geri çekiliyor' : 'Korsan baskını';
   return (
     <button type="button" data-testid="surprise-marker" className="btn surprise-marker"
-      onClick={() => focusOn(x, y)} aria-label={`${title}. Haritada göster.`}>
+      onClick={() => {
+        const camera = getRenderer();
+        const zoom = camera?.getCamera().zoom ?? 1;
+        const minimum = window.matchMedia('(pointer: coarse)').matches ? 1.05 : 1.2;
+        if (zoom < minimum) camera?.zoomBy(minimum / zoom);
+        focusOn(x, y);
+      }} aria-label={`${title}. Haritada göster.`}>
       <span>{title}</span>
       {event.kind === 'pirates' && !event.outcome && <small>{game.militia ?? 0} / {DEFENSE_THRESHOLD + 1} asker</small>}
     </button>
