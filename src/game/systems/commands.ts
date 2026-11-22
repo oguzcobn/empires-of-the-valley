@@ -30,7 +30,7 @@ import { BUILDINGS, defOf, specOf } from '../data/buildings';
 import { TECHNOLOGIES } from '../data/technologies';
 import { homeProvince, idleWorkers, isBuilt, storageCaps, totalPopulation } from './economy';
 import { logEvent } from './events';
-import { NEIGHBORS4, buildingById, canLink, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter, transitOccupies } from './grid';
+import { NEIGHBORS4, buildingById, canLink, detachBuilding, footprintTiles, idx, inBounds, refreshConnectivity, tileAt, townCenter, transitOccupies } from './grid';
 import { checkRoadSite, checkSite, roadTypeFor } from './placement';
 import { investedCost, levelCost, repairCost, restyleCost, sameLook } from './architecture';
 import { lookSchema } from '../save/lookSchema';
@@ -39,7 +39,8 @@ import { fleetCount } from './tourism';
 import { evaluateQuests } from './quests';
 import { findGroundPath, musterPoint } from '../rendering/armyPath';
 import { WORLD_BY_ID } from '../data/worldMap';
-import { UNIT_IDS, UNITS, specialistCount } from '../data/units';
+import { MILITIA_CAP, UNIT_IDS, UNITS, specialistCount } from '../data/units';
+import { loseMilitia } from './security';
 import type { UnitId } from '../data/units';
 import { forecastBattle } from './combat';
 import { huntRoute, planTransit, routeFrom, TRANSIT_COST, transitUnlocked, wildlife } from './frontier';
@@ -568,7 +569,7 @@ export function validateCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan)
       if ((s.specialists?.[cmd.unit] ?? 0) >= 100) return { key: 'err.maxLevel' };
       return missingFor(p, { gold: UNITS[cmd.unit].gold * 1000 });
     case 'recruitMilitia':
-      if (cmd.amount !== 5 || (s.militia ?? 0) + cmd.amount > 100) return { key: 'err.invalid' };
+      if (cmd.amount !== 5 || (s.militia ?? 0) + cmd.amount > MILITIA_CAP) return { key: 'err.invalid' };
       if (!p.buildings.some((b) => (b.definitionId === 'watchtower' || b.definitionId === 'barracks') && isBuilt(b))) return { key: 'err.invalid' };
       return missingFor(p, { gold: 10000, food: 5000 });
     case 'moveMilitia': {
@@ -793,8 +794,7 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
     }
     case 'demolishBuilding': {
       const b = buildingById(p, cmd.instanceId)!;
-      for (const [x, y] of footprintTiles(defOf(b), b.x, b.y)) p.tiles[idx(p, x, y)]!.buildingId = null;
-      p.buildings.splice(p.buildings.indexOf(b), 1);
+      detachBuilding(p, b);
       refund(s, p, investedCost(b), DEMOLISH_REFUND_PERMILLE);
       logEvent(s, 'info', 'event.demolished', { building: `@building.${b.definitionId}.name` });
       break;
@@ -891,15 +891,7 @@ function applyCommand(s: GameState, cmd: Command, roadPlan?: RoadPlan): void {
     case 'attackDistrict': {
       const battle = forecastBattle(s, cmd.provinceId)!;
       pay(p, { gold: 5000, food: 3000 });
-      s.militia = Math.max(0, (s.militia ?? 0) - battle.casualties);
-      let excess = specialistCount(s.specialists) - s.militia;
-      for (const id of UNIT_IDS) {
-        const count = s.specialists?.[id] ?? 0;
-        if (excess <= 0 || count === 0) continue;
-        const lost = Math.min(excess, count);
-        s.specialists![id] = count - lost;
-        excess -= lost;
-      }
+      loseMilitia(s, battle.casualties);
       if (battle.victory) {
         (s.claimedDistricts ??= []).push(cmd.provinceId);
         if (s.treaties) delete s.treaties[cmd.provinceId];

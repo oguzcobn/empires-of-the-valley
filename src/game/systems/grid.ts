@@ -1,4 +1,4 @@
-import { BUILDINGS } from '../data/buildings';
+import { BUILDINGS, defOf } from '../data/buildings';
 import type { BuildingDefinition, BuildingInstance, Province, RoadType, Tile } from '../core/types';
 
 /** Minimal province shape needed by spatial helpers (lets terrain generation reuse them). */
@@ -27,6 +27,14 @@ export function footprintTiles(def: BuildingDefinition, x: number, y: number): [
   for (let dy = 0; dy < def.footprint[1]; dy++)
     for (let dx = 0; dx < def.footprint[0]; dx++) out.push([x + dx, y + dy]);
   return out;
+}
+
+/** Remove an existing structure and clear its entire footprint without awarding a refund. */
+export function detachBuilding(p: Province, b: BuildingInstance): void {
+  const index = p.buildings.indexOf(b);
+  if (index < 0) return;
+  for (const [x, y] of footprintTiles(defOf(b), b.x, b.y)) p.tiles[idx(p, x, y)]!.buildingId = null;
+  p.buildings.splice(index, 1);
 }
 
 /** Tiles 4-adjacent to a footprint rectangle (outside it). */

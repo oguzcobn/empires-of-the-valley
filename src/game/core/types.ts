@@ -525,6 +525,21 @@ export interface GameSettings {
   autoPauseOnMilestone: boolean;
 }
 
+export type SurpriseKind = 'ufo' | 'pirates';
+export type SurprisePoint = [number, number];
+
+export interface CitySurprise {
+  kind: SurpriseKind;
+  startedAt: number;
+  /** Entry route from the map edge, and ground route after disembarking. */
+  approach: SurprisePoint[];
+  walk: SurprisePoint[];
+  defense: SurprisePoint[];
+  defenders?: number;
+  outcome?: 'repelled' | 'breached';
+  damage?: SurprisePoint[];
+}
+
 export interface GameState {
   schemaVersion: number;
   gameVersion: string;
@@ -571,6 +586,9 @@ export interface GameState {
   tourism: TourismState;
   shipyard: ShipyardState;
   cityLife?: CityLifeState;
+  surprise?: CitySurprise;
+  nextSurpriseTick?: number;
+  nextSurpriseKind?: SurpriseKind;
   /** Current civilisation era; absent in legacy saves and treated as age 1. */
   age?: CityAge;
   /** Player-authored citizen names, keyed by stable citizen ordinal. */

@@ -1,3 +1,5 @@
+export const MILITIA_CAP = 200;
+
 export const UNIT_IDS = ['infantry', 'scout', 'medic', 'signals', 'engineer'] as const;
 export type UnitId = (typeof UNIT_IDS)[number];
 

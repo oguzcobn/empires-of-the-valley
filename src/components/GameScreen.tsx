@@ -7,6 +7,7 @@ import { nightFactor } from '../game/rendering/weather';
 import type { GameState } from '../game/core/types';
 import { defOf } from '../game/data/buildings';
 import { homeProvince } from '../game/systems/economy';
+import { DEFENSE_THRESHOLD, surpriseTimeline } from '../game/systems/citySurprises';
 import { BuildCatalog } from './BuildCatalog';
 import { Inspector } from './Inspector';
 import {
@@ -175,6 +176,32 @@ function useShortcuts(): void {
   }, []);
 }
 
+function SurpriseMarker({ game }: { game: GameState }): ReactElement | null {
+  const event = game.surprise;
+  const focusOn = useApp((s) => s.focusOn);
+  if (!event) return null;
+  const timeline = surpriseTimeline(event);
+  const age = game.tick - event.startedAt;
+  const traveling = age < timeline.landing || age > timeline.boarding;
+  const route = traveling ? event.approach : event.walk;
+  const progress = traveling
+    ? age < timeline.landing ? age / timeline.landing : 1 - (age - timeline.boarding) / (timeline.departure - timeline.boarding)
+    : age < timeline.confrontation ? (age - timeline.landing) / (timeline.confrontation - timeline.landing)
+      : age > timeline.resolution ? 1 - (age - timeline.resolution) / (timeline.boarding - timeline.resolution) : 1;
+  const index = Math.round(Math.max(0, Math.min(1, progress)) * (route.length - 1));
+  const [x, y] = route[index]!;
+  const title = event.kind === 'ufo' ? 'Tanımlanamayan ziyaretçi'
+    : event.outcome === 'repelled' ? 'Korsanlar püskürtüldü'
+      : event.outcome === 'breached' ? 'Korsanlar geri çekiliyor' : 'Korsan baskını';
+  return (
+    <button type="button" data-testid="surprise-marker" className="btn surprise-marker"
+      onClick={() => focusOn(x, y)} aria-label={`${title}. Haritada göster.`}>
+      <span>{title}</span>
+      {event.kind === 'pirates' && !event.outcome && <small>{game.militia ?? 0} / {DEFENSE_THRESHOLD + 1} asker</small>}
+    </button>
+  );
+}
+
 export function GameScreen({ game }: { game: GameState }): ReactElement {
   const buildOpen = useApp((s) => s.buildOpen);
   const tool = useApp((s) => s.tool);
@@ -195,6 +222,7 @@ export function GameScreen({ game }: { game: GameState }): ReactElement {
       style={{ '--sky-night': nightFactor(clockHour(game.tick)) } as React.CSSProperties}>
       <ValleyCanvas />
       <TopHud game={game} />
+      <SurpriseMarker game={game} />
       <div className="mobile-drawer-tabs" aria-label="Şehir görünümü">
         <button className="btn" type="button" aria-expanded={!buildOpen && drawer === 'city'} onClick={() => { closeDrawer(); setDrawer(drawer === 'city' ? null : 'city'); }}>Şehir</button>
         <button className="btn" type="button" aria-expanded={!buildOpen && drawer === 'radar'} onClick={() => { closeDrawer(); setDrawer(drawer === 'radar' ? null : 'radar'); }}>Radar</button>

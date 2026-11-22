@@ -157,6 +157,17 @@ export const gameStateSchema = z
     eventLog: z.array(gameEvent).max(500),
     nextEventId: nat,
     nextBuildingId: nat,
+    surprise: z.object({
+      kind: z.enum(['ufo', 'pirates']), startedAt: nat,
+      approach: z.array(z.tuple([nat.max(95), nat.max(95)])).min(1).max(9216),
+      walk: z.array(z.tuple([nat.max(95), nat.max(95)])).min(1).max(9216),
+      defense: z.array(z.tuple([nat.max(95), nat.max(95)])).max(9216),
+      defenders: nat.max(200).optional(),
+      outcome: z.enum(['repelled', 'breached']).optional(),
+      damage: z.array(z.tuple([nat.max(95), nat.max(95)])).max(2).optional(),
+    }).strict().optional(),
+    nextSurpriseTick: nat.optional(),
+    nextSurpriseKind: z.enum(['ufo', 'pirates']).optional(),
     cityLife: z.object({
       nextId: nat, completedTrips: nat, completedFlights: nat, passengers: nat, revenue: nat, operatingCosts: nat,
       jobs: z.array(z.object({

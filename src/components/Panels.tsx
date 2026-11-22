@@ -557,7 +557,7 @@ function ArmyPanel({ game }: { game: GameState }): ReactElement {
     <div className="grid-2">
       <section>
         <h4>Şehir Savunma Birliği</h4>
-        <Row label="Eğitimli milis">{force} asker</Row>
+        <Row label="Eğitimli milis">{force} / 200 asker</Row>
         <Row label="Gözetleme kulesi">{towers}</Row>
         <Row label="Kışla">{barracksCount}</Row>
         <Row label="Güvenli ilçeler">{game.claimedDistricts?.length ?? 0}</Row>
