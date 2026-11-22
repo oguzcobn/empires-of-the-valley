@@ -127,3 +127,89 @@
     visibility: hidden;
   }
 }
+
+.mobile-drawer-tabs, .mobile-drawer-close, .camera-rotate .touch-zoom { display: none; }
+
+@media (pointer: coarse), (max-width: 600px), (orientation: landscape) and (max-height: 480px) {
+  .game-screen button, .game-screen select { touch-action: manipulation; }
+  .game-screen :is(.btn, select, .speed-btn, .camera-rotate button, .game-menu-close) {
+    min-height: 44px;
+  }
+  .game-screen :is(.catalog, .inspector, .game-menu-popover, .modal-body) {
+    overflow-wrap: anywhere;
+  }
+  .game-screen .mobile-drawer-tabs {
+    position: absolute;
+    top: var(--hud-bottom);
+    left: var(--left-edge, .5rem);
+    display: flex;
+    gap: .25rem;
+    z-index: 7;
+  }
+  .game-screen:not(.tool-select) .mobile-drawer-tabs,
+  .game-screen.build-catalog-open .mobile-drawer-tabs { display: none; }
+  .game-screen :is(.left-column, .right-column):not(.drawer-open) { display: none; }
+  .game-screen :is(.left-column, .right-column).drawer-open {
+    top: auto;
+    bottom: calc(var(--bottom-edge, .5rem) + 54px);
+    width: auto;
+    left: var(--left-edge, .5rem);
+    right: var(--right-edge, .5rem);
+    max-height: min(47dvh, calc(100dvh - var(--hud-bottom) - 58px));
+    z-index: 18;
+    background: #232d24;
+    border: 1px solid #8c8666;
+    border-radius: .6rem;
+    padding: .35rem;
+    overflow: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+  .game-screen .mobile-drawer-close {
+    display: block;
+    position: sticky;
+    top: 0;
+    align-self: flex-end;
+    z-index: 1;
+  }
+  .game-screen .right-column.inspecting :is(.radar-minimap, .alerts-list) { display: none; }
+  .game-screen .toolbar { width: min(100% - 1rem, 34rem); }
+  .game-screen .toolbar .tool-group {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+  }
+  .game-screen .toolbar .tool { flex-direction: column; gap: 0; min-width: 0; font-size: .72rem; }
+  .game-screen .camera-rotate {
+    top: var(--hud-bottom);
+    bottom: auto;
+    left: auto;
+    right: var(--right-edge, .5rem);
+    gap: 2px;
+    padding: 0 2px;
+  }
+  .game-screen .camera-rotate button { min-width: 44px; }
+  .game-screen .camera-rotate span { display: none; }
+  .game-screen .camera-rotate .touch-zoom { display: block; }
+  .game-screen .mobile-place-hint { top: calc(var(--hud-bottom) + 48px); width: max-content; }
+  .game-screen .mobile-placement-pad,
+  .game-screen .road-plan-controls { bottom: calc(var(--bottom-edge, .5rem) + 54px); }
+  .game-screen .mobile-placement-pad { gap: 3px; }
+  .game-screen .mobile-placement-arrows,
+  .game-screen .mobile-placement-arrows > div { flex-direction: row; gap: .25rem; }
+  .game-screen .mobile-placement-arrows button,
+  .game-screen .mobile-placement-pad .mobile-place-actions button { min-height: 44px; min-width: 44px; }
+  .game-screen .road-plan-controls { width: min(30rem, calc(100% - 1rem)); max-width: none; }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .game-screen :is(.left-column, .right-column).drawer-open {
+    top: calc(var(--hud-bottom) + 48px);
+    bottom: calc(var(--bottom-edge) + 54px);
+    width: min(20rem, 45%);
+    max-height: none;
+  }
+  .game-screen .left-column.drawer-open { right: auto; }
+  .game-screen .right-column.drawer-open { left: auto; }
+  .game-screen .mobile-placement-pad { width: min(21rem, 46vw); left: auto; right: var(--right-edge); transform: none; }
+}
