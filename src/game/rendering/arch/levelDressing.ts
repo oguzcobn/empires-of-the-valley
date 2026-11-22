@@ -19,7 +19,6 @@ import { streetMaterial } from './streetMaterial';
 export function drawLevelDressing(ctx: DrawCtx, w: number, h: number, level: number, style: ArchitectureStyle): void {
   if (level < 2) return;
   const edge = 0.06;
-  const scottish = style === 'scottish';
   const modern = level >= 4;
   // kerb strip along both front edges
   const material = streetMaterial(style);
