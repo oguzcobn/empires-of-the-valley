@@ -261,8 +261,8 @@ export const MONUMENT_MODELS: Partial<Record<LandmarkId, Parts>> = {
   ],
   ryoanji_garden: [
     ['wall', 0, 0, 7.25, 4.15, 0, .13, 'gravel'],
-    ['wall', 0, -1.93, 7.25, .28, .13, 1.14, 'sandstone'],
-    ['gable', 0, -1.93, 7.38, .6, 1.27, .19, 'tile'],
+    ['wall', 0, -1.93, 7.25, .28, .13, 1.30, 'sandstone'],
+    ['gable', 0, -1.93, 7.38, .6, 1.43, .19, 'tile'],
     ...[[ -2.6, .8, .52], [-1.4, -.95, .41], [.34, .42, .65], [1.9, -.63, .42], [2.7, .73, .51]].flatMap(([x, z, w]): Parts => [
       ['dome', x!, z!, w! * 1.6, w!, .13, w! * .63, 'rubble'],
       ['dome', x! + .49, z! - .11, w! * .9, w! * .6, .13, w! * .36, 'rubble'],
