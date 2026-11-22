@@ -3,6 +3,7 @@ import { useApp } from '../app/store';
 import { calendar } from '../game/core/time';
 import type { BuildingInstance, GameState, Province, ResourceId, TaxRate } from '../game/core/types';
 import { NO_TOOLS_OUTPUT_PERMILLE, TAX_HAPPINESS, TRADE_OFFERS } from '../game/data/balance';
+import { isUrbanBuilding } from '../game/data/urbanBuildingModels';
 import { defOf, specOf } from '../game/data/buildings';
 import { missingFor, requirementError, validateCommand } from '../game/systems/commands';
 import {
@@ -375,6 +376,7 @@ export function Inspector({ game }: { game: GameState }): ReactElement | null {
         </button>
       </header>
       <BuildingPreview id={b.definitionId} style={b.style} level={b.level} look={b.look} condition={b.condition} instanceId={b.id} />
+      {isUrbanBuilding(b.definitionId) && <button type="button" className="btn" onClick={() => useApp.getState().openPanel('atlas')}>3B incele</button>}
       <p className="muted">{t(`building.${b.definitionId}.desc`)}</p>
       {b.definitionId === 'hut' && isBuilt(b) && (() => {
         const district = neighborhoodServices(p).homes.find(({ home }) => home.id === b.id);
