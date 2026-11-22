@@ -1,6 +1,6 @@
 import type { MeshStandardMaterial } from 'three';
 
-type Surface = 'masonry' | 'wood' | 'shingle' | 'granular';
+type Surface = 'masonry' | 'brick' | 'wood' | 'shingle' | 'granular';
 
 /** World-space microstructure keeps the scale consistent across neighbouring meshes. */
 export function addSurfaceDetail(material: MeshStandardMaterial, surface: Surface): void {
@@ -33,6 +33,12 @@ export function addSurfaceDetail(material: MeshStandardMaterial, surface: Surfac
         float joint = abs(fract(p.y * 5.) - .5);
         float course = smoothstep(.44, .50, joint);
         detail = block * .15 - course * .15;`,
+      brick: `float row = floor(p.y * 13.2);
+        float along = (p.x + p.z) * 4.8 + mod(row, 2.) * .5;
+        float horizontal = smoothstep(.455, .5, abs(fract(p.y * 13.2) - .5));
+        float vertical = smoothstep(.468, .5, abs(fract(along) - .5));
+        float brick = surfaceHash(vec3(floor(along), row, 4.));
+        detail = brick * .17 - max(horizontal, vertical) * .24;`,
       wood: 'detail = (surfaceNoise(p * vec3(33., 1.4, 27.)) - .5) * .21;',
       shingle: 'detail = (surfaceNoise(p * vec3(9., 16., 8.)) - .5) * .19;',
       granular: 'detail = (surfaceNoise(p * 7.) - .5) * .21;',

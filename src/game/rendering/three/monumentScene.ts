@@ -5,8 +5,12 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import type { LandmarkId } from '../../core/types';
+import type { ArchitectureStyle, LandmarkId } from '../../core/types';
+import { isUrbanBuilding } from '../../data/urbanBuildingModels';
+import type { UrbanId } from '../../data/urbanBuildingModels';
+import { createUrbanBuilding } from './urbanBuildingGeometry';
 import { createMonument } from './monumentGeometry';
+import { makeLocalExposure } from './localExposure';
 import { addSurfaceDetail } from './materialDetail';
 
 const LIGHTING = {
@@ -18,7 +22,7 @@ const LIGHTING = {
 export type MonumentLighting = keyof typeof LIGHTING;
 
 /** On-demand renderer: redraws only when lighting, viewport or the orbit camera changes. */
-export function mountMonumentScene(host: HTMLElement, id: LandmarkId) {
+export function mountMonumentScene(host: HTMLElement, id: LandmarkId | UrbanId, style: ArchitectureStyle = 'turkish') {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
   const touch = matchMedia('(pointer: coarse)').matches;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, touch ? 1.25 : 1.5));
@@ -31,11 +35,17 @@ export function mountMonumentScene(host: HTMLElement, id: LandmarkId) {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(36, 1, .1, 1200);
-  const model = createMonument(id);
+  const urban = isUrbanBuilding(id);
+  const model = urban ? createUrbanBuilding(id, style) : createMonument(id);
   const bounds = new THREE.Box3().setFromObject(model);
+  if (urban) {
+    const dim = bounds.getSize(new THREE.Vector3());
+    model.scale.setScalar(9 / Math.max(dim.x, dim.y, dim.z));
+    bounds.setFromObject(model);
+  }
   const sphere = bounds.getBoundingSphere(new THREE.Sphere());
   scene.add(model);
-  camera.position.copy(sphere.center).addScaledVector(new THREE.Vector3(-.7, .42, 1).normalize(), sphere.radius * 3.5);
+  camera.position.copy(sphere.center).addScaledVector(new THREE.Vector3(-.7, .42, 1).normalize(), sphere.radius * (urban && id !== 'skyscraper' ? 2.65 : 3.5));
 
   const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x6a6f57, roughness: .97 });
   addSurfaceDetail(groundMaterial, 'granular');
@@ -72,14 +82,20 @@ export function mountMonumentScene(host: HTMLElement, id: LandmarkId) {
   const composer = touch ? null : new EffectComposer(renderer);
   const ao = composer ? new GTAOPass(scene, camera) : null;
   const output = composer ? new OutputPass() : null;
+  const localExposure = composer && urban ? makeLocalExposure() : null;
   if (composer && ao && output) {
     ao.updateGtaoMaterial({ radius: .45, thickness: .58, samples: 8 });
     ao.blendIntensity = .42;
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(ao);
+    if (localExposure) composer.addPass(localExposure);
     composer.addPass(output);
   }
 
+  // The exposure meter samples scene-linear luminance before ACES and sRGB.
+  const meter = urban && renderer.extensions.has('EXT_color_buffer_float')
+    ? new THREE.WebGLRenderTarget(20, 16, { type: THREE.HalfFloatType }) : null;
+  const samples = meter ? new Uint16Array(20 * 16 * 4) : null;
   const pmrem = new THREE.PMREMGenerator(renderer);
   const reflectionScene = new THREE.Scene();
   let reflection: THREE.WebGLRenderTarget | null = null;
@@ -99,6 +115,7 @@ export function mountMonumentScene(host: HTMLElement, id: LandmarkId) {
     camera.updateProjectionMatrix();
     renderer.setSize(w, h, false);
     composer?.setSize(w, h);
+    if (localExposure) localExposure.uniforms.pixel!.value.set(1 / w, 1 / h);
     requestDraw();
   };
 
@@ -128,6 +145,30 @@ export function mountMonumentScene(host: HTMLElement, id: LandmarkId) {
       scene.add(sky);
     }
     renderer.shadowMap.needsUpdate = true;
+    if (meter && samples) {
+      const original = renderer.getRenderTarget();
+      try {
+        renderer.setRenderTarget(meter);
+        renderer.render(scene, camera);
+        renderer.readRenderTargetPixels(meter, 0, 0, 20, 16, samples);
+        const luminance: number[] = [];
+        for (let y = 3; y < 13; y++) for (let x = 4; x < 16; x++) {
+          const i = (20 * y + x) * 4;
+          const L = .2126 * THREE.DataUtils.fromHalfFloat(samples[i]!)
+            + .7152 * THREE.DataUtils.fromHalfFloat(samples[i + 1]!)
+            + .0722 * THREE.DataUtils.fromHalfFloat(samples[i + 2]!);
+          if (Number.isFinite(L) && L > .001) luminance.push(L);
+        }
+        luminance.sort((a, b) => a - b);
+        const median = luminance[Math.floor(luminance.length / 2)];
+        if (median !== undefined) {
+          const ev = THREE.MathUtils.clamp(Math.log2(.24 / median), -.4, .4);
+          renderer.toneMappingExposure = p.exposure * 2 ** ev;
+        }
+      } finally {
+        renderer.setRenderTarget(original);
+      }
+    }
     requestDraw();
   };
 
@@ -152,11 +193,19 @@ export function mountMonumentScene(host: HTMLElement, id: LandmarkId) {
       item.geometry.dispose();
       for (const material of [item.material].flat()) materials.add(material);
     });
-    materials.forEach(material => material.dispose());
+    materials.forEach(material => {
+      if (material instanceof THREE.MeshStandardMaterial) {
+        material.map?.dispose();
+        material.normalMap?.dispose();
+      }
+      material.dispose();
+    });
     sun.shadow.dispose();
     reflection?.dispose();
     pmrem.dispose();
+    meter?.dispose();
     ao?.dispose();
+    localExposure?.dispose();
     output?.dispose();
     composer?.dispose();
     renderer.dispose();

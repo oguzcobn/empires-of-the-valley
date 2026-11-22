@@ -5,6 +5,8 @@ import { useApp } from '../app/store';
 import type { GameState, VesselKind } from '../game/core/types';
 import { ATLAS } from '../game/data/atlas';
 import type { AtlasEntry } from '../game/data/atlas';
+import { isUrbanBuilding } from '../game/data/urbanBuildingModels';
+import { buildingById } from '../game/systems/grid';
 import { BUILDINGS, defOf } from '../game/data/buildings';
 import { MAX_ORDERS, VESSELS, VESSEL_KINDS } from '../game/data/shipyard';
 import { drawStyledBuilding } from '../game/rendering/arch/buildings';
@@ -42,7 +44,10 @@ const field = (e: AtlasEntry, f: 'period' | 'location' | 'materials' | 'history'
   t((e.landmark ? `atlas.${e.landmark}.${f}` : `atlas.v.${e.id}.${f}`) as TKey);
 
 export function AtlasPanel({ game }: { game: GameState | null }): ReactElement {
-  const [showModels, setShowModels] = useState(false);
+  const selected = useApp(s => s.selectedBuildingId);
+  const building = game && selected ? buildingById(homeProvince(game), selected) : undefined;
+  const urbanId = building && isUrbanBuilding(building.definitionId) ? building.definitionId : undefined;
+  const [showModels, setShowModels] = useState<'monuments' | 'urban' | null>(urbanId ? 'urban' : null);
   const [culture, setCulture] = useState<'scottish' | 'turkish'>('scottish');
   const [open, setOpen] = useState<string>(ATLAS.find((e) => e.culture === 'scottish')!.id);
   const entries = ATLAS.filter((e) => e.culture === culture);
@@ -51,10 +56,16 @@ export function AtlasPanel({ game }: { game: GameState | null }): ReactElement {
   return (
     <div className="atlas" data-testid="atlas">
       <p className="hint">{t('atlas.intro')}</p>
-      <button type="button" className="btn" aria-expanded={showModels} onClick={() => setShowModels(value => !value)}>
-        {showModels ? '3B görünümü kapat' : '40 anıtı 3B incele'}
-      </button>
-      {showModels && <MonumentViewer />}
+      <div className="actions">
+        <button type="button" className="btn" aria-expanded={showModels === 'monuments'} onClick={() => setShowModels(value => value === 'monuments' ? null : 'monuments')}>
+          {showModels === 'monuments' ? 'Anıt görünümünü kapat' : '40 anıtı 3B incele'}
+        </button>
+        <button type="button" className="btn" aria-expanded={showModels === 'urban'} onClick={() => setShowModels(value => value === 'urban' ? null : 'urban')}>
+          {showModels === 'urban' ? 'Bina görünümünü kapat' : '9 şehir binasını 3B incele'}
+        </button>
+      </div>
+      {showModels && <MonumentViewer key={showModels} urban={showModels === 'urban'}
+        initialBuilding={showModels === 'urban' ? urbanId : undefined} style={building?.style ?? game?.culture} />}
       <div className="segmented" role="tablist">
         {(['scottish', 'turkish'] as const).map((c) => (
           <button

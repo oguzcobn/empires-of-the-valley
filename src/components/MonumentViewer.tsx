@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { LANDMARK_IDS, LANDMARKS } from '../game/data/landmarks';
+import { URBAN_IDS } from '../game/data/urbanBuildingModels';
+import type { UrbanId } from '../game/data/urbanBuildingModels';
 import { MONUMENT_MODELS } from '../game/data/monumentModels';
-import type { LandmarkId } from '../game/core/types';
+import type { ArchitectureStyle, LandmarkId } from '../game/core/types';
 import type { MonumentLighting, mountMonumentScene } from '../game/rendering/three/monumentScene';
 import { t } from '../i18n';
 
@@ -11,8 +13,8 @@ const groups = [
   ['japanese', 'Kyoto'], ['medieval_european', 'Prag'],
 ] as const;
 
-export function MonumentViewer(): ReactElement {
-  const [id, setId] = useState<LandmarkId>('trabzon_ayasofya');
+export function MonumentViewer({ urban = false, style, initialBuilding }: { urban?: boolean; style?: ArchitectureStyle; initialBuilding?: UrbanId } = {}): ReactElement {
+  const [id, setId] = useState<LandmarkId | UrbanId>(initialBuilding ?? (urban ? 'skyscraper' : 'trabzon_ayasofya'));
   const [lighting, setLighting] = useState<MonumentLighting>('day');
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const host = useRef<HTMLDivElement>(null);
@@ -25,7 +27,7 @@ export function MonumentViewer(): ReactElement {
     void import('../game/rendering/three/monumentScene')
       .then(({ mountMonumentScene }) => {
         if (!mounted) return;
-        renderer.current = mountMonumentScene(target, id);
+        renderer.current = mountMonumentScene(target, id, style);
         setStatus('ready');
       })
       .catch(() => { if (mounted) setStatus('error'); });
@@ -34,13 +36,14 @@ export function MonumentViewer(): ReactElement {
       renderer.current?.dispose();
       renderer.current = null;
     };
-  }, [id]);
+  }, [id, style]);
   return (
     <section className="monument-viewer" data-testid="monument-viewer">
       <div className="monument-selectors">
-        <label>Anıt
-          <select value={id} onChange={event => setId(event.target.value as LandmarkId)}>
-            {groups.map(([culture, city]) => (
+        <label>{urban ? 'Bina' : 'Anıt'}
+          <select value={id} onChange={event => setId(event.target.value as LandmarkId | UrbanId)}>
+            {urban ? URBAN_IDS.map(key => <option key={key} value={key}>{t(`building.${key}.name`)}</option>) :
+            groups.map(([culture, city]) => (
               <optgroup label={city} key={culture}>
                 {LANDMARK_IDS.filter(key => MONUMENT_MODELS[key] && LANDMARKS[key].landmark?.culture === culture)
                   .map(key => <option value={key} key={key}>{t(`building.${key}.name`)}</option>)}
@@ -66,7 +69,7 @@ export function MonumentViewer(): ReactElement {
       </div>
       <div className="monument-stage" hidden={status === 'error'} aria-label={t(`building.${id}.name`)} ref={host} />
       {status === 'loading' && <p role="status">3B model yükleniyor…</p>}
-      {status === 'error' && <p role="alert">3B görünüm bu cihazda açılamadı. Anıtların haritadaki çizimleri kullanılabilir.</p>}
+      {status === 'error' && <p role="alert">3B görünüm bu cihazda açılamadı. Haritadaki çizimler kullanılabilir.</p>}
       {status === 'ready' && <p className="hint">Döndürmek için sürükle. Yakınlaştırmak için iki parmağını veya fare tekerleğini kullan.</p>}
     </section>
   );
