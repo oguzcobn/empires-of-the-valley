@@ -10,6 +10,7 @@ export interface AppSettings {
   reducedMotion: boolean;
   muted: boolean;
   showPerf: boolean;
+  map3d: boolean;
   graphics: GraphicsSetting;
   dayNight: boolean;
   weather: boolean;
@@ -58,6 +59,7 @@ export function defaultSettings(): AppSettings {
     muted: false,
     showPerf: false,
     graphics: 'auto',
+    map3d: false,
     dayNight: true,
     weather: true,
   };
@@ -76,6 +78,7 @@ export function loadSettings(): AppSettings {
       if (typeof r.muted === 'boolean') base.muted = r.muted;
       if (typeof r.showPerf === 'boolean') base.showPerf = r.showPerf;
       if (GRAPHICS_SETTINGS.includes(r.graphics as GraphicsSetting)) base.graphics = r.graphics!;
+      if (typeof r.map3d === 'boolean') base.map3d = r.map3d;
       if (typeof r.dayNight === 'boolean') base.dayNight = r.dayNight;
       if (typeof r.weather === 'boolean') base.weather = r.weather;
     }

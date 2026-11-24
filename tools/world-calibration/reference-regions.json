@@ -1,0 +1,2711 @@
+{
+  "schemaVersion": 1,
+  "colorSpace": "display-referred sRGB/D65; inverse sRGB EOTF per pixel, patch mean in linear light; XYZ D65 and CIELAB L*, C* and hue in degrees from that mean; Y is relative screen luminance",
+  "annotation": "Weather and time describe visible lighting, not in-game telemetry. Rectangles have normalized top-left origin, exclusive bottom-right. Images used for measurement only.",
+  "frames": [
+    {
+      "id": "manor0",
+      "game": "Manor Lords",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1363080/bffe9f34abaae09855becd6e8ca2ddb9065b2ebb/ss_bffe9f34abaae09855becd6e8ca2ddb9065b2ebb.1920x1080.jpg?t=1795190328",
+      "store": "https://store.steampowered.com/app/1363080/",
+      "sha256": "4fd4d06976df0b40a2c567ba48817e788779cc8adfc9107641546fb6954684ed",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Elevated rural settlement and pasture",
+      "regions": [
+        {
+          "material": "grass",
+          "description": "lit pasture",
+          "rect": [
+            0.103645833,
+            0.521296296,
+            0.110416667,
+            0.533333333
+          ],
+          "linearRGB": [
+            0.20290835,
+            0.18074273,
+            0.03179296
+          ],
+          "Y": 0.17470632,
+          "L": 48.847643,
+          "C": 38.199868,
+          "h": 100.406463
+        },
+        {
+          "material": "grass",
+          "description": "meadow",
+          "rect": [
+            0.760416667,
+            0.887962963,
+            0.7671875,
+            0.9
+          ],
+          "linearRGB": [
+            0.10420067,
+            0.12156507,
+            0.01691742
+          ],
+          "Y": 0.1103192,
+          "L": 39.634181,
+          "C": 36.006271,
+          "h": 110.023948
+        },
+        {
+          "material": "canopy",
+          "description": "woodland foliage",
+          "rect": [
+            0.086979167,
+            0.343518519,
+            0.09375,
+            0.355555556
+          ],
+          "linearRGB": [
+            0.03620544,
+            0.03908175,
+            0.01414726
+          ],
+          "Y": 0.03667039,
+          "L": 22.538651,
+          "C": 15.769848,
+          "h": 110.708058
+        },
+        {
+          "material": "canopy",
+          "description": "edge of woods",
+          "rect": [
+            0.883333333,
+            0.219444444,
+            0.890104167,
+            0.231481481
+          ],
+          "linearRGB": [
+            0.02721263,
+            0.03671757,
+            0.04463989
+          ],
+          "Y": 0.03526792,
+          "L": 22.040943,
+          "C": 5.074346,
+          "h": 248.796531
+        },
+        {
+          "material": "road",
+          "description": "pale dirt track",
+          "rect": [
+            0.2734375,
+            0.805555556,
+            0.280208333,
+            0.817592593
+          ],
+          "linearRGB": [
+            0.5459514,
+            0.47834481,
+            0.45182147
+          ],
+          "Y": 0.49080863,
+          "L": 75.501607,
+          "C": 4.9154,
+          "h": 50.206114
+        },
+        {
+          "material": "road",
+          "description": "village lane",
+          "rect": [
+            0.416666667,
+            0.444444444,
+            0.4234375,
+            0.456481481
+          ],
+          "linearRGB": [
+            0.13713473,
+            0.16224313,
+            0.0791308
+          ],
+          "Y": 0.15090464,
+          "L": 45.757852,
+          "C": 19.483025,
+          "h": 118.649766
+        },
+        {
+          "material": "roof",
+          "description": "light thatch",
+          "rect": [
+            0.746875,
+            0.739814815,
+            0.753645833,
+            0.751851852
+          ],
+          "linearRGB": [
+            0.34196137,
+            0.26750076,
+            0.22900932
+          ],
+          "Y": 0.28055842,
+          "L": 59.939155,
+          "C": 8.762759,
+          "h": 58.474791
+        },
+        {
+          "material": "shadow",
+          "description": "shade by house",
+          "rect": [
+            0.0203125,
+            0.769444444,
+            0.027083333,
+            0.781481481
+          ],
+          "linearRGB": [
+            0.00607341,
+            0.00650671,
+            0.00422669
+          ],
+          "Y": 0.00625,
+          "L": 5.645599,
+          "C": 3.059685,
+          "h": 117.606756
+        }
+      ]
+    },
+    {
+      "id": "manor3",
+      "game": "Manor Lords",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1363080/5111f429dfbd8b65611e0e322dc90f470d015dca/ss_5111f429dfbd8b65611e0e322dc90f470d015dca.1920x1080.jpg?t=1795190328",
+      "store": "https://store.steampowered.com/app/1363080/",
+      "sha256": "784d2eccf32e448113fea071d894f0bb633334f0fb1ec14fc4c9c09f90a3b1af",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Low view along a medieval village lane",
+      "regions": [
+        {
+          "material": "roof",
+          "description": "red tiled slope",
+          "rect": [
+            0.75,
+            0.313888889,
+            0.756770833,
+            0.325925926
+          ],
+          "linearRGB": [
+            0.34483235,
+            0.16607381,
+            0.09053166
+          ],
+          "Y": 0.19863867,
+          "L": 51.682946,
+          "C": 26.954223,
+          "h": 57.957223
+        },
+        {
+          "material": "roof",
+          "description": "brown tiled slope",
+          "rect": [
+            0.206770833,
+            0.337962963,
+            0.213541667,
+            0.35
+          ],
+          "linearRGB": [
+            0.14878277,
+            0.08400282,
+            0.04047748
+          ],
+          "Y": 0.09463833,
+          "L": 36.862416,
+          "C": 20.19524,
+          "h": 69.21647
+        },
+        {
+          "material": "roof",
+          "description": "weathered shingles",
+          "rect": [
+            0.356770833,
+            0.787037037,
+            0.363541667,
+            0.799074074
+          ],
+          "linearRGB": [
+            0.14536681,
+            0.13050718,
+            0.09855041
+          ],
+          "Y": 0.13136095,
+          "L": 42.967596,
+          "C": 7.959583,
+          "h": 92.195083
+        },
+        {
+          "material": "wall",
+          "description": "sunlit plaster",
+          "rect": [
+            0.763541667,
+            0.509259259,
+            0.7703125,
+            0.521296296
+          ],
+          "linearRGB": [
+            0.58342798,
+            0.50369574,
+            0.30656271
+          ],
+          "Y": 0.5064246,
+          "L": 76.461923,
+          "C": 20.834316,
+          "h": 94.023921
+        },
+        {
+          "material": "wall",
+          "description": "pale plaster",
+          "rect": [
+            0.9203125,
+            0.514814815,
+            0.927083333,
+            0.526851852
+          ],
+          "linearRGB": [
+            0.28660183,
+            0.22325908,
+            0.13000525
+          ],
+          "Y": 0.2299998,
+          "L": 55.072317,
+          "C": 18.003802,
+          "h": 85.714518
+        },
+        {
+          "material": "grass",
+          "description": "courtyard lawn",
+          "rect": [
+            0.613541667,
+            0.580555556,
+            0.6203125,
+            0.592592593
+          ],
+          "linearRGB": [
+            0.12751739,
+            0.1547134,
+            0.03177001
+          ],
+          "Y": 0.14005612,
+          "L": 44.240979,
+          "C": 34.411278,
+          "h": 112.794176
+        },
+        {
+          "material": "road",
+          "description": "unsealed road",
+          "rect": [
+            0.696875,
+            0.882407407,
+            0.703645833,
+            0.894444444
+          ],
+          "linearRGB": [
+            0.13092579,
+            0.09991356,
+            0.06531978
+          ],
+          "Y": 0.10401222,
+          "L": 38.553101,
+          "C": 11.712022,
+          "h": 79.744035
+        },
+        {
+          "material": "shadow",
+          "description": "building shade",
+          "rect": [
+            0.1234375,
+            0.92962963,
+            0.130208333,
+            0.941666667
+          ],
+          "linearRGB": [
+            0.01396691,
+            0.01531674,
+            0.01141025
+          ],
+          "Y": 0.01474772,
+          "L": 12.44677,
+          "C": 4.022274,
+          "h": 122.122517
+        }
+      ]
+    },
+    {
+      "id": "manor4",
+      "game": "Manor Lords",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1363080/541dce83a952beb779f2221cb107c6557f192439/ss_541dce83a952beb779f2221cb107c6557f192439.1920x1080.jpg?t=1795190328",
+      "store": "https://store.steampowered.com/app/1363080/",
+      "sha256": "2ab47ce870950528d6db851c3274d02a6aa4b15d78d3c60e8f3b47a554b4d579",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "scattered cloud",
+      "time": "day",
+      "composition": "Low view across fields and cottages",
+      "regions": [
+        {
+          "material": "sky",
+          "description": "blue sky",
+          "rect": [
+            0.066666667,
+            0.19537037,
+            0.0734375,
+            0.207407407
+          ],
+          "linearRGB": [
+            0.3722274,
+            0.49810455,
+            0.58536484
+          ],
+          "Y": 0.47763196,
+          "L": 74.675324,
+          "C": 10.836045,
+          "h": 243.370046
+        },
+        {
+          "material": "sky",
+          "description": "blue zenith",
+          "rect": [
+            0.756770833,
+            0.065740741,
+            0.763541667,
+            0.077777778
+          ],
+          "linearRGB": [
+            0.34288859,
+            0.48678974,
+            0.61494968
+          ],
+          "Y": 0.46543586,
+          "L": 73.896877,
+          "C": 14.132123,
+          "h": 250.537837
+        },
+        {
+          "material": "sky",
+          "description": "daytime cloud",
+          "rect": [
+            0.333333333,
+            0.160185185,
+            0.340104167,
+            0.172222222
+          ],
+          "linearRGB": [
+            0.81181004,
+            0.81973177,
+            0.83571005
+          ],
+          "Y": 0.81920035,
+          "L": 92.539554,
+          "C": 1.085612,
+          "h": 271.277101
+        },
+        {
+          "material": "grass",
+          "description": "lit grass",
+          "rect": [
+            0.103645833,
+            0.521296296,
+            0.110416667,
+            0.533333333
+          ],
+          "linearRGB": [
+            0.13515904,
+            0.11250995,
+            0.0315693
+          ],
+          "Y": 0.11148492,
+          "L": 39.829452,
+          "C": 26.791922,
+          "h": 97.056616
+        },
+        {
+          "material": "grass",
+          "description": "meadow",
+          "rect": [
+            0.263541667,
+            0.538888889,
+            0.2703125,
+            0.550925926
+          ],
+          "linearRGB": [
+            0.21144892,
+            0.20203721,
+            0.04603854
+          ],
+          "Y": 0.19277964,
+          "L": 51.010837,
+          "C": 35.684541,
+          "h": 103.560954
+        },
+        {
+          "material": "canopy",
+          "description": "dark broadleaf foliage",
+          "rect": [
+            0.880208333,
+            0.373148148,
+            0.886979167,
+            0.385185185
+          ],
+          "linearRGB": [
+            0.01968387,
+            0.01260854,
+            0.0099029
+          ],
+          "Y": 0.01391799,
+          "L": 11.902952,
+          "C": 5.687857,
+          "h": 52.145636
+        },
+        {
+          "material": "canopy",
+          "description": "autumn woodland",
+          "rect": [
+            0.3734375,
+            0.390740741,
+            0.380208333,
+            0.402777778
+          ],
+          "linearRGB": [
+            0.23247794,
+            0.08144858,
+            0.03374155
+          ],
+          "Y": 0.11012518,
+          "L": 39.601547,
+          "C": 32.072906,
+          "h": 54.384166
+        },
+        {
+          "material": "roof",
+          "description": "cottage roof",
+          "rect": [
+            0.583333333,
+            0.462037037,
+            0.590104167,
+            0.474074074
+          ],
+          "linearRGB": [
+            0.09937799,
+            0.09535839,
+            0.07727447
+          ],
+          "Y": 0.09490805,
+          "L": 36.912589,
+          "C": 5.273291,
+          "h": 100.891076
+        }
+      ]
+    },
+    {
+      "id": "manor6",
+      "game": "Manor Lords",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1363080/478053049caa6a4c55848fb50b548a1bf5824735/ss_478053049caa6a4c55848fb50b548a1bf5824735.1920x1080.jpg?t=1795190328",
+      "store": "https://store.steampowered.com/app/1363080/",
+      "sha256": "1b3717035931a00ec9b3a6400d19b82f3b86f76eedaf4dc493cedcbd781802df",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Pasture in front of a wooden windmill",
+      "regions": [
+        {
+          "material": "sky",
+          "description": "blue sky",
+          "rect": [
+            0.330208333,
+            0.09537037,
+            0.336979167,
+            0.107407407
+          ],
+          "linearRGB": [
+            0.23882094,
+            0.39213506,
+            0.55075006
+          ],
+          "Y": 0.37097738,
+          "L": 67.350293,
+          "C": 18.609767,
+          "h": 254.428129
+        },
+        {
+          "material": "sky",
+          "description": "blue horizon",
+          "rect": [
+            0.9,
+            0.231481481,
+            0.906770833,
+            0.243518519
+          ],
+          "linearRGB": [
+            0.15362356,
+            0.27565599,
+            0.40319809
+          ],
+          "Y": 0.25890838,
+          "L": 57.933289,
+          "C": 18.681396,
+          "h": 254.476768
+        },
+        {
+          "material": "wall",
+          "description": "weathered mill boards",
+          "rect": [
+            0.6703125,
+            0.337962963,
+            0.677083333,
+            0.35
+          ],
+          "linearRGB": [
+            0.08406862,
+            0.07241607,
+            0.05169938
+          ],
+          "Y": 0.07339903,
+          "L": 32.568508,
+          "C": 7.892621,
+          "h": 89.02881
+        },
+        {
+          "material": "wall",
+          "description": "lit wooden boards",
+          "rect": [
+            0.706770833,
+            0.373148148,
+            0.713541667,
+            0.385185185
+          ],
+          "linearRGB": [
+            0.01248464,
+            0.01210708,
+            0.01022871
+          ],
+          "Y": 0.01205181,
+          "L": 10.595534,
+          "C": 2.140018,
+          "h": 101.797855
+        },
+        {
+          "material": "grass",
+          "description": "long pasture grass",
+          "rect": [
+            0.25,
+            0.716666667,
+            0.256770833,
+            0.728703704
+          ],
+          "linearRGB": [
+            0.04943908,
+            0.0463778,
+            0.02058591
+          ],
+          "Y": 0.04516733,
+          "L": 25.31104,
+          "C": 13.959647,
+          "h": 103.055609
+        },
+        {
+          "material": "grass",
+          "description": "grazing field",
+          "rect": [
+            0.6203125,
+            0.698148148,
+            0.627083333,
+            0.710185185
+          ],
+          "linearRGB": [
+            0.08369344,
+            0.08708769,
+            0.02333291
+          ],
+          "Y": 0.08176433,
+          "L": 34.34766,
+          "C": 24.896632,
+          "h": 107.681782
+        },
+        {
+          "material": "canopy",
+          "description": "wooded edge",
+          "rect": [
+            0.113541667,
+            0.355555556,
+            0.1203125,
+            0.367592593
+          ],
+          "linearRGB": [
+            0.02927324,
+            0.03602712,
+            0.03777642
+          ],
+          "Y": 0.03471701,
+          "L": 21.841827,
+          "C": 2.632539,
+          "h": 219.076297
+        },
+        {
+          "material": "shadow",
+          "description": "near grass in shade",
+          "rect": [
+            0.080208333,
+            0.87037037,
+            0.086979167,
+            0.882407407
+          ],
+          "linearRGB": [
+            0.00657852,
+            0.0068738,
+            0.00542445
+          ],
+          "Y": 0.00670639,
+          "L": 6.057861,
+          "C": 1.947623,
+          "h": 118.134592
+        }
+      ]
+    },
+    {
+      "id": "manor7",
+      "game": "Manor Lords",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1363080/28ac22e5273155aa8a4d907e859a93d191dddb8d/ss_28ac22e5273155aa8a4d907e859a93d191dddb8d.1920x1080.jpg?t=1795190328",
+      "store": "https://store.steampowered.com/app/1363080/",
+      "sha256": "28c192ec5b85f5e2b9f51b5749340ce807cfd70f545ac476ed6c813be7eb0758",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "hazy",
+      "time": "day",
+      "composition": "Long oblique view across an alpine village",
+      "regions": [
+        {
+          "material": "grass",
+          "description": "open grass",
+          "rect": [
+            0.54375,
+            0.875925926,
+            0.550520833,
+            0.887962963
+          ],
+          "linearRGB": [
+            0.14520425,
+            0.16018101,
+            0.01959559
+          ],
+          "Y": 0.14684912,
+          "L": 45.19958,
+          "C": 40.700157,
+          "h": 107.841007
+        },
+        {
+          "material": "grass",
+          "description": "pasture",
+          "rect": [
+            0.903645833,
+            0.858333333,
+            0.910416667,
+            0.87037037
+          ],
+          "linearRGB": [
+            0.02693466,
+            0.03415242,
+            0.00709348
+          ],
+          "Y": 0.03066442,
+          "L": 20.308049,
+          "C": 20.793827,
+          "h": 114.421642
+        },
+        {
+          "material": "canopy",
+          "description": "near treeline",
+          "rect": [
+            0.133333333,
+            0.526851852,
+            0.140104167,
+            0.538888889
+          ],
+          "linearRGB": [
+            0.01143689,
+            0.01292946,
+            0.01375852
+          ],
+          "Y": 0.01267187,
+          "L": 11.044038,
+          "C": 1.349572,
+          "h": 237.856919
+        },
+        {
+          "material": "canopy",
+          "description": "mid-distance forest",
+          "rect": [
+            0.846875,
+            0.378703704,
+            0.853645833,
+            0.390740741
+          ],
+          "linearRGB": [
+            0.01475019,
+            0.01867573,
+            0.0241242
+          ],
+          "Y": 0.01823412,
+          "L": 14.531834,
+          "C": 4.565746,
+          "h": 263.084971
+        },
+        {
+          "material": "canopy",
+          "description": "distant forest",
+          "rect": [
+            0.456770833,
+            0.249074074,
+            0.463541667,
+            0.261111111
+          ],
+          "linearRGB": [
+            0.04553266,
+            0.07533409,
+            0.15187177
+          ],
+          "Y": 0.07452025,
+          "L": 32.814565,
+          "C": 20.207371,
+          "h": 276.380104
+        },
+        {
+          "material": "road",
+          "description": "dirt track",
+          "rect": [
+            0.630208333,
+            0.846296296,
+            0.636979167,
+            0.858333333
+          ],
+          "linearRGB": [
+            0.05410833,
+            0.05244924,
+            0.02125187
+          ],
+          "Y": 0.05055042,
+          "L": 26.891007,
+          "C": 15.820561,
+          "h": 105.089722
+        },
+        {
+          "material": "roof",
+          "description": "barn roof",
+          "rect": [
+            0.380208333,
+            0.727777778,
+            0.386979167,
+            0.739814815
+          ],
+          "linearRGB": [
+            0.01446054,
+            0.01388527,
+            0.02019138
+          ],
+          "Y": 0.01446276,
+          "L": 12.262359,
+          "C": 5.553329,
+          "h": 295.530016
+        },
+        {
+          "material": "shadow",
+          "description": "woodland shade",
+          "rect": [
+            0.306770833,
+            0.912037037,
+            0.313541667,
+            0.924074074
+          ],
+          "linearRGB": [
+            0.00813124,
+            0.00859474,
+            0.00543961
+          ],
+          "Y": 0.00826844,
+          "L": 7.468854,
+          "C": 4.218098,
+          "h": 115.934932
+        }
+      ]
+    },
+    {
+      "id": "manor8",
+      "game": "Manor Lords",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1363080/4b3f53da0b0f28e589399051ac293b93dfa81f1f/ss_4b3f53da0b0f28e589399051ac293b93dfa81f1f.1920x1080.jpg?t=1795190328",
+      "store": "https://store.steampowered.com/app/1363080/",
+      "sha256": "2ea99f1e2ca858d74b766fcf994967b0003cf202f005b164d70c6e767e6ca449",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "validation",
+      "weather": "scattered cloud",
+      "time": "day",
+      "composition": "Ground-level view over meadow toward wooded slope",
+      "regions": [
+        {
+          "material": "sky",
+          "description": "clear patch",
+          "rect": [
+            0.366666667,
+            0.148148148,
+            0.3734375,
+            0.160185185
+          ],
+          "linearRGB": [
+            0.59466821,
+            0.68545653,
+            0.80746596
+          ],
+          "Y": 0.67495441,
+          "L": 85.753526,
+          "C": 9.556923,
+          "h": 262.512527
+        },
+        {
+          "material": "sky",
+          "description": "bright cloud",
+          "rect": [
+            0.106770833,
+            0.083333333,
+            0.113541667,
+            0.09537037
+          ],
+          "linearRGB": [
+            0.3945737,
+            0.4807066,
+            0.63288152
+          ],
+          "Y": 0.47337174,
+          "L": 74.404926,
+          "C": 13.935967,
+          "h": 268.697427
+        },
+        {
+          "material": "canopy",
+          "description": "dense foliage",
+          "rect": [
+            0.927083333,
+            0.349074074,
+            0.933854167,
+            0.361111111
+          ],
+          "linearRGB": [
+            0.01273238,
+            0.01435475,
+            0.00757369
+          ],
+          "Y": 0.01352029,
+          "L": 11.634611,
+          "C": 7.795148,
+          "h": 116.672924
+        },
+        {
+          "material": "canopy",
+          "description": "hillside trees",
+          "rect": [
+            0.606770833,
+            0.319444444,
+            0.613541667,
+            0.331481481
+          ],
+          "linearRGB": [
+            0.04109783,
+            0.04560819,
+            0.02058109
+          ],
+          "Y": 0.04284263,
+          "L": 24.589781,
+          "C": 13.714899,
+          "h": 113.82822
+        },
+        {
+          "material": "grass",
+          "description": "open meadow",
+          "rect": [
+            0.077083333,
+            0.621296296,
+            0.083854167,
+            0.633333333
+          ],
+          "linearRGB": [
+            0.06675121,
+            0.05972385,
+            0.0109266
+          ],
+          "Y": 0.05769644,
+          "L": 28.823697,
+          "C": 26.040721,
+          "h": 100.602102
+        },
+        {
+          "material": "grass",
+          "description": "near meadow",
+          "rect": [
+            0.1703125,
+            0.763888889,
+            0.177083333,
+            0.775925926
+          ],
+          "linearRGB": [
+            0.04422457,
+            0.05041703,
+            0.0080583
+          ],
+          "Y": 0.04604283,
+          "L": 25.57625,
+          "C": 25.751339,
+          "h": 109.640642
+        },
+        {
+          "material": "grass",
+          "description": "far meadow",
+          "rect": [
+            0.296875,
+            0.514814815,
+            0.303645833,
+            0.526851852
+          ],
+          "linearRGB": [
+            0.11577825,
+            0.12350778,
+            0.01587262
+          ],
+          "Y": 0.11409536,
+          "L": 40.261847,
+          "C": 36.827308,
+          "h": 106.801658
+        },
+        {
+          "material": "shadow",
+          "description": "shaded grass",
+          "rect": [
+            0.030208333,
+            0.917592593,
+            0.036979167,
+            0.92962963
+          ],
+          "linearRGB": [
+            0.01888336,
+            0.01998777,
+            0.00944923
+          ],
+          "Y": 0.01899227,
+          "L": 14.949262,
+          "C": 9.861802,
+          "h": 111.224377
+        }
+      ]
+    },
+    {
+      "id": "manor9",
+      "game": "Manor Lords",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1363080/89792c7ac6f16c06ffc12f22f8dbdcece85f9c7a/ss_89792c7ac6f16c06ffc12f22f8dbdcece85f9c7a.1920x1080.jpg?t=1795190328",
+      "store": "https://store.steampowered.com/app/1363080/",
+      "sha256": "9cbdf42ea87ff94fb8826e57d2040cb989b2fb058bdb6c6212e8b7d69ba44a69",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Ground-level view along an autumn dirt road",
+      "regions": [
+        {
+          "material": "sky",
+          "description": "blue sky",
+          "rect": [
+            0.256770833,
+            0.165740741,
+            0.263541667,
+            0.177777778
+          ],
+          "linearRGB": [
+            0.32495693,
+            0.48520659,
+            0.6250554
+          ],
+          "Y": 0.46121947,
+          "L": 73.624594,
+          "C": 15.535833,
+          "h": 249.737011
+        },
+        {
+          "material": "sky",
+          "description": "small cloud",
+          "rect": [
+            0.65,
+            0.136111111,
+            0.656770833,
+            0.148148148
+          ],
+          "linearRGB": [
+            0.62314173,
+            0.65486344,
+            0.70580759
+          ],
+          "Y": 0.65179405,
+          "L": 84.576099,
+          "C": 4.075413,
+          "h": 266.801832
+        },
+        {
+          "material": "grass",
+          "description": "dry meadow",
+          "rect": [
+            0.216666667,
+            0.662962963,
+            0.2234375,
+            0.675
+          ],
+          "linearRGB": [
+            0.08584933,
+            0.0749331,
+            0.02906857
+          ],
+          "Y": 0.07394442,
+          "L": 32.688507,
+          "C": 18.683737,
+          "h": 98.802291
+        },
+        {
+          "material": "grass",
+          "description": "near grass",
+          "rect": [
+            0.0734375,
+            0.787037037,
+            0.080208333,
+            0.799074074
+          ],
+          "linearRGB": [
+            0.04565756,
+            0.03625466,
+            0.01594345
+          ],
+          "Y": 0.03678845,
+          "L": 22.579963,
+          "C": 13.444854,
+          "h": 91.991916
+        },
+        {
+          "material": "canopy",
+          "description": "autumn canopy",
+          "rect": [
+            0.730208333,
+            0.455555556,
+            0.736979167,
+            0.467592593
+          ],
+          "linearRGB": [
+            0.01606077,
+            0.01409199,
+            0.01637427
+          ],
+          "Y": 0.01467542,
+          "L": 12.400208,
+          "C": 2.476819,
+          "h": 321.096748
+        },
+        {
+          "material": "canopy",
+          "description": "woodland edge",
+          "rect": [
+            0.14375,
+            0.497222222,
+            0.150520833,
+            0.509259259
+          ],
+          "linearRGB": [
+            0.02439907,
+            0.01796749,
+            0.01985128
+          ],
+          "Y": 0.01947128,
+          "L": 15.207295,
+          "C": 3.693126,
+          "h": 356.375824
+        },
+        {
+          "material": "road",
+          "description": "cart road",
+          "rect": [
+            0.610416667,
+            0.92962963,
+            0.6171875,
+            0.941666667
+          ],
+          "linearRGB": [
+            0.18944001,
+            0.13460469,
+            0.07963213
+          ],
+          "Y": 0.14229904,
+          "L": 44.560853,
+          "C": 15.9617,
+          "h": 77.630302
+        },
+        {
+          "material": "shadow",
+          "description": "roadside shade",
+          "rect": [
+            0.480208333,
+            0.959259259,
+            0.486979167,
+            0.971296296
+          ],
+          "linearRGB": [
+            0.13073496,
+            0.08507094,
+            0.04795568
+          ],
+          "Y": 0.09210365,
+          "L": 36.386205,
+          "C": 15.65459,
+          "h": 72.933381
+        }
+      ]
+    },
+    {
+      "id": "frontier2",
+      "game": "Farthest Frontier",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1044720/ss_e1ccf51e3f514b8cd74566dc4f5733127f2bfc85.1920x1080.jpg?t=1774274689",
+      "store": "https://store.steampowered.com/app/1044720/",
+      "sha256": "6189b14f70407d4a113cf2ec1149c14777003c1dfc2d7220f40b5aca23a2b5ea",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "hazy",
+      "time": "day",
+      "composition": "Elevated spring town with mixed roof materials",
+      "regions": [
+        {
+          "material": "canopy",
+          "description": "lit broadleaf foliage",
+          "rect": [
+            0.610416667,
+            0.509259259,
+            0.6171875,
+            0.521296296
+          ],
+          "linearRGB": [
+            0.15732291,
+            0.18012856,
+            0.03915677
+          ],
+          "Y": 0.16510379,
+          "L": 47.637094,
+          "C": 35.201775,
+          "h": 110.87881
+        },
+        {
+          "material": "canopy",
+          "description": "dark green tree",
+          "rect": [
+            0.227083333,
+            0.87037037,
+            0.233854167,
+            0.882407407
+          ],
+          "linearRGB": [
+            0.1336107,
+            0.1470488,
+            0.04156942
+          ],
+          "Y": 0.13657792,
+          "L": 43.738111,
+          "C": 28.861476,
+          "h": 110.390888
+        },
+        {
+          "material": "roof",
+          "description": "clay tiles",
+          "rect": [
+            0.330208333,
+            0.722222222,
+            0.336979167,
+            0.734259259
+          ],
+          "linearRGB": [
+            0.05774949,
+            0.07681189,
+            0.04612346
+          ],
+          "Y": 0.07054291,
+          "L": 31.930185,
+          "C": 12.08785,
+          "h": 131.088514
+        },
+        {
+          "material": "roof",
+          "description": "shingles",
+          "rect": [
+            0.913541667,
+            0.662962963,
+            0.9203125,
+            0.675
+          ],
+          "linearRGB": [
+            0.51080915,
+            0.29275146,
+            0.19309479
+          ],
+          "Y": 0.33193373,
+          "L": 64.31718,
+          "C": 23.174262,
+          "h": 58.063016
+        },
+        {
+          "material": "roof",
+          "description": "brown shingles",
+          "rect": [
+            0.413541667,
+            0.568518519,
+            0.4203125,
+            0.580555556
+          ],
+          "linearRGB": [
+            0.12612792,
+            0.08480501,
+            0.08019368
+          ],
+          "Y": 0.09326046,
+          "L": 36.604614,
+          "C": 7.850408,
+          "h": 30.462394
+        },
+        {
+          "material": "wall",
+          "description": "white civic plaster",
+          "rect": [
+            0.327083333,
+            0.237037037,
+            0.333854167,
+            0.249074074
+          ],
+          "linearRGB": [
+            0.1620467,
+            0.13070621,
+            0.12456963
+          ],
+          "Y": 0.13692859,
+          "L": 43.789194,
+          "C": 4.778402,
+          "h": 36.518929
+        },
+        {
+          "material": "road",
+          "description": "dirt lane",
+          "rect": [
+            0.146875,
+            0.497222222,
+            0.153645833,
+            0.509259259
+          ],
+          "linearRGB": [
+            0.44961633,
+            0.35080626,
+            0.19173273
+          ],
+          "Y": 0.36033939,
+          "L": 66.545848,
+          "C": 22.76659,
+          "h": 87.399988
+        },
+        {
+          "material": "grass",
+          "description": "patch by path",
+          "rect": [
+            0.966666667,
+            0.278703704,
+            0.9734375,
+            0.290740741
+          ],
+          "linearRGB": [
+            0.17210489,
+            0.18936872,
+            0.05502995
+          ],
+          "Y": 0.17600129,
+          "L": 49.007472,
+          "C": 30.909018,
+          "h": 110.508698
+        }
+      ]
+    },
+    {
+      "id": "frontier3",
+      "game": "Farthest Frontier",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1044720/2456f7f3973995794cd9634d151cd4cc7e7ff548/ss_2456f7f3973995794cd9634d151cd4cc7e7ff548.1920x1080.jpg?t=1774274689",
+      "store": "https://store.steampowered.com/app/1044720/",
+      "sha256": "2a8d3632c91bc624111b9a71af43f44362258a4e6a891f652f6f4307e5993b1e",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "hazy",
+      "time": "day",
+      "composition": "High oblique view of a lakeshore town",
+      "regions": [
+        {
+          "material": "water",
+          "description": "lake",
+          "rect": [
+            0.416666667,
+            0.935185185,
+            0.4234375,
+            0.947222222
+          ],
+          "linearRGB": [
+            0.0569706,
+            0.0726596,
+            0.0354199
+          ],
+          "Y": 0.06663521,
+          "L": 31.028296,
+          "C": 15.215509,
+          "h": 123.052483
+        },
+        {
+          "material": "water",
+          "description": "nearshore water",
+          "rect": [
+            0.656770833,
+            0.92962963,
+            0.663541667,
+            0.941666667
+          ],
+          "linearRGB": [
+            0.09851441,
+            0.11885941,
+            0.0603691
+          ],
+          "Y": 0.11031105,
+          "L": 39.63281,
+          "C": 16.838855,
+          "h": 120.515565
+        },
+        {
+          "material": "canopy",
+          "description": "shore tree",
+          "rect": [
+            0.090104167,
+            0.834259259,
+            0.096875,
+            0.846296296
+          ],
+          "linearRGB": [
+            0.0563582,
+            0.07136247,
+            0.02053028
+          ],
+          "Y": 0.06450266,
+          "L": 30.52116,
+          "C": 22.790318,
+          "h": 116.426571
+        },
+        {
+          "material": "canopy",
+          "description": "green town tree",
+          "rect": [
+            0.753645833,
+            0.474074074,
+            0.760416667,
+            0.486111111
+          ],
+          "linearRGB": [
+            0.54533993,
+            0.41542857,
+            0.29771457
+          ],
+          "Y": 0.43456123,
+          "L": 71.863463,
+          "C": 15.990316,
+          "h": 74.479854
+        },
+        {
+          "material": "road",
+          "description": "diagonal road",
+          "rect": [
+            0.227083333,
+            0.598148148,
+            0.233854167,
+            0.610185185
+          ],
+          "linearRGB": [
+            0.30573002,
+            0.18017747,
+            0.1371504
+          ],
+          "Y": 0.20377364,
+          "L": 52.261211,
+          "C": 16.477151,
+          "h": 50.179185
+        },
+        {
+          "material": "road",
+          "description": "crossing",
+          "rect": [
+            0.6703125,
+            0.650925926,
+            0.677083333,
+            0.662962963
+          ],
+          "linearRGB": [
+            0.68908788,
+            0.5111214,
+            0.3756073
+          ],
+          "Y": 0.53918937,
+          "L": 78.414442,
+          "C": 16.942343,
+          "h": 69.935973
+        },
+        {
+          "material": "roof",
+          "description": "terracotta",
+          "rect": [
+            0.033333333,
+            0.414814815,
+            0.040104167,
+            0.426851852
+          ],
+          "linearRGB": [
+            0.63897919,
+            0.42223839,
+            0.27938351
+          ],
+          "Y": 0.45802278,
+          "L": 73.417052,
+          "C": 21.815647,
+          "h": 66.935484
+        },
+        {
+          "material": "grass",
+          "description": "town lawn",
+          "rect": [
+            0.380208333,
+            0.237037037,
+            0.386979167,
+            0.249074074
+          ],
+          "linearRGB": [
+            0.35567095,
+            0.27365329,
+            0.13975998
+          ],
+          "Y": 0.2814325,
+          "L": 60.017936,
+          "C": 22.904557,
+          "h": 87.681808
+        }
+      ]
+    },
+    {
+      "id": "frontier4",
+      "game": "Farthest Frontier",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1044720/a70aff85f190a7995ea91500c7bf888fc31d852c/ss_a70aff85f190a7995ea91500c7bf888fc31d852c.1920x1080.jpg?t=1774274689",
+      "store": "https://store.steampowered.com/app/1044720/",
+      "sha256": "925fe007f8a65650b00cf007609592f40e48363f5ea920a7ae97a77404767515",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "clear",
+      "time": "warm late day",
+      "composition": "View down onto autumn river crossing",
+      "regions": [
+        {
+          "material": "water",
+          "description": "river",
+          "rect": [
+            0.166666667,
+            0.64537037,
+            0.1734375,
+            0.657407407
+          ],
+          "linearRGB": [
+            0.09457373,
+            0.10926206,
+            0.05885389
+          ],
+          "Y": 0.10250005,
+          "L": 38.287439,
+          "C": 15.023216,
+          "h": 118.665118
+        },
+        {
+          "material": "water",
+          "description": "open river",
+          "rect": [
+            0.39375,
+            0.603703704,
+            0.400520833,
+            0.615740741
+          ],
+          "linearRGB": [
+            0.11875208,
+            0.1239611,
+            0.06139057
+          ],
+          "Y": 0.11833727,
+          "L": 40.950626,
+          "C": 17.153726,
+          "h": 110.598454
+        },
+        {
+          "material": "water",
+          "description": "river near bridge",
+          "rect": [
+            0.6703125,
+            0.9,
+            0.677083333,
+            0.912037037
+          ],
+          "linearRGB": [
+            0.08628998,
+            0.08579027,
+            0.03616991
+          ],
+          "Y": 0.0823152,
+          "L": 34.460476,
+          "C": 17.968907,
+          "h": 106.710928
+        },
+        {
+          "material": "canopy",
+          "description": "autumn foliage",
+          "rect": [
+            0.05,
+            0.349074074,
+            0.056770833,
+            0.361111111
+          ],
+          "linearRGB": [
+            0.24086796,
+            0.08594282,
+            0.07815334
+          ],
+          "Y": 0.118329,
+          "L": 40.9493,
+          "C": 24.031363,
+          "h": 28.145312
+        },
+        {
+          "material": "canopy",
+          "description": "orange foliage",
+          "rect": [
+            0.95,
+            0.580555556,
+            0.956770833,
+            0.592592593
+          ],
+          "linearRGB": [
+            0.22477841,
+            0.03792541,
+            0.01331791
+          ],
+          "Y": 0.07588794,
+          "L": 33.111391,
+          "C": 43.552914,
+          "h": 44.632876
+        },
+        {
+          "material": "road",
+          "description": "bridge paving",
+          "rect": [
+            0.286979167,
+            0.610185185,
+            0.29375,
+            0.622222222
+          ],
+          "linearRGB": [
+            0.55909108,
+            0.29280428,
+            0.25349471
+          ],
+          "Y": 0.34659913,
+          "L": 65.483025,
+          "C": 21.363271,
+          "h": 35.19318
+        },
+        {
+          "material": "road",
+          "description": "settlement road",
+          "rect": [
+            0.460416667,
+            0.183333333,
+            0.4671875,
+            0.19537037
+          ],
+          "linearRGB": [
+            0.25535444,
+            0.11898593,
+            0.0658076
+          ],
+          "Y": 0.14414968,
+          "L": 44.82226,
+          "C": 24.712874,
+          "h": 56.152932
+        },
+        {
+          "material": "roof",
+          "description": "angled town roof",
+          "rect": [
+            0.590104167,
+            0.15462963,
+            0.596875,
+            0.166666667
+          ],
+          "linearRGB": [
+            0.07802121,
+            0.04400765,
+            0.05123853
+          ],
+          "Y": 0.05176331,
+          "L": 27.231336,
+          "C": 9.562745,
+          "h": 2.431844
+        }
+      ]
+    },
+    {
+      "id": "frontier5",
+      "game": "Farthest Frontier",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1044720/fdcec53651ac574225cff07c652e0dc97963dc61/ss_fdcec53651ac574225cff07c652e0dc97963dc61.1920x1080.jpg?t=1774274689",
+      "store": "https://store.steampowered.com/app/1044720/",
+      "sha256": "d989913ac7872b5f505a9835054afe1327cd169d29bd1901d1a049c57495b3f4",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "validation",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Aerial town square with church and formal gardens",
+      "regions": [
+        {
+          "material": "grass",
+          "description": "central sheltered lawn",
+          "rect": [
+            0.496875,
+            0.544444444,
+            0.503645833,
+            0.556481481
+          ],
+          "linearRGB": [
+            0.36553307,
+            0.28540866,
+            0.09297249
+          ],
+          "Y": 0.2885599,
+          "L": 60.654322,
+          "C": 33.875152,
+          "h": 93.191688
+        },
+        {
+          "material": "grass",
+          "description": "garden grass",
+          "rect": [
+            0.396875,
+            0.544444444,
+            0.403645833,
+            0.556481481
+          ],
+          "linearRGB": [
+            0.38113624,
+            0.2551376,
+            0.08765873
+          ],
+          "Y": 0.26984633,
+          "L": 58.960101,
+          "C": 33.222347,
+          "h": 84.42056
+        },
+        {
+          "material": "canopy",
+          "description": "green tree",
+          "rect": [
+            0.910416667,
+            0.373148148,
+            0.9171875,
+            0.385185185
+          ],
+          "linearRGB": [
+            0.02275517,
+            0.02479787,
+            0.01309717
+          ],
+          "Y": 0.02351895,
+          "L": 17.235123,
+          "C": 9.294891,
+          "h": 114.223488
+        },
+        {
+          "material": "roof",
+          "description": "terracotta",
+          "rect": [
+            0.380208333,
+            0.710185185,
+            0.386979167,
+            0.722222222
+          ],
+          "linearRGB": [
+            0.08141955,
+            0.03856528,
+            0.02978686
+          ],
+          "Y": 0.04704564,
+          "L": 25.875929,
+          "C": 13.567261,
+          "h": 41.142868
+        },
+        {
+          "material": "roof",
+          "description": "clay tiles",
+          "rect": [
+            0.527083333,
+            0.882407407,
+            0.533854167,
+            0.894444444
+          ],
+          "linearRGB": [
+            0.37581835,
+            0.26455079,
+            0.21304036
+          ],
+          "Y": 0.28449665,
+          "L": 60.292827,
+          "C": 12.633897,
+          "h": 56.348155
+        },
+        {
+          "material": "road",
+          "description": "sunlit paving",
+          "rect": [
+            0.746875,
+            0.834259259,
+            0.753645833,
+            0.846296296
+          ],
+          "linearRGB": [
+            0.32907141,
+            0.17116594,
+            0.06563884
+          ],
+          "Y": 0.19713176,
+          "L": 51.511359,
+          "C": 31.428179,
+          "h": 70.122771
+        },
+        {
+          "material": "road",
+          "description": "cobblestone street",
+          "rect": [
+            0.160416667,
+            0.491666667,
+            0.1671875,
+            0.503703704
+          ],
+          "linearRGB": [
+            0.23661487,
+            0.18336106,
+            0.09903916
+          ],
+          "Y": 0.18860079,
+          "L": 50.523102,
+          "C": 18.683815,
+          "h": 87.11443
+        },
+        {
+          "material": "wall",
+          "description": "cream plaster",
+          "rect": [
+            0.583333333,
+            0.308333333,
+            0.590104167,
+            0.32037037
+          ],
+          "linearRGB": [
+            0.03225763,
+            0.02872702,
+            0.0265548
+          ],
+          "Y": 0.02932111,
+          "L": 19.769932,
+          "C": 1.976094,
+          "h": 62.387816
+        }
+      ]
+    },
+    {
+      "id": "frontier6",
+      "game": "Farthest Frontier",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1044720/ss_2d3e9332e534911c54bbf568612d7b70a222c9a3.1920x1080.jpg?t=1774274689",
+      "store": "https://store.steampowered.com/app/1044720/",
+      "sha256": "4aadda682bbd17d542e398a028eb2a1560978c2377ed293821756f6cd588d29a",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Aerial view over dispersed thatched village",
+      "regions": [
+        {
+          "material": "grass",
+          "description": "dry pasture",
+          "rect": [
+            0.7,
+            0.852777778,
+            0.706770833,
+            0.864814815
+          ],
+          "linearRGB": [
+            0.34353809,
+            0.16892424,
+            0.06420085
+          ],
+          "Y": 0.19850148,
+          "L": 51.667361,
+          "C": 32.692441,
+          "h": 67.789553
+        },
+        {
+          "material": "grass",
+          "description": "open grass",
+          "rect": [
+            0.840104167,
+            0.834259259,
+            0.846875,
+            0.846296296
+          ],
+          "linearRGB": [
+            0.15025406,
+            0.08382354,
+            0.0162936
+          ],
+          "Y": 0.09307755,
+          "L": 36.570201,
+          "C": 31.793183,
+          "h": 80.306865
+        },
+        {
+          "material": "canopy",
+          "description": "green tree",
+          "rect": [
+            0.183333333,
+            0.538888889,
+            0.190104167,
+            0.550925926
+          ],
+          "linearRGB": [
+            0.05877889,
+            0.05750057,
+            0.02639615
+          ],
+          "Y": 0.05552748,
+          "L": 28.254827,
+          "C": 14.44809,
+          "h": 105.858914
+        },
+        {
+          "material": "canopy",
+          "description": "green tree",
+          "rect": [
+            0.277083333,
+            0.148148148,
+            0.283854167,
+            0.160185185
+          ],
+          "linearRGB": [
+            0.21682067,
+            0.21236806,
+            0.05511746
+          ],
+          "Y": 0.20196547,
+          "L": 52.058707,
+          "C": 34.063583,
+          "h": 104.865946
+        },
+        {
+          "material": "road",
+          "description": "dry dirt road",
+          "rect": [
+            0.85,
+            0.408333333,
+            0.856770833,
+            0.42037037
+          ],
+          "linearRGB": [
+            0.77126678,
+            0.47249743,
+            0.30345743
+          ],
+          "Y": 0.52383716,
+          "L": 77.50972,
+          "C": 25.704733,
+          "h": 63.368696
+        },
+        {
+          "material": "road",
+          "description": "dirt path",
+          "rect": [
+            0.3,
+            0.402777778,
+            0.306770833,
+            0.414814815
+          ],
+          "linearRGB": [
+            0.58602254,
+            0.35105591,
+            0.21407964
+          ],
+          "Y": 0.39114072,
+          "L": 68.833815,
+          "C": 25.185342,
+          "h": 64.470853
+        },
+        {
+          "material": "roof",
+          "description": "thatch",
+          "rect": [
+            0.4,
+            0.591666667,
+            0.406770833,
+            0.603703704
+          ],
+          "linearRGB": [
+            0.09336671,
+            0.05863546,
+            0.04399499
+          ],
+          "Y": 0.06496519,
+          "L": 30.63209,
+          "C": 10.382058,
+          "h": 54.896683
+        },
+        {
+          "material": "roof",
+          "description": "large thatched roof",
+          "rect": [
+            0.516666667,
+            0.349074074,
+            0.5234375,
+            0.361111111
+          ],
+          "linearRGB": [
+            0.4731626,
+            0.2264622,
+            0.13535387
+          ],
+          "Y": 0.27235297,
+          "L": 59.19149,
+          "C": 28.38201,
+          "h": 54.348296
+        }
+      ]
+    },
+    {
+      "id": "frontier9",
+      "game": "Farthest Frontier",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1044720/ss_f046aa92e9897bb54a9da2cebc37fb54009b2d24.1920x1080.jpg?t=1774274689",
+      "store": "https://store.steampowered.com/app/1044720/",
+      "sha256": "ed64459cf41c20a8a00f2bdae8c7bd4d07c9f3debdf34afd700ab75175a5792b",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Elevated view of a town hall and divided lawn",
+      "regions": [
+        {
+          "material": "grass",
+          "description": "civic lawn",
+          "rect": [
+            0.460416667,
+            0.662962963,
+            0.4671875,
+            0.675
+          ],
+          "linearRGB": [
+            0.64792218,
+            0.3302639,
+            0.2361944
+          ],
+          "Y": 0.39103178,
+          "L": 68.825938,
+          "C": 26.358539,
+          "h": 48.116006
+        },
+        {
+          "material": "grass",
+          "description": "civic garden",
+          "rect": [
+            0.566666667,
+            0.621296296,
+            0.5734375,
+            0.633333333
+          ],
+          "linearRGB": [
+            0.46913114,
+            0.19609214,
+            0.15440214
+          ],
+          "Y": 0.25115118,
+          "L": 57.187413,
+          "C": 27.324513,
+          "h": 37.377987
+        },
+        {
+          "material": "road",
+          "description": "red garden path",
+          "rect": [
+            0.536979167,
+            0.669444444,
+            0.54375,
+            0.681481481
+          ],
+          "linearRGB": [
+            0.47307721,
+            0.19656944,
+            0.15546717
+          ],
+          "Y": 0.25240861,
+          "L": 57.309352,
+          "C": 27.502018,
+          "h": 37.036518
+        },
+        {
+          "material": "road",
+          "description": "cobblestones",
+          "rect": [
+            0.5203125,
+            0.87037037,
+            0.527083333,
+            0.882407407
+          ],
+          "linearRGB": [
+            0.48274216,
+            0.36533944,
+            0.28370867
+          ],
+          "Y": 0.38441615,
+          "L": 68.344843,
+          "C": 13.132944,
+          "h": 67.196199
+        },
+        {
+          "material": "roof",
+          "description": "gray slate dome",
+          "rect": [
+            0.827083333,
+            0.485185185,
+            0.833854167,
+            0.497222222
+          ],
+          "linearRGB": [
+            0.27583337,
+            0.27007227,
+            0.23598692
+          ],
+          "Y": 0.26883742,
+          "L": 58.866563,
+          "C": 4.843724,
+          "h": 103.10704
+        },
+        {
+          "material": "roof",
+          "description": "brown pitched roof",
+          "rect": [
+            0.24375,
+            0.385185185,
+            0.250520833,
+            0.397222222
+          ],
+          "linearRGB": [
+            0.48190959,
+            0.2613328,
+            0.14626982
+          ],
+          "Y": 0.29993886,
+          "L": 61.648947,
+          "C": 27.318035,
+          "h": 62.44867
+        },
+        {
+          "material": "canopy",
+          "description": "foreground tree",
+          "rect": [
+            0.903645833,
+            0.757407407,
+            0.910416667,
+            0.769444444
+          ],
+          "linearRGB": [
+            0.06849763,
+            0.07983755,
+            0.03760097
+          ],
+          "Y": 0.07437744,
+          "L": 32.783362,
+          "C": 15.934437,
+          "h": 117.259949
+        },
+        {
+          "material": "wall",
+          "description": "pale facade",
+          "rect": [
+            0.286979167,
+            0.722222222,
+            0.29375,
+            0.734259259
+          ],
+          "linearRGB": [
+            0.17577924,
+            0.1305365,
+            0.08960816
+          ],
+          "Y": 0.13720441,
+          "L": 43.829313,
+          "C": 12.131958,
+          "h": 74.634136
+        }
+      ]
+    },
+    {
+      "id": "anno0",
+      "game": "Anno 1800",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/916440/ecebd0ae477a204c46e3998be53fdd854cf3b089/ss_ecebd0ae477a204c46e3998be53fdd854cf3b089.1920x1080.jpg?t=1791465786",
+      "store": "https://store.steampowered.com/app/916440/",
+      "sha256": "c6b9dbdbca0e40f58394725e4f5e98d0cab1a326c7453a4fe5f10d13bfc463f0",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "scattered cloud",
+      "time": "day",
+      "composition": "Elevated city skyline toward blue horizon",
+      "regions": [
+        {
+          "material": "sky",
+          "description": "clear sky",
+          "rect": [
+            0.460416667,
+            0.100925926,
+            0.4671875,
+            0.112962963
+          ],
+          "linearRGB": [
+            0.41075147,
+            0.52039092,
+            0.53891991
+          ],
+          "Y": 0.49841096,
+          "L": 75.971623,
+          "C": 7.027168,
+          "h": 212.253714
+        },
+        {
+          "material": "sky",
+          "description": "thin cloud",
+          "rect": [
+            0.606770833,
+            0.125,
+            0.613541667,
+            0.137037037
+          ],
+          "linearRGB": [
+            0.7095257,
+            0.72919658,
+            0.61818578
+          ],
+          "Y": 0.71700099,
+          "L": 87.824036,
+          "C": 8.231868,
+          "h": 116.343591
+        },
+        {
+          "material": "water",
+          "description": "distant sea",
+          "rect": [
+            0.763541667,
+            0.296296296,
+            0.7703125,
+            0.308333333
+          ],
+          "linearRGB": [
+            0.34644818,
+            0.53751815,
+            0.64941876
+          ],
+          "Y": 0.50495922,
+          "L": 76.372655,
+          "C": 14.610047,
+          "h": 237.715027
+        },
+        {
+          "material": "roof",
+          "description": "dark roof",
+          "rect": [
+            0.260416667,
+            0.757407407,
+            0.2671875,
+            0.769444444
+          ],
+          "linearRGB": [
+            0.10506575,
+            0.14460138,
+            0.21465011
+          ],
+          "Y": 0.141249,
+          "L": 44.411523,
+          "C": 13.780025,
+          "h": 268.705398
+        },
+        {
+          "material": "roof",
+          "description": "slate slope",
+          "rect": [
+            0.316666667,
+            0.887962963,
+            0.3234375,
+            0.9
+          ],
+          "linearRGB": [
+            0.07805314,
+            0.08535663,
+            0.1073106
+          ],
+          "Y": 0.08538791,
+          "L": 35.080694,
+          "C": 6.155949,
+          "h": 277.731142
+        },
+        {
+          "material": "wall",
+          "description": "gray stone facade",
+          "rect": [
+            0.566666667,
+            0.816666667,
+            0.5734375,
+            0.828703704
+          ],
+          "linearRGB": [
+            0.01774763,
+            0.01311677,
+            0.01456863
+          ],
+          "Y": 0.01420642,
+          "L": 12.094382,
+          "C": 3.318874,
+          "h": 354.927976
+        },
+        {
+          "material": "canopy",
+          "description": "urban tree",
+          "rect": [
+            0.080208333,
+            0.437962963,
+            0.086979167,
+            0.45
+          ],
+          "linearRGB": [
+            0.03604058,
+            0.0449124,
+            0.01430544
+          ],
+          "Y": 0.04081655,
+          "L": 23.939574,
+          "C": 18.344779,
+          "h": 116.580185
+        },
+        {
+          "material": "road",
+          "description": "light plaza paving",
+          "rect": [
+            0.640104167,
+            0.627777778,
+            0.646875,
+            0.639814815
+          ],
+          "linearRGB": [
+            0.68746969,
+            0.57321808,
+            0.46773559
+          ],
+          "Y": 0.58990316,
+          "L": 81.286272,
+          "C": 11.211263,
+          "h": 74.332933
+        }
+      ]
+    },
+    {
+      "id": "anno4",
+      "game": "Anno 1800",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/916440/8fa91f099e9f4ae991827c8186edc2d2094df37d/ss_8fa91f099e9f4ae991827c8186edc2d2094df37d.1920x1080.jpg?t=1791465786",
+      "store": "https://store.steampowered.com/app/916440/",
+      "sha256": "ec70d578960da6d87a3b6795ea3c992abed28f798b4be6c5eda3a65ee4e15362",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "validation",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Elevated industrial town above coastline",
+      "regions": [
+        {
+          "material": "sky",
+          "description": "clear sky",
+          "rect": [
+            0.913541667,
+            0.053703704,
+            0.9203125,
+            0.065740741
+          ],
+          "linearRGB": [
+            0.31104075,
+            0.55764032,
+            0.7467527
+          ],
+          "Y": 0.51884452,
+          "L": 77.211694,
+          "C": 20.282865,
+          "h": 245.159843
+        },
+        {
+          "material": "water",
+          "description": "open distant sea",
+          "rect": [
+            0.936979167,
+            0.237037037,
+            0.94375,
+            0.249074074
+          ],
+          "linearRGB": [
+            0.14321359,
+            0.27976413,
+            0.44118567
+          ],
+          "Y": 0.26237416,
+          "L": 58.261721,
+          "C": 22.020884,
+          "h": 257.862308
+        },
+        {
+          "material": "water",
+          "description": "coastal water",
+          "rect": [
+            0.886979167,
+            0.272222222,
+            0.89375,
+            0.284259259
+          ],
+          "linearRGB": [
+            0.12230688,
+            0.23328323,
+            0.38818949
+          ],
+          "Y": 0.22086195,
+          "L": 54.118339,
+          "C": 22.424957,
+          "h": 262.530613
+        },
+        {
+          "material": "canopy",
+          "description": "foreground foliage",
+          "rect": [
+            0.113541667,
+            0.834259259,
+            0.1203125,
+            0.846296296
+          ],
+          "linearRGB": [
+            0.04695614,
+            0.06496393,
+            0.01173596
+          ],
+          "Y": 0.05729244,
+          "L": 28.71883,
+          "C": 27.398304,
+          "h": 116.570368
+        },
+        {
+          "material": "canopy",
+          "description": "coastal trees",
+          "rect": [
+            0.646875,
+            0.207407407,
+            0.653645833,
+            0.219444444
+          ],
+          "linearRGB": [
+            0.03429737,
+            0.0479482,
+            0.00723802
+          ],
+          "Y": 0.04210679,
+          "L": 24.356054,
+          "C": 26.224945,
+          "h": 116.007217
+        },
+        {
+          "material": "roof",
+          "description": "red tiles",
+          "rect": [
+            0.236979167,
+            0.414814815,
+            0.24375,
+            0.426851852
+          ],
+          "linearRGB": [
+            0.086768,
+            0.07814348,
+            0.07150053
+          ],
+          "Y": 0.07949823,
+          "L": 33.878167,
+          "C": 2.791292,
+          "h": 68.765671
+        },
+        {
+          "material": "roof",
+          "description": "industrial black roof",
+          "rect": [
+            0.896875,
+            0.846296296,
+            0.903645833,
+            0.858333333
+          ],
+          "linearRGB": [
+            0.07409791,
+            0.08274788,
+            0.09420072
+          ],
+          "Y": 0.08173488,
+          "L": 34.341614,
+          "C": 3.717974,
+          "h": 262.233558
+        },
+        {
+          "material": "road",
+          "description": "pale dirt track",
+          "rect": [
+            0.45,
+            0.905555556,
+            0.456770833,
+            0.917592593
+          ],
+          "linearRGB": [
+            0.28943093,
+            0.21390403,
+            0.13246214
+          ],
+          "Y": 0.22408851,
+          "L": 54.458142,
+          "C": 16.912985,
+          "h": 79.137838
+        }
+      ]
+    },
+    {
+      "id": "anno11",
+      "game": "Anno 1800",
+      "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/916440/d3782dde92ecfa18d73432b6735c5d93dba4acf3/ss_d3782dde92ecfa18d73432b6735c5d93dba4acf3.1920x1080.jpg?t=1791465786",
+      "store": "https://store.steampowered.com/app/916440/",
+      "sha256": "a0622575ba71a1e9d923da8c75a4898f995603163ae2df875d478ca4cf6dbb71",
+      "size": [
+        1920,
+        1080
+      ],
+      "split": "train",
+      "weather": "clear",
+      "time": "day",
+      "composition": "Low oblique view down a harbor and coastal settlement",
+      "regions": [
+        {
+          "material": "sky",
+          "description": "blue sky",
+          "rect": [
+            0.3,
+            0.100925926,
+            0.306770833,
+            0.112962963
+          ],
+          "linearRGB": [
+            0.08619502,
+            0.29549256,
+            0.58964206
+          ],
+          "Y": 0.27221092,
+          "L": 59.178416,
+          "C": 34.421416,
+          "h": 262.132945
+        },
+        {
+          "material": "water",
+          "description": "turquoise shallows",
+          "rect": [
+            0.240104167,
+            0.882407407,
+            0.246875,
+            0.894444444
+          ],
+          "linearRGB": [
+            0.05197605,
+            0.1506847,
+            0.15570651
+          ],
+          "Y": 0.13005451,
+          "L": 42.771457,
+          "C": 15.702216,
+          "h": 201.335293
+        },
+        {
+          "material": "water",
+          "description": "open water",
+          "rect": [
+            0.09375,
+            0.42037037,
+            0.100520833,
+            0.432407407
+          ],
+          "linearRGB": [
+            0.07124369,
+            0.04833464,
+            0.02740474
+          ],
+          "Y": 0.05169617,
+          "L": 27.212637,
+          "C": 12.421796,
+          "h": 75.647292
+        },
+        {
+          "material": "water",
+          "description": "distant sea",
+          "rect": [
+            0.2703125,
+            0.242592593,
+            0.277083333,
+            0.25462963
+          ],
+          "linearRGB": [
+            0.05008883,
+            0.18553547,
+            0.36831084
+          ],
+          "Y": 0.16992147,
+          "L": 48.25014,
+          "C": 29.549101,
+          "h": 260.892388
+        },
+        {
+          "material": "canopy",
+          "description": "hillside greenery",
+          "rect": [
+            0.613541667,
+            0.231481481,
+            0.6203125,
+            0.243518519
+          ],
+          "linearRGB": [
+            0.05095668,
+            0.07012407,
+            0.01071638
+          ],
+          "Y": 0.06175994,
+          "L": 29.85221,
+          "C": 29.609829,
+          "h": 115.592837
+        },
+        {
+          "material": "roof",
+          "description": "tiled roof",
+          "rect": [
+            0.69375,
+            0.437962963,
+            0.700520833,
+            0.45
+          ],
+          "linearRGB": [
+            0.09670814,
+            0.10025124,
+            0.0999537
+          ],
+          "Y": 0.09947625,
+          "L": 37.748266,
+          "C": 0.652818,
+          "h": 192.407295
+        },
+        {
+          "material": "wall",
+          "description": "pale lighthouse base",
+          "rect": [
+            0.836979167,
+            0.823148148,
+            0.84375,
+            0.835185185
+          ],
+          "linearRGB": [
+            0.03208934,
+            0.01702395,
+            0.01178921
+          ],
+          "Y": 0.01985014,
+          "L": 15.4084,
+          "C": 9.523036,
+          "h": 51.5937
+        },
+        {
+          "material": "shadow",
+          "description": "coastal terrain in shade",
+          "rect": [
+            0.960416667,
+            0.882407407,
+            0.9671875,
+            0.894444444
+          ],
+          "linearRGB": [
+            0.00901527,
+            0.01055244,
+            0.01093087
+          ],
+          "Y": 0.01025284,
+          "L": 9.200319,
+          "C": 1.344814,
+          "h": 218.384999
+        }
+      ]
+    }
+  ]
+}

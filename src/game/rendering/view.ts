@@ -5,6 +5,7 @@ export interface ValleyView {
   destroy(): void;
   getStats(): RendererStats;
   resetCamera(): void;
+  toggleHorizon?(): void;
   centerOnTile(x: number, y: number): void;
   /** Client (viewport) coordinates of a tile centre — used by automated browser tests. */
   tileToClient(x: number, y: number): { x: number; y: number };
