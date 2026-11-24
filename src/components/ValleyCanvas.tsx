@@ -74,6 +74,7 @@ export function ValleyCanvas(): ReactElement {
   const graphics = useApp((s) => s.settings.graphics);
   const [capNonce, setCapNonce] = useState(0);
   const quality = effectiveQuality({ graphics });
+  const map3d = useApp(s => s.settings.map3d);
   const rotation = useApp((s) => s.rotation);
 
   useEffect(() => {
@@ -191,7 +192,9 @@ export function ValleyCanvas(): ReactElement {
       },
     };
     let destroyTimer = 0;
-    const created: Promise<ValleyView> = ValleyRenderer.create(host, callbacks, opts);
+    const created: Promise<ValleyView> = map3d
+      ? import('../game/rendering3d/Valley3D').then(({ Valley3D }) => Valley3D.create(host, callbacks, opts))
+      : ValleyRenderer.create(host, callbacks, opts);
     created
       .then((r) => {
         if (disposed) {
@@ -210,7 +213,11 @@ export function ValleyCanvas(): ReactElement {
       .catch((e: unknown) => {
         if (previous) previous.destroy();
         if (disposed) return;
-        setError(e instanceof Error ? e.message : String(e));
+        if (map3d) {
+          const app = useApp.getState();
+          app.toast('info', '3D görünüm açılamadı. Şehir 2D görünümde açılıyor.');
+          app.updateSettings({ map3d: false });
+        } else setError(e instanceof Error ? e.message : String(e));
       });
     return () => {
       disposed = true;
@@ -226,7 +233,7 @@ export function ValleyCanvas(): ReactElement {
         if (current === renderer) current = null;
       }
     };
-  }, [quality, capNonce, rotation]);
+  }, [quality, capNonce, rotation, map3d]);
 
   useEffect(() => {
     if (focus) current?.centerOnTile(focus.x + 0.5, focus.y + 0.5);
@@ -389,6 +396,7 @@ export function ValleyCanvas(): ReactElement {
         </div>
       )}
       <div className="camera-rotate" role="group" aria-label="Harita kamerası">
+        <button type="button" aria-label="3D şehir görünümü" aria-pressed={map3d} onClick={() => useApp.getState().updateSettings({ map3d: !map3d })}>{map3d ? '2D' : '3D'}</button>
         <button className="touch-zoom" type="button" onClick={() => current?.zoomBy(1 / 1.25)} aria-label={t('camera.zoomOut')}>−</button>
         <button className="touch-zoom" type="button" onClick={() => current?.zoomBy(1.25)} aria-label={t('camera.zoomIn')}>+</button>
         <button type="button" onClick={() => useApp.getState().rotateCamera(-1)} title="Kamerayı sola döndür (Q)" aria-label="Kamerayı sola döndür"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M5 5H2V2M2.5 5A6 6 0 1 1 3 11.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button>

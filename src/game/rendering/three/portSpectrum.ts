@@ -4,7 +4,7 @@ const SIZE = 64;
 const PATCH_M = 18;
 
 /** In-place radix-2 inverse FFT, applied along both axes of a periodic spectral tile. */
-function inverse(real: Float64Array, imag: Float64Array): void {
+export function inverse(real: Float64Array, imag: Float64Array): void {
   const n = real.length;
   for (let i = 1, j = 0; i < n; i++) {
     let bit = n >> 1;
