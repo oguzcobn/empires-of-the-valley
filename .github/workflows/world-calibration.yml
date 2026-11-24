@@ -1,0 +1,57 @@
+name: Measure world rendering
+on:
+  push:
+    branches: [rendering/reference-fit]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/game/rendering3d/**'
+      - 'tools/world-calibration/**'
+      - '.github/workflows/world-calibration.yml'
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: python -m pip install numpy scipy pillow scikit-image
+      - run: node tools/world-calibration/capture.mjs test-results/world-calibration/identity
+      - run: python tools/world-calibration/fit.py test-results/world-calibration/identity test-results/world-calibration/fit
+      - run: node tools/world-calibration/capture.mjs test-results/world-calibration/graded test-results/world-calibration/fit/grade.json
+      - run: python tools/world-calibration/fit.py test-results/world-calibration/identity test-results/world-calibration/fit --rendered test-results/world-calibration/graded
+      - id: results
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PYTHON'
+          import json, os, pathlib
+          p = pathlib.Path('test-results/world-calibration/fit/report.json')
+          label = 'Capture incomplete'
+          if p.exists():
+              r = json.loads(p.read_text())
+              label = ' | '.join(
+                  f"{s} n={r[s]['baseline']['count']} RMSE {r[s]['baseline']['cieLabRmse']:.4f} to {r[s].get('measured',{}).get('cieLabRmse',float('nan')):.4f}"
+                  for s in ('train','validation'))
+              label += ' gain=' + ','.join(f'{v:.8f}' for v in r['parameters']['gain']) + f" sat={r['parameters']['saturation']:.8f}"
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              print('summary='+label, file=out)
+          PYTHON
+      - name: ${{ steps.results.outputs.summary }}
+        if: always()
+        run: echo "See measured numerical report and PNG artifacts."
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: world-calibration
+          path: test-results/world-calibration/
