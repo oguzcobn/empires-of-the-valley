@@ -396,6 +396,7 @@ export function ValleyCanvas(): ReactElement {
         </div>
       )}
       <div className="camera-rotate" role="group" aria-label="Harita kamerası">
+        {map3d && <button type="button" aria-label="Kamera eğimini değiştir" title="Kuşbakışı veya ufuk görünümü" onClick={() => current?.toggleHorizon?.()}>Ufuk</button>}
         <button type="button" aria-label="3D şehir görünümü" aria-pressed={map3d} onClick={() => useApp.getState().updateSettings({ map3d: !map3d })}>{map3d ? '2D' : '3D'}</button>
         <button className="touch-zoom" type="button" onClick={() => current?.zoomBy(1 / 1.25)} aria-label={t('camera.zoomOut')}>−</button>
         <button className="touch-zoom" type="button" onClick={() => current?.zoomBy(1.25)} aria-label={t('camera.zoomIn')}>+</button>

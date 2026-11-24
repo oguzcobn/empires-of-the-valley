@@ -108,6 +108,7 @@ export class Valley3D implements ValleyView {
   private atmosphere!: ValleyAtmosphere;
   private skyTime = 0;
   private direction = VIEW_DIR.clone();
+  private elevation = ELEVATION;
   private terrain = new Terrain3D();
   private actors = new Actors3D();
   private cityActors = new CityActors3D();
@@ -271,12 +272,19 @@ export class Valley3D implements ValleyView {
     this.camera.updateProjectionMatrix();
   }
 
+  toggleHorizon(): void {
+    this.elevation = this.elevation === ELEVATION ? Math.PI / 22 : ELEVATION;
+    const azimuth = Math.atan2(this.direction.x, this.direction.z);
+    this.direction.setFromSphericalCoords(1, Math.PI / 2 - this.elevation, azimuth);
+    this.placeCamera();
+  }
+
   private placeCamera(): void {
     this.target.x = Math.max(0, Math.min(this.width, this.target.x));
     this.target.z = Math.max(0, Math.min(this.depth, this.target.z));
     this.dist = Math.max(MIN_DIST, Math.min(this.maxDist, this.dist));
     this.camera.position.copy(this.target).addScaledVector(this.direction, this.dist);
-    this.camera.near = Math.max(0.5, this.dist * 0.12);
+    this.camera.near = Math.max(0.5, this.dist * 0.02);
     this.camera.far = this.dist * 6 + 120;
     this.camera.lookAt(this.target);
     this.camera.updateProjectionMatrix();
@@ -343,9 +351,9 @@ export class Valley3D implements ValleyView {
   panBy(dx: number, dy: number): void {
     const perPixel = (2 * this.dist * Math.tan((FOV * Math.PI) / 360)) / this.canvasSize.height;
     // screen-right on the ground is (+x, -z); screen-up is away from the camera (-x, -z)
-    const x = this.direction.x / Math.cos(ELEVATION), z = this.direction.z / Math.cos(ELEVATION);
-    this.target.x += (-dx * z - dy * x / Math.sin(ELEVATION)) * perPixel;
-    this.target.z += (dx * x - dy * z / Math.sin(ELEVATION)) * perPixel;
+    const x = this.direction.x / Math.cos(this.elevation), z = this.direction.z / Math.cos(this.elevation);
+    this.target.x += (-dx * z - dy * x / Math.sin(this.elevation)) * perPixel;
+    this.target.z += (dx * x - dy * z / Math.sin(this.elevation)) * perPixel;
     this.placeCamera();
   }
 
